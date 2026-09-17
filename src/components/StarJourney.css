@@ -1,0 +1,751 @@
+.portfolio {
+  --chapter-color: #cdb38b;
+  --motion-ease: cubic-bezier(0.2, 0.75, 0.25, 1);
+  background: #060b14;
+}
+.route-content {
+  position: relative;
+  z-index: 1;
+}
+.nebula-scene {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+.nebula-veil {
+  position: absolute;
+  inset: -15%;
+  opacity: 0.65;
+  background:
+    radial-gradient(
+      ellipse at 88% 15%,
+      color-mix(in srgb, var(--chapter-color) 17%, transparent),
+      transparent 48%
+    ),
+    radial-gradient(ellipse at 0% 70%, #122b454d, transparent 55%);
+  transform: translateY(var(--space-drift, 0px));
+}
+.orbital-horizon {
+  position: absolute;
+  width: 110vw;
+  height: 110vw;
+  left: 26%;
+  top: 48%;
+  border-radius: 50%;
+  border: 1px solid #82bbdf20;
+  box-shadow:
+    0 -8px 45px #78aacf0d,
+    inset 0 20px 70px #73c4fd08;
+  transform: rotate(-28deg) scaleY(0.33) translateY(var(--space-drift, 0px));
+}
+.shooting-star {
+  position: absolute;
+  top: 13%;
+  right: -20%;
+  width: 160px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #d5eaff);
+  opacity: 0;
+  animation: meteor-flight 15s 5s linear infinite;
+}
+@keyframes meteor-flight {
+  0%,
+  78%,
+  100% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(-28deg);
+  }
+  79% {
+    opacity: 0.7;
+  }
+  87% {
+    opacity: 0;
+    transform: translate(-115vw, 56vh) rotate(-28deg);
+  }
+}
+.star-field {
+  transform: translateY(calc(var(--space-drift, 0px) * 0.24));
+}
+.flight-map {
+  overflow: visible;
+  width: 100%;
+  height: 100%;
+}
+.flight-base {
+  fill: none;
+  stroke: var(--chapter-color);
+  stroke-width: 0.25;
+  opacity: 0.33;
+}
+.flight-trail {
+  fill: none;
+  stroke: var(--chapter-color);
+  stroke-width: 0.6;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 1.2px var(--chapter-color));
+}
+.flight-orbit {
+  fill: none;
+  stroke: var(--chapter-color);
+  stroke-width: 0.1;
+  opacity: 0.3;
+  stroke-dasharray: 1 3;
+}
+.orbit-slant {
+  transform: rotate(-28deg) scaleY(0.65);
+  transform-origin: center;
+}
+.flight-star {
+  fill: #b4c0d0;
+  opacity: 0.65;
+  transition:
+    fill 0.3s,
+    opacity 0.3s;
+}
+.flight-star.is-reached {
+  fill: #fff3d9;
+  opacity: 1;
+  filter: drop-shadow(0 0 1px var(--chapter-color));
+}
+.flight-runner {
+  fill: #fff;
+  filter: drop-shadow(0 0 2px var(--chapter-color));
+}
+.flight-runner path {
+  stroke: #fff5dd;
+  stroke-width: 0.3;
+}
+.flight-corona {
+  fill: var(--chapter-color);
+  opacity: 0.18;
+}
+.flight-hud {
+  position: fixed;
+  top: 44%;
+  right: 10px;
+  width: 48px;
+  z-index: 4;
+  pointer-events: none;
+  color: var(--chapter-color);
+  text-align: center;
+  opacity: 0.85;
+}
+.flight-hud > span {
+  font:
+    7px/2 "JetBrains Mono",
+    monospace;
+  letter-spacing: 0.03em;
+  display: block;
+}
+.flight-hud .flight-map {
+  height: 66px;
+}
+.chapter-heading {
+  min-height: 470px;
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 70px;
+  align-items: center;
+  padding-block: 60px 35px;
+}
+.chapter-heading > div:first-child {
+  max-width: 680px;
+}
+.chapter-heading .eyebrow {
+  margin-top: 45px;
+  color: var(--chapter-color);
+}
+.chapter-heading h1 {
+  font-size: clamp(42px, 5.5vw, 74px);
+  line-height: 1.06;
+  letter-spacing: -0.045em;
+  margin-block: 20px;
+  text-wrap: balance;
+}
+.chapter-description {
+  color: #b4bdcb;
+  font-size: 17px;
+  max-width: 550px;
+}
+.chapter-scroll {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+  color: #a5b0c0;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+.chapter-scroll > span {
+  height: 24px;
+  width: 1px;
+  background: linear-gradient(transparent, var(--chapter-color));
+  animation: scroll-signal 2s ease-in-out infinite;
+}
+@keyframes scroll-signal {
+  50% {
+    transform: translateY(6px);
+    opacity: 0.3;
+  }
+}
+.chapter-sky {
+  aspect-ratio: 1;
+  position: relative;
+  transform-style: preserve-3d;
+  transform: perspective(900px) rotateX(var(--depth-x, 0deg))
+    rotateY(var(--depth-y, 0deg));
+  transition: transform 0.35s var(--motion-ease);
+}
+.chapter-sky > .flight-map {
+  position: absolute;
+  inset: 0;
+  transform: translateZ(40px);
+}
+.chapter-sky > span {
+  position: absolute;
+  bottom: -15px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font:
+    8px "JetBrains Mono",
+    monospace;
+  letter-spacing: 0.16em;
+  color: var(--chapter-color);
+}
+.sky-sphere {
+  position: absolute;
+  inset: 13%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 32% 26%,
+    #1a283d50,
+    #080e1855 55%,
+    #03060b 85%
+  );
+  box-shadow:
+    inset 1px 1px 0 #afc1d526,
+    15px 30px 60px #0008;
+  transform: translateZ(-30px);
+}
+.constellation {
+  transform: rotateX(var(--depth-x, 0deg)) rotateY(var(--depth-y, 0deg));
+}
+.constellation-viewport:not(.depth-active) .constellation-dust {
+  animation: dust-shimmer 7s ease-in-out infinite alternate;
+}
+/* Keep the flare transparent; label styling must not turn it into a square badge. */
+.constellation-node .star-flare,
+.constellation-node .star-ripple {
+  background: none;
+  padding: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  border-radius: 50%;
+}
+.constellation-node .star-flare {
+  border: 0;
+}
+.project-art {
+  transform: perspective(900px) rotateX(var(--depth-x, 0deg))
+    rotateY(var(--depth-y, 0deg));
+  transition:
+    transform 0.4s var(--motion-ease),
+    box-shadow 0.4s;
+  transform-style: preserve-3d;
+}
+.project-art.depth-active {
+  box-shadow: 0 25px 45px #0006;
+}
+.project-art .art-label {
+  transform: translateZ(28px);
+}
+.project-card:hover .project-card-meta > svg,
+.project-card:focus-within .project-card-meta > svg {
+  transform: translate(3px, -3px);
+  color: var(--chapter-color);
+}
+.project-card-meta > svg,
+.text-link > svg,
+.primary-link > svg,
+.departure-arrow {
+  transition: transform 0.3s var(--motion-ease);
+}
+.text-link:hover > svg,
+.primary-link:hover > svg {
+  transform: translateX(3px);
+}
+.departure-routes {
+  padding-block: 70px 55px;
+}
+.departure-routes > h2 {
+  max-width: 620px;
+  margin-block: 28px 45px;
+}
+.departure-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.departure-link {
+  padding: 28px 24px 40px;
+  position: relative;
+  border-right: 1px solid var(--line);
+  transform: perspective(1000px) rotateX(var(--depth-x, 0deg))
+    rotateY(var(--depth-y, 0deg));
+  transition:
+    transform 0.3s var(--motion-ease),
+    background 0.3s;
+}
+.departure-link:first-child {
+  border-left: 1px solid var(--line);
+}
+.departure-link:hover,
+.departure-link:focus-visible {
+  background: color-mix(in srgb, var(--chapter-color) 5%, transparent);
+}
+.departure-number {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 34px;
+  font:
+    12px "JetBrains Mono",
+    monospace;
+  color: var(--chapter-color);
+}
+.departure-link .eyebrow {
+  color: var(--chapter-color);
+  font-size: 9px;
+}
+.departure-link h3 {
+  font-size: 23px;
+  margin-block: 14px;
+}
+.departure-link p {
+  color: #9ca9bb;
+  font-size: 13px;
+  padding-bottom: 28px;
+}
+.departure-arrow {
+  position: absolute;
+  bottom: 20px;
+  right: 24px;
+  color: var(--chapter-color);
+}
+.departure-link:hover .departure-arrow {
+  transform: translateX(5px);
+}
+.departure-shortcuts {
+  display: flex;
+  gap: 25px;
+  flex-wrap: wrap;
+  padding-top: 26px;
+}
+.departure-shortcuts a,
+.departure-shortcuts button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  padding-block: 10px;
+}
+.departure-shortcuts button {
+  border: 0;
+  background: none;
+  margin-left: auto;
+}
+.departure-shortcuts svg {
+  color: var(--chapter-color);
+}
+.chapter-heading ~ .section-shell {
+  padding-top: 60px;
+}
+.capability-icon {
+  display: block;
+  margin-bottom: 16px;
+  color: var(--chapter-color);
+  transition: transform 0.35s var(--motion-ease);
+}
+.capability:hover .capability-icon {
+  transform: rotate(-8deg) translateY(-4px);
+}
+.chapter-passage {
+  padding-block: 80px;
+  position: relative;
+}
+.chapter-passage > .eyebrow {
+  margin-top: 35px;
+}
+.passage-next {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding-block: 28px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 20px;
+}
+.passage-next small {
+  color: var(--chapter-color);
+  font:
+    10px "JetBrains Mono",
+    monospace;
+  letter-spacing: 0.15em;
+}
+.passage-next h2 {
+  margin-top: 12px;
+  font-size: clamp(35px, 5vw, 65px);
+}
+.passage-next > svg {
+  color: var(--chapter-color);
+  transition: transform 0.4s var(--motion-ease);
+}
+.passage-next:hover > svg {
+  transform: translateX(10px);
+}
+.chapter-dots {
+  display: flex;
+  gap: 30px;
+  margin-top: 48px;
+  justify-content: center;
+}
+.chapter-dots a {
+  font:
+    8px "JetBrains Mono",
+    monospace;
+  color: #8e9bb0;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px;
+}
+.chapter-dots span {
+  height: 5px;
+  width: 5px;
+  border-radius: 50%;
+  background: #8291a4;
+  box-shadow: 0 0 0 4px #8291a40c;
+}
+.chapter-dots a[aria-current] {
+  color: var(--chapter-color);
+}
+.chapter-dots a[aria-current] span {
+  background: #fff;
+  box-shadow:
+    0 0 13px var(--chapter-color),
+    0 0 0 5px #d4dfef15;
+}
+.secret-signal {
+  display: flex;
+  justify-content: flex-end;
+}
+.signal-trigger {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: transparent;
+  border: 0;
+  min-height: 44px;
+  padding: 10px;
+}
+.signal-trigger span {
+  font:
+    9px "JetBrains Mono",
+    monospace;
+  color: #7d8ca4;
+}
+.signal-trigger > svg {
+  color: #adbfd8;
+  animation: hidden-signal 6s ease-in-out infinite;
+}
+@keyframes hidden-signal {
+  0%,
+  70%,
+  100% {
+    opacity: 0.4;
+  }
+  78%,
+  88% {
+    opacity: 1;
+    filter: drop-shadow(0 0 7px #c5e0ff);
+  }
+}
+.signal-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  padding: 0;
+  width: min(580px, calc(100vw - 32px));
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  border: 1px solid #aac1e044;
+  border-radius: 3px;
+  color: #eeeae1;
+  background: #0a1322;
+  box-shadow: 0 40px 100px #000b;
+}
+.signal-dialog::backdrop {
+  background: #020712dd;
+  backdrop-filter: blur(14px);
+}
+.signal-window {
+  padding: 54px 44px 36px;
+  position: relative;
+  background: radial-gradient(ellipse at 100% 0, #20355170, transparent 65%);
+}
+.signal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: none;
+}
+.signal-window > .eyebrow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: #cbb597;
+  margin-bottom: 30px;
+}
+.signal-window h2 {
+  font-family: "Newsreader", Georgia, serif;
+  font-style: italic;
+  font-size: 36px;
+  margin-block: 15px 22px;
+}
+.signal-window p {
+  font-size: 15px;
+  color: #bbc5d3;
+}
+.signal-puzzle {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-block: 38px;
+}
+.signal-star {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding-block: 20px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 50%;
+}
+.signal-star svg {
+  color: #8191a9;
+}
+.signal-star span {
+  font:
+    11px "JetBrains Mono",
+    monospace;
+  color: #9eacc0;
+}
+.signal-star.is-calling {
+  border-color: #ebd3a77a;
+  background: #e0b46a0b;
+}
+.signal-star.is-calling svg {
+  color: #fff0cd;
+  filter: drop-shadow(0 0 10px #ebc57a);
+}
+.signal-window .signal-status {
+  font-size: 12px;
+  min-height: 42px;
+  text-align: center;
+}
+.field-note > .eyebrow {
+  font-size: 9px;
+  color: #d4bc93;
+}
+.field-note > p {
+  line-height: 1.95;
+}
+.note-signature {
+  display: block;
+  font:
+    italic 25px "Newsreader",
+    Georgia,
+    serif;
+  text-align: right;
+  padding-block: 24px;
+  color: #d4bc93;
+}
+.field-note .text-link {
+  background: none;
+  border: 0;
+  padding: 14px 0;
+  font-size: 12px;
+}
+.portfolio.tab-asleep *,
+.portfolio.tab-asleep *::before,
+.portfolio.tab-asleep *::after {
+  animation-play-state: paused !important;
+}
+.portfolio.motion-paused [data-depth],
+.portfolio.motion-paused .constellation {
+  transform: none;
+}
+.portfolio.motion-paused .flight-runner,
+.portfolio.motion-paused .shooting-star {
+  display: none;
+}
+@media (min-width: 1500px) {
+  .flight-hud {
+    right: max(25px, calc((100vw - 1410px) / 2));
+    width: 70px;
+  }
+  .flight-hud .flight-map {
+    height: 90px;
+  }
+}
+@media (max-width: 1050px) {
+  .chapter-heading {
+    gap: 40px;
+    min-height: 410px;
+  }
+  .departure-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .departure-link {
+    border-bottom: 1px solid var(--line);
+  }
+  .departure-link:nth-child(3) {
+    border-left: 1px solid var(--line);
+  }
+  .flight-hud {
+    right: 4px;
+    width: 34px;
+    opacity: 0.55;
+  }
+  .flight-hud > span {
+    font-size: 5px;
+  }
+}
+@media (max-width: 760px) {
+  .constellation-node {
+    min-width: 44px;
+  }
+  .constellation-node > span {
+    font-size: 8px;
+    max-width: 74px;
+    white-space: normal;
+    text-align: center;
+    padding: 3px;
+  }
+  .constellation-node .node-star-name {
+    display: none;
+  }
+  .chapter-heading {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding-top: 30px;
+  }
+  .chapter-heading .eyebrow {
+    margin-top: 30px;
+  }
+  .chapter-heading h1 {
+    font-size: clamp(38px, 9vw, 62px);
+  }
+  .chapter-sky {
+    width: min(260px, 65vw);
+    margin: 0 auto;
+  }
+  .chapter-heading ~ .section-shell {
+    padding-top: 44px;
+  }
+  .chapter-description {
+    font-size: 15px;
+  }
+  .chapter-scroll {
+    margin-top: 20px;
+  }
+  .flight-hud {
+    top: auto;
+    bottom: 78px;
+    right: 7px;
+    width: 47px;
+    opacity: 0.8;
+    background: #070e18e8;
+    border: 1px solid #b8c9e51c;
+    border-radius: 30px;
+    padding: 8px 4px;
+  }
+  .flight-hud .flight-map {
+    height: 43px;
+  }
+  .flight-hud > span {
+    font-size: 5px;
+  }
+  .departure-routes {
+    padding-top: 35px;
+  }
+  .departure-link {
+    padding: 22px 17px 35px;
+  }
+  .departure-link h3 {
+    font-size: 21px;
+  }
+  .departure-link p {
+    font-size: 12px;
+  }
+  .departure-shortcuts {
+    gap: 17px;
+  }
+  .departure-shortcuts button {
+    margin-left: 0;
+  }
+  .chapter-passage {
+    padding-block: 40px;
+  }
+  .chapter-dots {
+    gap: 4px;
+    justify-content: space-between;
+  }
+  .chapter-dots a {
+    font-size: 6px;
+    padding: 10px 4px;
+  }
+  .signal-window {
+    padding: 52px 25px 25px;
+  }
+  .signal-puzzle {
+    gap: 7px;
+  }
+  .signal-star {
+    padding-block: 16px;
+  }
+  .signal-window h2 {
+    font-size: 31px;
+  }
+  .signal-window p {
+    font-size: 14px;
+  }
+  .nebula-veil {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .portfolio:not(.motion-enabled) [data-depth],
+  .portfolio:not(.motion-enabled) .constellation {
+    transform: none;
+  }
+}
+@media print {
+  .nebula-scene,
+  .flight-hud,
+  .chapter-passage,
+  .chapter-heading,
+  .signal-dialog {
+    display: none !important;
+  }
+}

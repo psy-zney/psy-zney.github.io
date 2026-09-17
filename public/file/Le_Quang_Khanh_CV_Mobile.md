@@ -28,7 +28,8 @@ Expected Aug 2027
 
 - Built a cross-platform mobile app (Expo, TypeScript) that helps users decide what to cook, with dish browsing, ingredient-based filtering, and a randomized daily meal picker.
 - Designed a role-based navigation architecture with React Navigation and Zustand, separating Admin and User flows.
-- Implemented offline-first local persistence with SQLite (expo-sqlite) and automatic dataset seeding, with email/password and Google Sign-In authentication.
+- Implemented offline-first local persistence with SQLite (expo-sqlite), automatic dataset seeding, local email/password accounts, favorites, and meal history.
+- Prepared a Google Sign-In integration; it is disabled in the current repository snapshot.
 
 **Tech stack:** React Native, Expo, TypeScript, Zustand, SQLite
 

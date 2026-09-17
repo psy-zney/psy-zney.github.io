@@ -7,7 +7,7 @@ Ho Chi Minh City, Vietnam · [lequangkhanh295@gmail.com](mailto:lequangkhanh295@
 
 ## Summary
 
-Full-Stack Web Developer with project experience across React/Node.js applications, including a multi-tenant SaaS platform deployed on AWS and a self-hosted real-time system using WebSocket and Cloudflare infrastructure. Comfortable working across frontend, backend, and database layers.
+Information Technology student at UEH seeking a Full-Stack Web Developer internship. Project experience spans React/Next.js interfaces, Node.js and Go backends, ASP.NET Core endpoint management, and relational databases. Comfortable following a feature across the interface, API, data, and deployment layers.
 
 ---
 
@@ -43,15 +43,34 @@ Expected Aug 2027
 
 **Tech stack:** Rust, Tauri, React, React Native/Expo, Node.js, Socket.IO, Named Pipes, WebSocket
 
-### BeatSync — Self-Hosted Multi-Device Audio Sync Platform
+### BeatSync — Multi-Device Audio Sync Platform *(Open-Source Adaptation)*
 *May 2026 – Present*
 
-- Built and self-host a web application for synchronized audio playback across multiple devices, using a Next.js/React client and a Bun WebSocket server.
-- Migrated audio storage from local filesystem to Cloudflare R2, using presigned upload URLs and CDN delivery to remove server bandwidth bottlenecks.
-- Host the backend on local hardware, exposed to the internet through Cloudflare Tunnels.
-- Implemented a YouTube-to-audio ingestion flow so users can add tracks to synchronized listening sessions.
+- Extended a project originally by freeman-jiang (MIT license) with a shared listening experience, room queues, chat, LiveKit voice, and spatial audio.
+- Developed the current Go HTTP/WebSocket backend with room state and backup support, evolving the earlier Bun implementation.
+- Integrated a Rust audio extractor, streamed S3/R2 uploads, and memory-aware queue load shedding for constrained hosting.
+- Maintained the original attribution and MIT license in the repository.
 
-**Tech stack:** Next.js, React, Bun, WebSocket, Cloudflare R2, Cloudflare Tunnels, Zustand, Tailwind CSS
+**Tech stack:** Next.js, React, Go, Rust, WebSocket, Cloudflare R2, LiveKit, Docker
+
+### SentinelLAN — LAN Endpoint Management *(Graduation Project)*
+*2026 · Source: [github.com/psy-zney/SentinelLAN](https://github.com/psy-zney/SentinelLAN)*
+
+- Built a Next.js dashboard, ASP.NET Core API, and Windows agent with PostgreSQL persistence and SignalR status updates.
+- Implemented role and tenant boundaries, one-time enrollment, heartbeats, and signed commands with expiry, nonces, and audit records.
+- Organized backend responsibilities through Domain, Application, Infrastructure, and API layers; added DPAPI-protected agent identity and offline queuing.
+- Kept lock and network-isolation actions simulated by default in the MVP.
+
+**Tech stack:** Next.js, C#, ASP.NET Core, PostgreSQL, SignalR, Windows Agent
+
+### Study Cabin — Personal TOEIC Learning System
+*2026 · Source: [github.com/psy-zney/LearningEnglish](https://github.com/psy-zney/LearningEnglish)*
+
+- Built a daily loop for learning, due review, deterministic Part 5 practice, and progress tracking.
+- Used SQLite/Prisma and stable-key seeding to update learning content while preserving review history.
+- Separated a Vercel frontend from a self-hosted backend; kept Ollama enrichment optional so the core study loop works without it.
+
+**Tech stack:** Next.js, TypeScript, Prisma, SQLite, Cloudflare Tunnels, Ollama
 
 ### Mandy Crimson — Order Label Generator
 *2026 · Demo: [zney295.id.vn/mandycrimson](https://zney295.id.vn/mandycrimson/)*
@@ -68,8 +87,8 @@ Expected Aug 2027
 
 | Category | Details |
 |---|---|
-| **Languages** | JavaScript, TypeScript, Rust, PHP, SQL, HTML/CSS |
-| **Backend** | Node.js, Express.js, REST APIs, JWT Auth, WebSocket, Socket.IO, MySQL, MongoDB |
+| **Languages** | JavaScript, TypeScript, Go, C#, Rust, PHP, SQL, HTML/CSS |
+| **Backend** | Node.js, Express.js, ASP.NET Core, REST APIs, JWT Auth, WebSocket, Socket.IO, MySQL, PostgreSQL, SQLite, MongoDB |
 | **Frontend** | React, Next.js, Tailwind CSS, Vite, Zustand |
-| **Cloud & DevOps** | AWS (EC2, RDS, SES), Cloudflare (R2, Tunnels), Nginx, PM2, GitHub Pages |
+| **Cloud & DevOps** | AWS (EC2, RDS, SES), Cloudflare (R2, Tunnels), Docker, Nginx, PM2, GitHub Pages |
 | **Tools & Concepts** | Git, GitHub, Data Structures & Algorithms, OOP, Database Design |

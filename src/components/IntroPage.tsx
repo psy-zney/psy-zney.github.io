@@ -1,1224 +1,1440 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
-  ExternalLink,
-  Download,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  Check,
   Github,
-  Mail,
-  Share2,
-  Facebook,
-  MessageCircle,
-  TerminalSquare,
+  Globe2,
   Linkedin,
-  Sun,
-  Moon,
-} from 'lucide-react';
-import { GalaxyButton } from './GalaxyButton';
-import { RectGlowButton } from './RectGlowButton';
-import { fetchVisitorInfo, VisitorInfo } from '../utils/visitorTracker';
+  Menu,
+  Orbit,
+  Pause,
+  Play,
+  Sparkles,
+  X,
+  Braces,
+  Network,
+  Smartphone,
+  Box,
+  Rocket,
+} from "lucide-react";
+import {
+  capabilities,
+  copy,
+  projects,
+  type Language,
+  type Project,
+} from "../data/portfolio";
+import "./Portfolio.css";
+import { ResumePage } from "./ResumePage";
+import { chapterForHash, journey } from "../data/journey";
+import {
+  ChapterHeading,
+  ChapterPassage,
+  DepartureRoutes,
+  JourneyAtmosphere,
+  useStarFlight,
+} from "./StarJourney";
+import {
+  CosmicTransitionOverlay,
+  getRouteAnchor,
+  type CelestialPoint,
+  type TransitionPhase,
+} from "./CosmicTransition";
 
-// ==================== ZNEY ASCII LOGO + LED SCAN WAVE ====================
-const ASCII_ROWS = [
-  ' ███████╗███╗   ██╗███████╗██╗   ██╗',
-  ' ╚══███╔╝████╗  ██║██╔════╝╚██╗ ██╔╝',
-  '   ███╔╝ ██╔██╗ ██║█████╗   ╚████╔╝ ',
-  '  ███╔╝  ██║╚██╗██║██╔══╝    ╚██╔╝  ',
-  ' ███████╗██║ ╚████║███████╗   ██║   ',
-  ' ╚══════╝╚═╝  ╚═══╝╚══════╝   ╚═╝   ',
+interface IntroPageProps {
+  onEnterWorkspace: () => void;
+  lang: Language;
+  onToggleLang: () => void;
+}
+const chapters = [
+  { id: "story", label: copy("Câu chuyện", "My story") },
+  { id: "projects", label: copy("Dự án", "Selected work") },
+  { id: "skills", label: copy("Năng lực", "Capabilities") },
+  { id: "contact", label: copy("Kết nối", "Contact") },
 ];
-
-// Precompute scan-order index for every non-space char: left→right, top→bottom
-// Space chars get -1
-const ASCII_BLOCK_MAP: number[][] = (() => {
-  const map = ASCII_ROWS.map((row) => new Array(row.length).fill(-1));
-  let idx = 0;
-  for (let ri = 0; ri < ASCII_ROWS.length; ri++) {
-    for (let ci = 0; ci < ASCII_ROWS[ri].length; ci++) {
-      if (ASCII_ROWS[ri][ci] !== ' ') {
-        map[ri][ci] = idx++;
-      }
-    }
-  }
-  return map;
-})();
-
-const ASCII_TOTAL_BLOCKS = ASCII_ROWS.reduce(
-  (a, r) => a + r.split('').filter((c) => c !== ' ').length,
-  0
+const stars = Array.from(
+  { length: 65 },
+  (_, i) =>
+    ({
+      left: `${((i * 73 + 17) % 997) / 10}%`,
+      top: `${((i * 137 + 29) % 991) / 10}%`,
+      "--delay": `${-(i % 9)}s`,
+      "--size": `${i % 7 === 0 ? 3 : 1}px`,
+    }) as CSSProperties,
 );
 
-const LED_WAVE_COLORS = [
-  '#38bdf8', '#818cf8', '#c084fc', '#f472b6',
-  '#34d399', '#fb923c', '#c696c2ff', '#ffffff'
-];
-
-function ZneyLEDLogo() {
-  const [phase, setPhase] = useState<'fill' | 'wave'>('fill');
-  const [litCount, setLitCount] = useState(0);
-  const [waveOffset, setWaveOffset] = useState(0);
-
-  // Phase 1: light up chars one by one, left→right top→bottom
-  useEffect(() => {
-    if (phase !== 'fill') return;
-    if (litCount < ASCII_TOTAL_BLOCKS) {
-      const t = setTimeout(() => setLitCount((c) => c + 1), 28);
-      return () => clearTimeout(t);
-    } else {
-      const t = setTimeout(() => setPhase('wave'), 500);
-      return () => clearTimeout(t);
-    }
-  }, [litCount, phase]);
-
-  // Phase 2: sweep front advances 2 chars every 25ms
-  // One full sweep paints all chars with a single color, then next color takes over
-  useEffect(() => {
-    if (phase !== 'wave') return;
-    const t = setInterval(() => setWaveOffset((o) => o + 2), 25);
-    return () => clearInterval(t);
-  }, [phase]);
-
-  // Derive current sweep position and colors from waveOffset
-  const sweepPos = waveOffset % ASCII_TOTAL_BLOCKS;
-  const sweepColorIdx = Math.floor(waveOffset / ASCII_TOTAL_BLOCKS) % LED_WAVE_COLORS.length;
-  const prevColorIdx = (sweepColorIdx - 1 + LED_WAVE_COLORS.length) % LED_WAVE_COLORS.length;
-  const sweepColor = LED_WAVE_COLORS[sweepColorIdx];
-  const prevColor = LED_WAVE_COLORS[prevColorIdx];
-
+function ProjectArt({
+  project,
+  large = false,
+}: {
+  project: Project;
+  large?: boolean;
+}) {
   return (
-    <div style={{ marginBottom: '18px', userSelect: 'none', overflow: 'hidden' }}>
-      {ASCII_ROWS.map((row, ri) => (
-        <div key={ri} style={{ display: 'flex', lineHeight: '1.15', whiteSpace: 'pre' }}>
-          {row.split('').map((ch, ci) => {
-            const blockIdx = ASCII_BLOCK_MAP[ri][ci];
-            const isBlock = blockIdx >= 0;
-
-            let color = 'transparent';
-            let shadow = 'none';
-
-            if (isBlock) {
-              if (phase === 'fill') {
-                if (blockIdx < litCount) {
-                  color = '#38bdf8';
-                  shadow = '0 0 8px rgba(56,189,248,0.65)';
-                } else {
-                  color = '#0d1e30';
-                }
-              } else {
-                // Chars already passed by sweep front → sweepColor (new)
-                // Chars not yet reached → prevColor (old)
-                if (blockIdx < sweepPos) {
-                  color = sweepColor;
-                  shadow = `0 0 9px ${sweepColor}99`;
-                } else {
-                  color = prevColor;
-                  shadow = `0 0 6px ${prevColor}55`;
-                }
-              }
-            }
-
-            return (
-              <span
-                key={ci}
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: 'clamp(9px, 1.8vw, 13px)',
-                  display: 'inline-block',
-                  color,
-                  textShadow: shadow,
-                  transition: 'color 30ms linear, text-shadow 30ms linear',
-                }}
-              >
-                {ch}
-              </span>
-            );
-          })}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-
-
-// ==================== ZEN SIDEBAR ====================
-const DEPLOYED_SITES = [
-  { label: 'Main Portfolio', url: 'http://zney295.id.vn/', sub: 'zney295.id.vn', color: '#3882F6' },
-  { label: 'Study Hub', url: 'https://study.zney295.id.vn/', sub: 'study.zney295.id.vn', color: '#10B981' },
-  { label: 'BeatSync', url: 'https://beatsync.zney295.id.vn/', sub: 'beatsync.zney295.id.vn', color: '#F97316' },
-  { label: 'Security', url: 'https://zney295.id.vn/Security/', sub: 'zney295.id.vn/Security', color: '#8B5CF6' },
-  { label: 'Mandy Crimson', url: 'https://zney295.id.vn/mandycrimson/', sub: 'zney295.id.vn/mandycrimson', color: '#EC4899' },
-];
-
-function ZenSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
-  return (
-    <div style={{ position: 'fixed', top: 0, left: 0, height: '100dvh', zIndex: 50, display: 'flex', pointerEvents: 'none' }}>
-      {open && (
-        <div
-          onClick={onClose}
-          style={{ position: 'fixed', inset: 0, zIndex: 49, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)', pointerEvents: 'all' }}
+    <div
+      className={`project-art art-${project.id} ${large ? "art-large" : ""}`}
+      data-depth
+      style={{ "--planet-color": project.color } as CSSProperties}
+      aria-hidden="true"
+    >
+      <div className="art-grid" />
+      {project.id === "chemistry-lab" && (
+        <img
+          className="art-gameplay"
+          src="./img/chemistry-lab-3d.png"
+          alt=""
+          loading={large ? "eager" : "lazy"}
         />
       )}
-      <div
-        style={{
-          position: 'relative', zIndex: 50, width: '260px', height: '100%',
-          background: '#111827', borderRight: '1px solid #1f2937', borderRadius: '0 24px 24px 0',
-          boxShadow: open ? '6px 0 30px rgba(0,0,0,0.5)' : 'none',
-          transform: open ? 'translateX(0)' : 'translateX(-100%)',
-          transition: 'transform 280ms cubic-bezier(0.16,1,0.3,1)',
-          pointerEvents: open ? 'all' : 'none',
-          display: 'flex', flexDirection: 'column', padding: '24px 0', overflowY: 'auto',
-        }}
-      >
-        <div style={{ padding: '0 20px 16px', borderBottom: '1px solid #1f2937', marginBottom: '12px' }}>
-          <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#6e7681', letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0, fontWeight: 700 }}>
-            Deployed Sites &amp; Projects
-          </p>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '0 12px' }}>
-          {DEPLOYED_SITES.map((site, i) => (
-            <a
-              key={i} href={site.url} target="_blank" rel="noopener noreferrer"
-              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', textDecoration: 'none', background: '#1a2233', border: '1px solid #1f2937', borderRadius: '16px', transition: 'all 200ms', cursor: 'pointer' }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#30363d'; e.currentTarget.style.background = '#21262d'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1f2937'; e.currentTarget.style.background = '#1a2233'; }}
-            >
-              <span style={{ width: 30, height: 30, borderRadius: '10px', background: site.color + '20', border: `1px solid ${site.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: site.color }} />
-              </span>
-              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                <span style={{ fontFamily: "'Helvetica Neue', sans-serif", fontSize: '13px', fontWeight: 600, color: '#c9d1d9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{site.label}</span>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: '#6e7681', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{site.sub}</span>
-              </div>
-            </a>
+      <div className="art-orbit orbit-one" />
+      <div className="art-orbit orbit-two" />
+      <div className="art-planet" />
+      {project.id === "beatsync" && (
+        <div className="audio-bars">
+          {Array.from({ length: 25 }, (_, i) => (
+            <i
+              key={i}
+              style={
+                {
+                  height: `${18 + ((i * 37) % 75)}%`,
+                  "--bar-delay": `${i * -0.13}s`,
+                } as CSSProperties
+              }
+            />
           ))}
         </div>
+      )}
+      <span className="art-coordinate">
+        {String(projects.indexOf(project) + 1).padStart(2, "0")} / ZNEY
+        EXPLORATIONS
+      </span>
+      <span className="art-label">{project.name}</span>
+      <span className="art-cross">+</span>
+    </div>
+  );
+}
+
+function Constellation({ lang }: { lang: Language }) {
+  const nodes = [
+    {
+      id: "study-cabin",
+      label: "Study Cabin",
+      star: "β Zavijava",
+      x: 18,
+      y: 16,
+      cls: "node-blue",
+    },
+    {
+      id: "mandy-crimson",
+      label: "Mandy Crimson",
+      star: "η Zaniah",
+      x: 33,
+      y: 25,
+      cls: "node-pink",
+    },
+    {
+      id: "sentinellan",
+      label: "SentinelLAN",
+      star: "γ Porrima",
+      x: 50,
+      y: 26,
+      cls: "node-gold",
+    },
+    {
+      id: "cloud-pos",
+      label: "Cloud POS",
+      star: "δ Minelauva",
+      x: 67,
+      y: 23,
+      cls: "node-gold",
+    },
+    {
+      id: "chemistry-lab",
+      label: "Chemistry Lab 3D",
+      star: "ε Vindemiatrix",
+      x: 81,
+      y: 15,
+      cls: "node-cyan",
+    },
+    {
+      id: "backup-data",
+      label: "Zney Backup",
+      star: "θ Vir",
+      x: 25,
+      y: 56,
+      cls: "node-lavender",
+    },
+    {
+      id: "security-core",
+      label: "Security Core",
+      star: "ζ Heze",
+      x: 73,
+      y: 54,
+      cls: "node-green",
+    },
+    {
+      id: "beatsync",
+      label: "BeatSync",
+      star: "α Spica",
+      x: 48,
+      y: 78,
+      cls: "node-blue node-spica",
+    },
+    {
+      id: "luckyfood",
+      label: "LuckyFood",
+      star: "ι Syrma",
+      x: 74,
+      y: 70,
+      cls: "node-cream",
+    },
+    {
+      id: "micro4nerds",
+      label: "Micro4Nerds",
+      star: "μ Rijl al Awwa",
+      x: 86,
+      y: 84,
+      cls: "node-purple",
+    },
+  ];
+
+  const constellationPath =
+    "M18 16 33 25 50 26 67 23 81 15 M50 26 25 56 48 78 73 54 50 26 M50 26 48 78 M73 54 74 70 86 84 M48 78 74 70";
+
+  return (
+    <div className="constellation-viewport" data-depth>
+      <div
+        className="constellation"
+        aria-label={
+          lang === "vie"
+            ? "Chòm sao Xử Nữ (Virgo) — chọn một ngôi sao để khám phá dự án"
+            : "Virgo constellation — choose a star to explore projects"
+        }
+      >
+        <div className="constellation-halo" />
+        <div className="constellation-dust" />
+        <div className="celestial-ring ring-outer" />
+        <div className="celestial-ring ring-ecliptic" />
+        <div className="celestial-ring ring-inner" />
+        <svg
+          className="constellation-lines"
+          viewBox="0 0 100 100"
+          aria-hidden="true"
+          data-flight
+        >
+          <defs>
+            <linearGradient
+              id="starlight-beam"
+              x1="0%"
+              y1="0%"
+              x2="100%"
+              y2="100%"
+            >
+              <stop offset="0%" stopColor="#a8c8ff" stopOpacity="0.3" />
+              <stop offset="50%" stopColor="#ffffff" stopOpacity="1" />
+              <stop offset="100%" stopColor="#7ad3ff" stopOpacity="0.4" />
+            </linearGradient>
+          </defs>
+          <path className="line-glow" d={constellationPath} />
+          <path className="line-base" d={constellationPath} />
+          <path className="line-pulse" d={constellationPath} />
+          <path
+            data-flight-path
+            className="flight-base"
+            d="M18 16 L33 25 L50 26 L67 23 L81 15 L67 23 L50 26 L25 56 L48 78 L73 54 L74 70 L86 84"
+          />
+          <path
+            data-flight-trail
+            className="flight-trail"
+            pathLength="100"
+            strokeDasharray="0 100"
+            d="M18 16 L33 25 L50 26 L67 23 L81 15 L67 23 L50 26 L25 56 L48 78 L73 54 L74 70 L86 84"
+          />
+          <g
+            data-flight-runner
+            transform="translate(18 16)"
+            className="flight-runner"
+          >
+            <circle r="4" className="flight-corona" />
+            <circle r="1.1" />
+            <path d="M-5 0H5M0-5V5" />
+          </g>
+        </svg>
+        <a
+          className="central-star"
+          href="#/story"
+          aria-label={
+            lang === "vie" ? "Đọc câu chuyện của Khánh" : "Read Khanh’s story"
+          }
+        >
+          <Sparkles size={26} />
+          <span>Z</span>
+        </a>
+        {nodes.map((node) => (
+          <a
+            key={node.id}
+            href={`#/project/${node.id}`}
+            className={`constellation-node ${node.cls}`}
+            style={{ left: `${node.x}%`, top: `${node.y}%` }}
+            title={`${node.label} · ${node.star}`}
+          >
+            <div className="star-point-wrap">
+              <i />
+              <span className="star-flare" />
+              <span className="star-ripple" />
+            </div>
+            <span>{node.label}</span>
+            <small className="node-star-name">{node.star}</small>
+          </a>
+        ))}
+        <span className="map-coordinate coordinate-top">
+          VIRGO ♍ &nbsp; 13h 25m · -11°09′ &nbsp; | &nbsp; 10°49′ N 106°41′ E
+        </span>
+        <span className="map-coordinate coordinate-bottom">
+          {lang === "vie"
+            ? "CHÒM SAO XỬ NỮ · MỖI DỰ ÁN, MỘT ĐIỂM KẾT NỐI"
+            : "VIRGO CONSTELLATION · EACH PROJECT, A POINT OF CONNECTION"}
+        </span>
       </div>
     </div>
   );
 }
 
-// ==================== MARKDOWN RENDERER (neutral tones, minimal blue) ====================
-function SimpleMarkdownRenderer({ content }: { content: string }) {
-  const lines = content.split('\n');
-  const elements: React.ReactNode[] = [];
-  let inTable = false;
-  let tableHeaders: string[] = [];
-  let tableRows: string[][] = [];
-
-  const renderFormattedText = (text: string): React.ReactNode => {
-    const parts = text.split(/(\[.*?\]\(.*?\)|`.*?`|\*\*.*?\*\*)/g);
-    return parts.map((part, idx) => {
-      if (part.startsWith('[') && part.includes('](')) {
-        const match = part.match(/\[(.*?)\]\((.*?)\)/);
-        if (match) {
-          return (
-            <a key={idx} href={match[2]} target="_blank" rel="noopener noreferrer"
-              style={{ color: '#4e7dbc', textDecoration: 'underline', fontWeight: 600 }}>
-              {match[1]}
-            </a>
-          );
-        }
-      }
-      if (part.startsWith('`') && part.endsWith('`')) {
-        return (
-          <code key={idx} style={{ background: 'rgba(120, 130, 140, 0.15)', color: '#e6edf3', padding: '1px 6px', borderRadius: '4px', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.85em', fontWeight: 600, border: '1px solid rgba(120, 130, 140, 0.2)' }}>
-            {part.slice(1, -1)}
-          </code>
-        );
-      }
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={idx} style={{ fontWeight: 700, color: '#ffffff' }}>{part.slice(2, -2)}</strong>;
-      }
-      return part;
-    });
-  };
-
-  const flushTable = (key: string) => {
-    if (!inTable) return;
-    elements.push(
-      <div key={key} style={{ margin: '20px 0', overflowX: 'auto', border: '1px solid #30363d', borderRadius: '10px', background: 'transparent' }}>
-        <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '13px' }}>
-          <thead>
-            <tr style={{ background: '#161b22', borderBottom: '1px solid #30363d' }}>
-              {tableHeaders.map((h, i) => (
-                <th key={i} style={{ padding: '10px 14px', fontWeight: 700, color: '#c9d1d9', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '11px', fontFamily: "'JetBrains Mono', monospace" }}>{renderFormattedText(h)}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {tableRows.map((row, ri) => (
-              <tr key={ri} style={{ borderBottom: '1px solid #21262d' }}>
-                {row.map((cell, ci) => (
-                  <td key={ci} style={{ padding: '10px 14px', color: '#e6edf3', fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.6 }}>{renderFormattedText(cell)}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+function ProjectDetail({
+  project,
+  lang,
+}: {
+  project: Project;
+  lang: Language;
+}) {
+  const t = (vi: string, en: string) => (lang === "vie" ? vi : en);
+  const next = projects[(projects.indexOf(project) + 1) % projects.length];
+  return (
+    <article className="case-page page-enter">
+      <a className="text-link" href="#/projects">
+        <ArrowLeft size={16} />
+        {t("Trở lại các dự án", "Back to selected work")}
+      </a>
+      <div className="case-heading">
+        <p className="eyebrow">
+          {t("NHẬT KÝ DỰ ÁN", "PROJECT FIELD NOTES")} / {project.year}
+        </p>
+        <h1>
+          {project.name}
+          <span>{project.headline[lang]}</span>
+        </h1>
+        <p className="lead">{project.summary[lang]}</p>
       </div>
-    );
-    inTable = false;
-    tableHeaders = [];
-    tableRows = [];
-  };
-
-  lines.forEach((line, idx) => {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
-      const cells = trimmed.split('|').slice(1, -1).map((c) => c.trim());
-      if (cells.every((c) => c.match(/^:?-+:?$/))) return;
-      if (!inTable) { inTable = true; tableHeaders = cells; }
-      else { tableRows.push(cells); }
-      return;
-    } else if (inTable) { flushTable(`table-${idx}`); }
-
-    if (trimmed === '---') { elements.push(<hr key={idx} style={{ margin: '24px 0', border: 'none', borderTop: '1px solid #30363d' }} />); return; }
-    if (trimmed.startsWith('# ')) { elements.push(<h1 key={idx} style={{ fontSize: 'clamp(1.6rem,4vw,2.4rem)', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em', marginBottom: '12px', lineHeight: 1.15, fontFamily: "'Newsreader', serif" }}>{renderFormattedText(trimmed.slice(2))}</h1>); return; }
-    if (trimmed.startsWith('### ')) { elements.push(<h3 key={idx} style={{ fontSize: '16px', fontWeight: 700, color: '#e6edf3', marginTop: '20px', marginBottom: '8px' }}>{renderFormattedText(trimmed.slice(4))}</h3>); return; }
-    if (trimmed.startsWith('## ')) { elements.push(<h2 key={idx} style={{ fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#8b949e', marginTop: '32px', marginBottom: '12px', paddingBottom: '6px', borderBottom: '1px solid #30363d' }}>{renderFormattedText(trimmed.slice(3))}</h2>); return; }
-    if (trimmed.startsWith('- ')) { elements.push(<li key={idx} style={{ marginLeft: '20px', listStyleType: 'disc', fontSize: '14px', color: '#c9d1d9', lineHeight: 1.7, marginBottom: '6px' }}>{renderFormattedText(trimmed.slice(2))}</li>); return; }
-    if (trimmed.length > 0) { elements.push(<p key={idx} style={{ fontSize: '14px', color: '#c9d1d9', lineHeight: 1.75, marginBottom: '10px' }}>{renderFormattedText(trimmed)}</p>); }
-  });
-
-  if (inTable) flushTable('table-end');
-  return <div style={{ fontFamily: "'Helvetica Neue', sans-serif" }}>{elements}</div>;
+      <div className="case-meta">
+        <div>
+          <span>{t("VAI TRÒ CỦA MÌNH", "MY ROLE")}</span>
+          <p>{project.role[lang]}</p>
+        </div>
+        <div>
+          <span>{t("CÔNG NGHỆ", "BUILT WITH")}</span>
+          <p>{project.stack.join(" · ")}</p>
+        </div>
+      </div>
+      <ProjectArt project={project} large />
+      {project.note && <p className="case-note">{project.note[lang]}</p>}
+      <div className="case-body">
+        <aside>
+          <p className="eyebrow">{t("KHÁM PHÁ THỰC TẾ", "EXPLORE THE WORK")}</p>
+          {project.demo && (
+            <a
+              className="text-link"
+              href={project.demo}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t("Mở sản phẩm", "Visit project")}
+              <ArrowUpRight size={16} />
+            </a>
+          )}
+          {project.source && (
+            <a
+              className="text-link"
+              href={project.source}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Github size={16} />
+              {t("Xem mã nguồn", "View source")}
+            </a>
+          )}
+          <a className="text-link" href="#/contact">
+            {t("Trao đổi về dự án", "Let’s talk about it")}
+            <ArrowRight size={16} />
+          </a>
+        </aside>
+        <div className="case-narrative">
+          <section>
+            <p className="eyebrow">01 / {t("BỐI CẢNH", "CONTEXT")}</p>
+            <h2>
+              {t("Vấn đề bắt đầu từ đâu?", "Where does the problem begin?")}
+            </h2>
+            <p>{project.problem[lang]}</p>
+          </section>
+          <section>
+            <p className="eyebrow">
+              02 / {t("PHẦN MÌNH ĐÓNG GÓP", "MY CONTRIBUTION")}
+            </p>
+            <h2>
+              {t(
+                "Biến ý tưởng thành từng phần cụ thể.",
+                "Making the idea concrete.",
+              )}
+            </h2>
+            <ul className="contribution-list">
+              {project.contributions.map((item, i) => (
+                <li key={i}>
+                  <Check size={18} />
+                  <span>{item[lang]}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+          <section>
+            <p className="eyebrow">
+              03 / {t("QUYẾT ĐỊNH KỸ THUẬT", "ENGINEERING DECISION")}
+            </p>
+            <h2>
+              {t("Cách các phần được nối lại.", "How the pieces fit together.")}
+            </h2>
+            <div className="architecture-flow">
+              {project.path.map((step, i) => (
+                <div key={step}>
+                  <span>{step}</span>
+                  {i < project.path.length - 1 && <ArrowRight size={18} />}
+                </div>
+              ))}
+            </div>
+            <p>{project.decision[lang]}</p>
+          </section>
+          <section className="case-takeaway">
+            <p className="eyebrow">
+              04 / {t("ĐIỀU DỰ ÁN THỂ HIỆN", "WHAT THIS WORK SHOWS")}
+            </p>
+            <h2>{project.takeaway[lang]}</h2>
+            <div className="skill-links">
+              {capabilities
+                .filter((skill) => skill.projects.includes(project.id))
+                .map((skill) => (
+                  <a href={`#/skills/${skill.id}`} key={skill.id}>
+                    {skill.title[lang]}
+                    <ArrowUpRight size={14} />
+                  </a>
+                ))}
+            </div>
+          </section>
+        </div>
+      </div>
+      <a className="next-project" href={`#/project/${next.id}`}>
+        <div>
+          <p className="eyebrow">
+            {t("TIẾP TỤC HÀNH TRÌNH", "CONTINUE EXPLORING")}
+          </p>
+          <h2>{next.name}</h2>
+          <p>{next.headline[lang]}</p>
+        </div>
+        <ArrowRight size={32} />
+      </a>
+    </article>
+  );
 }
 
-// ==================== AI TERMINAL WINDOW (zneyOS style) ====================
-const SLASH_CMDS = [
-  { cmd: '/intro', desc: 'go to Introduction' },
-  { cmd: '/cvweb', desc: 'open Web Developer CV' },
-  { cmd: '/cvmb', desc: 'open Mobile Developer CV' },
-  { cmd: '/projects', desc: 'list featured projects' },
-  { cmd: '/skills', desc: 'show tech stack' },
-  { cmd: '/workspace', desc: 'enter 3D workspace' },
-  { cmd: '/help', desc: 'show all commands' },
-];
+export function IntroPage({
+  onEnterWorkspace,
+  lang,
+  onToggleLang,
+}: IntroPageProps) {
+  const t = (vi: string, en: string) => (lang === "vie" ? vi : en);
+  const [hash, setHash] = useState(window.location.hash);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [filter, setFilter] = useState("all");
+  const [paused, setPaused] = useState(
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  const [displayedHash, setDisplayedHash] = useState(
+    () => window.location.hash || "#/home",
+  );
+  const [transitionPhase, setTransitionPhase] =
+    useState<TransitionPhase>("idle");
+  const [originAnchor, setOriginAnchor] = useState<CelestialPoint>(() =>
+    getRouteAnchor(window.location.hash || "#/home"),
+  );
+  const [targetAnchor, setTargetAnchor] = useState<CelestialPoint>(() =>
+    getRouteAnchor(window.location.hash || "#/home"),
+  );
+  const transitionTimeouts = useRef<number[]>([]);
+  const displayedHashRef = useRef(displayedHash);
+  displayedHashRef.current = displayedHash;
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
 
-function AITerminalWindow({
-  onRunCommand,
-  isVie,
-}: {
-  onRunCommand: (cmd: string) => void;
-  isVie: boolean;
-}) {
-  const [inputVal, setInputVal] = useState('');
-  const [showSug, setShowSug] = useState(false);
-  const [filtered, setFiltered] = useState(SLASH_CMDS);
-  const [history, setHistory] = useState<Array<{ type: 'in' | 'out'; text: string }>>([]);
-  const [visitor, setVisitor] = useState<VisitorInfo | null>(null);
-  const [isAdminUnlocked, setIsAdminUnlocked] = useState(() => {
-    return sessionStorage.getItem('zney_admin_unlocked') === 'true';
-  });
-  const inputRef = useRef<HTMLInputElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const handleCosmicTransition = (nextHash: string) => {
+    const currentHash = displayedHashRef.current;
+    if (nextHash === currentHash) return;
 
-  useEffect(() => { fetchVisitorInfo().then(setVisitor); }, []);
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [history]);
+    transitionTimeouts.current.forEach(clearTimeout);
+    transitionTimeouts.current = [];
 
-  const handleInput = (val: string) => {
-    setInputVal(val);
-    if (val.startsWith('/')) {
-      const lower = val.toLowerCase();
-      setFiltered(SLASH_CMDS.filter((s) => s.cmd.startsWith(lower)));
-      setShowSug(true);
-    } else {
-      setShowSug(false);
-    }
-  };
-
-  const execCmd = async (raw: string) => {
-    const cmd = raw.trim();
-    setShowSug(false);
-    setInputVal('');
-    
-    // First, check if the exact command matches the admin password hash
-    const encoder = new TextEncoder();
-    const rawHashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(cmd));
-    const rawHashHex = Array.from(new Uint8Array(rawHashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-    const validPassHash = (import.meta as any).env?.VITE_ADMIN_PASS_HASH;
-    
-    if (validPassHash && rawHashHex === validPassHash) {
-       // Secret Access Granted!
-       localStorage.setItem('zney_admin_pass', cmd);
-       const newH = [...history, { type: 'in' as const, text: '*'.repeat(cmd.length) }];
-       newH.push({ type: 'out', text: `[ACCESS GRANTED] Redirecting to System Console...` });
-       setHistory(newH);
-       setTimeout(() => {
-         onRunCommand('admin');
-       }, 600);
-       return;
+    if (pausedRef.current) {
+      setDisplayedHash(nextHash);
+      setTransitionPhase("idle");
+      return;
     }
 
-    const lower = cmd.toLowerCase().replace(/^\//, '');
+    const fromAnchor = getRouteAnchor(currentHash);
+    const toAnchor = getRouteAnchor(nextHash);
+    setOriginAnchor(fromAnchor);
+    setTargetAnchor(toAnchor);
+    setTransitionPhase("collapsing");
 
-    if (!cmd || lower === 'enter') { onRunCommand('portfolio'); return; }
-    const newH = [...history, { type: 'in' as const, text: cmd }];
-    if (['help', 'ls'].includes(lower)) {
-      newH.push({ type: 'out', text: 'Available: /intro /cvweb /cvmb /projects /skills /workspace /help' });
-    } else if (['intro', 'portfolio', 'p1'].includes(lower)) {
-      onRunCommand('portfolio'); return;
-    } else if (['cvweb', 'web', 'p2'].includes(lower)) {
-      onRunCommand('cvweb'); return;
-    } else if (['cvmb', 'mobile', 'p3'].includes(lower)) {
-      onRunCommand('cvmb'); return;
-    } else if (['projects', 'proj'].includes(lower)) {
-      newH.push({ type: 'out', text: '→ Cloud POS SaaS · Security Core · BeatSync · Mandy Crimson' });
-    } else if (['skills', 'tech'].includes(lower)) {
-      newH.push({ type: 'out', text: '→ React · Next.js · TypeScript · Node.js · Rust · React Native · AWS · Cloudflare' });
-    } else if (['workspace', '3d'].includes(lower)) {
-      onRunCommand('workspace'); return;
-    } else {
-      newH.push({ type: 'out', text: `command not found: ${cmd}  (try /help)` });
-    }
-    setHistory(newH);
+    const t1 = window.setTimeout(() => {
+      setTransitionPhase("shooting");
+      setDisplayedHash(nextHash);
+      if (!nextHash.startsWith("#/skills/")) {
+        root.current?.scrollTo({ top: 0, behavior: "instant" });
+      }
+    }, 360);
+
+    const t2 = window.setTimeout(() => {
+      setTransitionPhase("expanding");
+    }, 860);
+
+    const t3 = window.setTimeout(() => {
+      setTransitionPhase("idle");
+    }, 1280);
+
+    transitionTimeouts.current = [t1, t2, t3];
   };
 
-  const selectSug = (cmd: string) => {
-    setInputVal(cmd + ' ');
-    setShowSug(false);
-    inputRef.current?.focus();
-  };
+  const readingProgress = useRef<HTMLDivElement>(null);
+  const root = useRef<HTMLDivElement>(null);
+  const main = useRef<HTMLElement>(null);
+  const initialRoute = useRef(true);
+  const page = chapterForHash(displayedHash);
+  const resumeTrack =
+    displayedHash === "#/cv/web"
+      ? "web"
+      : displayedHash === "#/cv/mobile"
+        ? "mobile"
+        : undefined;
+  const projectId = displayedHash.startsWith("#/project/")
+    ? displayedHash.slice(10)
+    : undefined;
+  const project = projects.find((item) => item.id === projectId);
+  const active = projectId ? "projects" : resumeTrack ? "contact" : page?.id;
+  useStarFlight(root, displayedHash, paused, filter);
 
-  const lastTapRef = useRef<number>(0);
+  useEffect(() => {
+    return () => {
+      transitionTimeouts.current.forEach(clearTimeout);
+    };
+  }, []);
 
-  const handleDoubleTap = () => {
-    const now = Date.now();
-    if (now - lastTapRef.current < 350) {
-      onRunCommand('portfolio');
-    }
-    lastTapRef.current = now;
-  };
+  useEffect(() => {
+    const sync = () => {
+      const nextHash = window.location.hash || "#/home";
+      setHash(nextHash);
+      setMenuOpen(false);
+      handleCosmicTransition(nextHash);
+    };
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setPaused(media.matches);
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      if (!displayedHash.startsWith("#/skills/")) {
+        root.current?.scrollTo({ top: 0, behavior: "instant" });
+      } else {
+        document
+          .getElementById(displayedHash.replace("#/skills/", "skill-"))
+          ?.scrollIntoView({ behavior: "instant" });
+      }
+      if (!initialRoute.current) main.current?.focus({ preventScroll: true });
+      initialRoute.current = false;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [displayedHash, projectId, resumeTrack]);
+  useEffect(() => {
+    document.title = resumeTrack
+      ? `${resumeTrack === "web" ? "Full-stack Web" : "Mobile"} CV | Lê Quang Khánh`
+      : project
+        ? `${project.name} | Lê Quang Khánh — zney`
+        : `${page ? page.label[lang] : "404"} | Lê Quang Khánh — zney`;
+  }, [project, resumeTrack, page, lang]);
+  useEffect(() => {
+    if (!root.current) return;
+    const reveal = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            reveal.unobserve(entry.target);
+          }
+        });
+      },
+      { root: root.current, threshold: 0.08 },
+    );
+    root.current
+      .querySelectorAll(".reveal")
+      .forEach((el) => reveal.observe(el));
+    return () => {
+      reveal.disconnect();
+    };
+  }, [displayedHash, filter]);
 
   return (
     <div
-      style={{
-        background: '#0d1117', border: '1px solid #30363d', borderRadius: '14px',
-        overflow: 'hidden', fontFamily: "'JetBrains Mono', monospace",
-        width: '100%', maxWidth: '660px', margin: '0 auto',
-        boxShadow: '0 0 0 1px #21262d, 0 32px 80px rgba(0,0,0,0.9)',
-        position: 'relative',
-        cursor: 'pointer',
+      ref={root}
+      className={`portfolio ${paused ? "motion-paused" : "motion-enabled"}`}
+      style={{ "--chapter-color": (page ?? journey[2]).color } as CSSProperties}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && menuOpen) {
+          setMenuOpen(false);
+          root.current
+            ?.querySelector<HTMLButtonElement>(".menu-toggle")
+            ?.focus();
+        }
       }}
-      onClick={() => inputRef.current?.focus()}
-      onTouchEnd={handleDoubleTap}
-      onDoubleClick={() => onRunCommand('portfolio')}
+      onClickCapture={(event) => {
+        const link = (event.target as HTMLElement).closest<HTMLAnchorElement>(
+          'a[href^="#/"]',
+        );
+        if (
+          link &&
+          link.getAttribute("href") === displayedHash &&
+          !projectId &&
+          !resumeTrack
+        ) {
+          event.preventDefault();
+          if (displayedHash.startsWith("#/skills/"))
+            document
+              .getElementById(displayedHash.replace("#/skills/", "skill-"))
+              ?.scrollIntoView({ behavior: paused ? "instant" : "smooth" });
+          else
+            root.current?.scrollTo({
+              top: 0,
+              behavior: paused ? "instant" : "smooth",
+            });
+          setMenuOpen(false);
+        }
+      }}
     >
-      {/* Shooting stars — clipped inside terminal box, zIndex 0 puts them behind text and title bar */}
-      <span style={{ position: 'absolute', top: '0px', left: '20%', width: '120px', height: '1.5px', borderRadius: '999px', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.9), #38bdf8)', filter: 'drop-shadow(0 0 5px rgba(56,189,248,0.8))', transform: 'rotate(36deg)', animation: 'zney-meteor 2.8s cubic-bezier(0.25,0.1,0.25,1) infinite', pointerEvents: 'none', zIndex: 0 }} />
-      <span style={{ position: 'absolute', top: '0px', left: '65%', width: '100px', height: '1.5px', borderRadius: '999px', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.85), #c084fc)', filter: 'drop-shadow(0 0 5px rgba(192,132,252,0.7))', transform: 'rotate(36deg)', animation: 'zney-meteor 3.6s cubic-bezier(0.25,0.1,0.25,1) infinite 1.4s', pointerEvents: 'none', zIndex: 0 }} />
-
-      {/* Title bar */}
-      <div style={{ display: 'flex', alignItems: 'center', padding: '10px 16px', background: '#161b22', borderBottom: '1px solid #21262d', borderRadius: '14px 14px 0 0', position: 'relative', zIndex: 1 }}>
-        <div style={{ display: 'flex', gap: '7px' }}>
-          <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff5f56', display: 'inline-block' }} />
-          <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#ffbd2e', display: 'inline-block' }} />
-          <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#27c93f', display: 'inline-block' }} />
-        </div>
-        <div style={{ flex: 1, textAlign: 'center', fontSize: '12px', color: '#8b949e', letterSpacing: '0.06em', fontWeight: 600 }}>zneyOS</div>
-        <span style={{ fontSize: '10px', color: '#484f58' }}>v_2.9.5</span>
-      </div>
-
-      {/* Body */}
-      <div style={{ padding: '20px 24px 16px', position: 'relative', zIndex: 1 }}>
-        <ZneyLEDLogo />
-
-        {/* AI CLI header */}
-        <div style={{ marginBottom: '18px' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '14px' }}>
-            <span style={{ color: '#8b949e', fontSize: '13px' }}>&gt;_</span>
-            <span style={{ color: '#e6edf3', fontSize: '14px', fontWeight: 700 }}>zAI nzy</span>
-            <span style={{ color: '#484f58', fontSize: '11px' }}>(v_2.9.5)</span>
-          </div>
-          <div style={{ fontSize: '12px', lineHeight: 2.1 }}>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <span style={{ color: '#484f58', minWidth: '72px', display: 'inline-block' }}>model:</span>
-              <span style={{ color: '#c9d1d9', marginRight: '18px' }}>LQK - Extra High</span>
-              <span
-                style={{ color: '#4e7dbc', fontSize: '11px', cursor: 'pointer', letterSpacing: '0.03em' }}
-                onClick={(e) => { e.stopPropagation(); selectSug('/model'); }}
-              >/model</span>
-            </div>
-            <div>
-              <span style={{ color: '#484f58', minWidth: '72px', display: 'inline-block' }}>direc:</span>
-              <span style={{ color: '#c9d1d9' }}>Portfolio</span>
-            </div>
-            {isAdminUnlocked && (
-              <div style={{ marginTop: '8px', padding: '8px 12px', background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.22)', borderRadius: '8px', fontSize: '11px', lineHeight: 1.7 }}>
-                <div style={{ color: '#34d399', fontWeight: 700, marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34d399', display: 'inline-block' }} />
-                  <span>🔓 System Console Activated</span>
-                </div>
-                <div style={{ color: '#38bdf8' }}>Client IP: {visitor?.ip || 'Detecting...'} {visitor?.country ? `(${visitor.city ? visitor.city + ', ' : ''}${visitor.country})` : ''}</div>
-                <div style={{ color: '#c084fc' }}>System: {visitor?.browser} on {visitor?.os}</div>
-                <div style={{ color: '#fb923c' }}>Total Site Visits: #{visitor?.visitCount?.toLocaleString() || 1}</div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Output history */}
-        {history.length > 0 && (
-          <div style={{ marginBottom: '12px', maxHeight: '100px', overflowY: 'auto' }}>
-            {history.map((h, i) => (
-              <div key={i} style={{ fontSize: '12px', color: h.type === 'in' ? '#79c0ff' : '#56d364', marginBottom: '3px', lineHeight: 1.6 }}>
-                {h.type === 'in' ? `> ${h.text}` : `  ${h.text}`}
-              </div>
-            ))}
-            <div ref={bottomRef} />
-          </div>
-        )}
-
-        {/* Tip (only when no history) */}
-        {history.length === 0 && (
-          <div style={{ marginBottom: '14px', fontSize: '12px', color: '#484f58' }}>
-            <span style={{ color: '#8b949e', fontWeight: 600 }}>Tip:</span>{' '}
-            {isVie
-              ? 'nhấn Enter (hoặc chạm 2 lần) để vào Introduction'
-              : 'press Enter (or double tap) to enter Introduction'}
-          </div>
-        )}
-
-        {/* Input row */}
-        <div style={{ position: 'relative' }}>
-          {/* Suggestions */}
-          {showSug && filtered.length > 0 && (
-            <div style={{ position: 'absolute', bottom: 'calc(100% + 6px)', left: 0, right: 0, background: '#161b22', border: '1px solid #30363d', borderRadius: '10px', overflow: 'hidden', zIndex: 10, boxShadow: '0 -8px 24px rgba(0,0,0,0.5)' }}>
-              {filtered.map((s, i) => (
-                <button
-                  key={i} type="button"
-                  onMouseDown={(e) => { e.preventDefault(); selectSug(s.cmd); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', padding: '8px 14px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: i < filtered.length - 1 ? '1px solid #21262d' : 'none' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#21262d')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <span style={{ color: '#79c0ff', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', minWidth: '100px' }}>{s.cmd}</span>
-                  <span style={{ color: '#484f58', fontSize: '11px' }}>{s.desc}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          <form onSubmit={(e) => { e.preventDefault(); execCmd(inputVal); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ color: '#484f58', fontSize: '14px', userSelect: 'none', lineHeight: 1 }}>&gt;</span>
-            <input
-              ref={inputRef}
-              value={inputVal}
-              onChange={(e) => handleInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Tab' && showSug && filtered.length > 0) { e.preventDefault(); selectSug(filtered[0].cmd); }
-                if (e.key === 'Escape') setShowSug(false);
-              }}
-              placeholder={isVie ? "nhập lệnh hoặc '/' để gợi ý..." : "type a command or '/' for suggestions..."}
-              style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#e6edf3', fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', caretColor: '#79c0ff' }}
-              autoFocus
-            />
-          </form>
-        </div>
-
-        {/* Footer status */}
-        <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #21262d', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', fontSize: '11px', color: '#484f58' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#3fb950', display: 'inline-block', flexShrink: 0 }} />
-            <span style={{ color: '#8b949e' }}>LQK - Extra High</span>
-            <span>·</span>
-            <span>Portfolio</span>
-          </div>
-          {isAdminUnlocked && visitor && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: '#6e7681' }}>
-              <span style={{ color: '#34d399' }}>🔓 System</span>
-              <span>·</span>
-              <span style={{ color: '#38bdf8' }}>IP: {visitor.ip}</span>
-              <span>·</span>
-              <span style={{ color: '#c084fc' }}>{visitor.browser} ({visitor.os})</span>
-              <span>·</span>
-              <span style={{ color: '#fb923c' }}>Visits: #{visitor.visitCount.toLocaleString()}</span>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ==================== SYSTEM CONSOLE PAGE ====================
-function AdminTelemetryPage({ visitor, isVie, onLockAdmin }: { visitor: VisitorInfo | null; isVie: boolean; onLockAdmin: () => void }) {
-  return (
-    <div style={{ maxWidth: '920px', margin: '0 auto', padding: '36px 24px 140px', fontFamily: "'JetBrains Mono', monospace", color: '#e6edf3' }}>
-      {/* Header Bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid #21262d', flexWrap: 'wrap', gap: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '12px', background: '#38bdf8', color: '#000', padding: '4px 10px', borderRadius: '6px', fontWeight: 700 }}>🔓 SYSTEM CONSOLE</span>
-          <span style={{ fontSize: '13px', color: '#8b949e', fontWeight: 600 }}>zneyOS Internal Metrics Dashboard</span>
-        </div>
-        <button
-          onClick={onLockAdmin}
-          style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', borderRadius: '8px', padding: '8px 16px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
-        >
-          🔒 Lock Session
-        </button>
-      </div>
-
-      {/* Main Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        {/* Client Telemetry */}
-        <div style={{ background: '#0d1117', border: '1px solid #30363d', borderRadius: '16px', padding: '24px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
-          <div style={{ fontSize: '11px', color: '#38bdf8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '14px', fontWeight: 700 }}>
-            • Client Telemetry &amp; Session
-          </div>
-          <div style={{ fontSize: '13px', lineHeight: 2 }}>
-            <div><span style={{ color: '#6e7681', minWidth: '100px', display: 'inline-block' }}>IP Address:</span> <span style={{ color: '#38bdf8', fontWeight: 700 }}>{visitor?.ip || 'Detecting...'}</span></div>
-            <div><span style={{ color: '#6e7681', minWidth: '100px', display: 'inline-block' }}>Location:</span> <span style={{ color: '#e6edf3' }}>{visitor?.city ? `${visitor.city}, ` : ''}{visitor?.country || 'Unknown'}</span></div>
-            <div><span style={{ color: '#6e7681', minWidth: '100px', display: 'inline-block' }}>Browser:</span> <span style={{ color: '#c084fc' }}>{visitor?.browser || 'Unknown'}</span></div>
-            <div><span style={{ color: '#6e7681', minWidth: '100px', display: 'inline-block' }}>OS Platform:</span> <span style={{ color: '#34d399' }}>{visitor?.os || 'Unknown'}</span></div>
-            <div><span style={{ color: '#6e7681', minWidth: '100px', display: 'inline-block' }}>Screen Res:</span> <span style={{ color: '#8b949e' }}>{window.innerWidth} x {window.innerHeight}</span></div>
-          </div>
-        </div>
-
-        {/* Global Traffic Stats */}
-        <div style={{ background: '#0d1117', border: '1px solid #30363d', borderRadius: '16px', padding: '24px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
-          <div style={{ fontSize: '11px', color: '#34d399', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '14px', fontWeight: 700 }}>
-            • Global Traffic Metrics
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div style={{ background: '#161b22', padding: '14px', borderRadius: '10px', border: '1px solid #21262d' }}>
-              <span style={{ fontSize: '22px', fontWeight: 700, color: '#fb923c', display: 'block' }}>#{visitor?.visitCount?.toLocaleString() || 1}</span>
-              <span style={{ fontSize: '11px', color: '#6e7681' }}>Total Visits</span>
-            </div>
-            <div style={{ background: '#161b22', padding: '14px', borderRadius: '10px', border: '1px solid #21262d' }}>
-              <span style={{ fontSize: '22px', fontWeight: 700, color: '#34d399', display: 'block' }}>100%</span>
-              <span style={{ fontSize: '11px', color: '#6e7681' }}>System Status</span>
-            </div>
-            <div style={{ background: '#161b22', padding: '14px', borderRadius: '10px', border: '1px solid #21262d' }}>
-              <span style={{ fontSize: '22px', fontWeight: 700, color: '#38bdf8', display: 'block' }}>AWS/CF</span>
-              <span style={{ fontSize: '11px', color: '#6e7681' }}>Edge Infra</span>
-            </div>
-            <div style={{ background: '#161b22', padding: '14px', borderRadius: '10px', border: '1px solid #21262d' }}>
-              <span style={{ fontSize: '22px', fontWeight: 700, color: '#c084fc', display: 'block' }}>&lt; 30ms</span>
-              <span style={{ fontSize: '11px', color: '#6e7681' }}>Avg Latency</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Visitor Logs Table */}
-      <div style={{ background: '#0d1117', border: '1px solid #30363d', borderRadius: '16px', padding: '24px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-          <div style={{ fontSize: '11px', color: '#c084fc', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>
-            • System Metrics Logs ({visitor?.logs?.length || 0})
-          </div>
-          <span style={{ fontSize: '11px', color: '#6e7681' }}>Cluster: MongoDB Atlas Telemetry</span>
-        </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #21262d', color: '#6e7681', fontSize: '11px' }}>
-                <th style={{ padding: '8px 12px' }}>Timestamp</th>
-                <th style={{ padding: '8px 12px' }}>IP Address</th>
-                <th style={{ padding: '8px 12px' }}>Location</th>
-                <th style={{ padding: '8px 12px' }}>Browser / OS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visitor?.logs && visitor.logs.length > 0 ? (
-                visitor.logs.map((log, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #161b22' }}>
-                    <td style={{ padding: '10px 12px', color: '#8b949e', whiteSpace: 'nowrap' }}>{new Date(log.timestamp).toLocaleTimeString()} {new Date(log.timestamp).toLocaleDateString()}</td>
-                    <td style={{ padding: '10px 12px', color: '#38bdf8', fontWeight: 700 }}>{log.ip}</td>
-                    <td style={{ padding: '10px 12px', color: '#e6edf3' }}>{log.city ? `${log.city}, ` : ''}{log.country || 'Vietnam'}</td>
-                    <td style={{ padding: '10px 12px', color: '#c084fc' }}>{log.browser} ({log.os})</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={4} style={{ padding: '16px 12px', color: '#6e7681', textAlign: 'center' }}>No visitor telemetry logs recorded yet.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ==================== MARKDOWN CV PAGE ====================
-function MarkdownCVPage({ filePath, badgeTitle, fileName, isVie }: { filePath: string; badgeTitle: string; fileName: string; isVie: boolean }) {
-  const [content, setContent] = useState('');
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    fetch(filePath)
-      .then((r) => r.text())
-      .then((d) => { if (active) { setContent(d); setLoading(false); } })
-      .catch(() => { if (active) { setContent('# Error\nCould not load file.'); setLoading(false); } });
-    return () => { active = false; };
-  }, [filePath]);
-
-  return (
-    <div style={{ maxWidth: '880px', margin: '0 auto', padding: '36px 24px 140px', fontFamily: "'Helvetica Neue', sans-serif", color: '#e6edf3' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid #21262d', flexWrap: 'wrap', gap: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", background: '#ffffff', color: '#000000', padding: '4px 10px', borderRadius: '6px', fontWeight: 700 }}>{badgeTitle}</span>
-          <span style={{ fontSize: '12px', fontFamily: "'JetBrains Mono', monospace", color: '#8b949e' }}>public/file/{fileName}</span>
-        </div>
-        <a href={filePath} download={fileName} target="_blank" rel="noopener noreferrer" style={{ background: '#ffffff', color: '#000000', borderRadius: '8px', padding: '8px 16px', fontSize: '12px', fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Download size={14} />
-          <span>{isVie ? 'Tải File Markdown' : 'Download .md'}</span>
-        </a>
-      </div>
-      <div style={{ background: '#0d1117', border: '1px solid #30363d', borderRadius: '16px', padding: '40px 44px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
-        {loading ? (
-          <div style={{ padding: '60px 0', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", color: '#8b949e', fontSize: '13px' }}>[ Loading {fileName}... ]</div>
-        ) : (
-          <SimpleMarkdownRenderer content={content} />
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ==================== GLOBAL STICKY BOTTOM BAR (LIQUID Glass) ====================
-function GlobalStickyBottomBar({ currentPageIndex, onNavigatePage, onEnterWorkspace, isVie, isSplashMode, onBackToTerminal, theme, onToggleTheme, isAdminUnlocked }: { currentPageIndex: number; onNavigatePage: (i: number) => void; onEnterWorkspace: () => void; isVie: boolean; isSplashMode: boolean; onBackToTerminal: () => void; theme?: 'dark' | 'light'; onToggleTheme?: () => void; isAdminUnlocked?: boolean; }) {
-  const totalPages = isAdminUnlocked ? 4 : 3;
-  return (
-    <>
-      <div
-        style={{
-          position: 'fixed',
-          bottom: '20px',
-          left: 0,
-          right: 0,
-          margin: '0 auto',
-          zIndex: 9999,
-          width: isSplashMode ? 'fit-content' : 'min(920px, calc(100vw - 28px))',
-          borderRadius: '26px',
-          /* Top highlight edge + bottom shadow like Apple UI */
-          boxShadow:
-            '0 2px 0 rgba(255,255,255,0.55) inset,'
-            + '0 -1px 0 rgba(255,255,255,0.15) inset,'
-            + '0 24px 60px rgba(0,0,0,0.55),'
-            + '0 4px 16px rgba(0,0,0,0.35)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: isSplashMode ? 'center' : 'space-between',
-          flexWrap: 'wrap',
-          gap: '12px',
-          transition: 'all 300ms cubic-bezier(0.16, 1, 0.3, 1)',
+      <a
+        className="skip-link"
+        href="#main-content"
+        onClick={(event) => {
+          event.preventDefault();
+          main.current?.focus();
         }}
       >
-        {/* The true liquid glass layer without border */}
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          borderRadius: 'inherit',
-          background: 'rgba(200, 210, 230, 0.18)',
-          backdropFilter: 'blur(28px) saturate(200%) brightness(1.15)',
-          WebkitBackdropFilter: 'blur(28px) saturate(200%) brightness(1.15)',
-          zIndex: -1
-        }} />
-        {/* Border Layer (no filter to avoid distortion) */}
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          borderRadius: 'inherit',
-          border: '1px solid rgba(255, 255, 255, 0.45)',
-          zIndex: -1,
-          pointerEvents: 'none'
-        }} />
-
-        {/* Inner container to hold contents above the absolute glass background */}
-        <div 
-          className={theme === 'light' ? 'light-mode-invert' : ''}
-          style={{
-          display: 'flex',
-          alignItems: 'center',
-          width: '100%',
-          justifyContent: isSplashMode ? 'center' : 'space-between',
-          flexWrap: 'wrap',
-          gap: '12px',
-          padding: '10px 18px',
-          position: 'relative',
-          zIndex: 1
-        }}>
-          {/* Socials */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {[
-              { href: 'https://github.com/psy-zney', icon: Github, title: 'GitHub' },
-              { href: 'https://www.facebook.com/psyotic.zney/', icon: Facebook, title: 'Facebook' },
-              { href: 'https://www.linkedin.com/in/psy-zney295', icon: Linkedin, title: 'LinkedIn' },
-              { href: 'mailto:lequangkhanh295@gmail.com', icon: Mail, title: 'Email' },
-              { href: 'https://zalo.me/0394426827', icon: MessageCircle, title: 'Zalo' },
-            ].map((item, idx) => (
-              <div key={idx} className={theme === 'light' ? 'no-radar' : ''}>
-                <GalaxyButton
-                  href={item.href}
-                  isIcon
-                  title={item.title}
-                  text={<item.icon size={15} />}
-                />
-              </div>
-            ))}
-            {!isSplashMode && (
-              <div className={theme === 'light' ? 'no-radar' : ''}>
-                <GalaxyButton
-                  isIcon
-                  onClick={onBackToTerminal}
-                  title="Back to Terminal"
-                  text={<TerminalSquare size={16} />}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Page nav */}
-          {!isSplashMode && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px' }}>
-              <button
-                onClick={() => onNavigatePage((currentPageIndex + totalPages - 1) % totalPages)}
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: '9999px',
-                  background: 'rgba(0, 0, 0, 0.4)',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
-                  color: '#FFFFFF',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  fontWeight: 800,
-                  transition: 'all 180ms ease',
-                  boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.15)',
-                }}
-              >
-                &lt;
-              </button>
-
-              <span
-                style={{
-                  color: '#FFFFFF',
-                  fontWeight: 600,
-                  padding: '6px 14px',
-                  borderRadius: '12px',
-                  background: 'rgba(0, 0, 0, 0.35)',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
-                  border: '1px solid rgba(255, 255, 255, 0.25)',
-                  boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.15)',
-                }}
-              >
-                {currentPageIndex === 0 && (isVie ? `Trang 1 / ${totalPages} • Intro` : `Page 1 / ${totalPages} • Intro`)}
-                {currentPageIndex === 1 && (isVie ? `Trang 2 / ${totalPages} • CV Web` : `Page 2 / ${totalPages} • CV Web`)}
-                {currentPageIndex === 2 && (isVie ? `Trang 3 / ${totalPages} • CV Mobile` : `Page 3 / ${totalPages} • CV Mobile`)}
-                {currentPageIndex === 3 && (isVie ? `Trang 4 / ${totalPages} • System Console` : `Page 4 / ${totalPages} • System Console`)}
-              </span>
-
-              <button
-                onClick={() => onNavigatePage((currentPageIndex + 1) % totalPages)}
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: '9999px',
-                  background: 'rgba(0, 0, 0, 0.4)',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
-                  color: '#FFFFFF',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  fontWeight: 800,
-                  transition: 'all 180ms ease',
-                  boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.15)',
-                }}
-              >
-                &gt;
-              </button>
-            </div>
-          )}
-
-          {/* CTA */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {!isSplashMode && (
-              <div className={theme === 'light' ? 'no-radar' : ''}>
-                <GalaxyButton
-                  onClick={onEnterWorkspace}
-                  text={
-                    <>
-                      <span>{isVie ? 'Vào Workspace 3D' : 'View 3D Workspace'}</span>
-                      <span>→</span>
-                    </>
-                  }
-                />
-              </div>
-            )}
-            {!isSplashMode && (
-              <button
-                onClick={onToggleTheme}
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: '50%',
-                  background: 'rgba(0,0,0,0.3)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-              </button>
-            )}
-          </div>
-        </div>
+        {t("Đến nội dung chính", "Skip to content")}
+      </a>
+      <div className="star-field" aria-hidden="true">
+        {stars.map((style, i) => (
+          <i key={i} style={style} />
+        ))}
       </div>
-    </>
-  );
-}
-
-// ==================== FEATURED PROJECTS ====================
-const FEATURED_PROJECTS = [
-  { title: 'Cloud POS SaaS — Multi-Tenant Platform', role: 'Full-Stack Developer (Team Project)', time: '2026', demo: 'https://pos.zney295.id.vn/', desc_vie: 'Hệ thống Quản lý Bán hàng đa doanh nghiệp (React/Vite, Node.js/Express, MySQL) triển khai trên AWS với EC2, RDS, Nginx và PM2.', desc_eng: 'Multi-tenant SaaS POS system built with React/Vite, Node.js/Express, MySQL deployed on AWS EC2 & RDS.', tech: ['React', 'Node.js', 'Express', 'MySQL', 'AWS EC2/RDS', 'Nginx', 'PM2'] },
-  { title: 'Security Core — Cross-Platform Remote System', role: 'Lead Architect & Developer', time: 'Jan–Mar 2026', demo: 'https://zney295.id.vn/Security/', desc_vie: 'Hệ thống bảo mật từ xa 4 module: Rust SYSTEM service, Tauri/React desktop, React Native mobile, Socket.IO relay.', desc_eng: '4-module remote security system: Rust service (SYSTEM), Tauri/React desktop, React Native app & Socket.IO relay.', tech: ['Rust', 'Tauri', 'React Native', 'Socket.IO', 'Named Pipes', 'WebSocket'] },
-  { title: 'BeatSync — Multi-Device Audio Sync', role: 'Creator & Developer', time: 'May 2026–Present', demo: 'https://beatsync.zney295.id.vn/', desc_vie: 'Phát nhạc đồng bộ thời gian thực đa thiết bị với Next.js client & Bun WebSocket server.', desc_eng: 'Real-time multi-device audio sync using Next.js & Bun WebSocket. Audio on Cloudflare R2.', tech: ['Next.js', 'Bun', 'WebSocket', 'Cloudflare R2', 'Cloudflare Tunnels', 'Zustand'] },
-  { title: 'Mandy Crimson — Logistics Label Generator', role: 'Frontend Developer', time: '2026', demo: 'https://zney295.id.vn/mandycrimson/', desc_vie: 'Công cụ web đọc Excel đơn hàng, xuất nhãn vận chuyển quốc tế.', desc_eng: 'Web tool parsing Excel orders, generating printable international shipping labels.', tech: ['React', 'TypeScript', 'Vite', 'xlsx'] },
-];
-
-// ==================== MAIN INTRO PAGE ====================
-interface IntroPageProps {
-  onEnterWorkspace: () => void;
-  lang: 'vie' | 'eng';
-  onToggleLang: () => void;
-}
-
-export function IntroPage({ onEnterWorkspace, lang, onToggleLang }: IntroPageProps) {
-  const isVie = lang === 'vie';
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [showSplash, setShowSplash] = useState(true);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [currentPageIndex, setCurrentPageIndex] = useState(0);
-  const [isAdminUnlocked, setIsAdminUnlocked] = useState(() => {
-    return sessionStorage.getItem('zney_admin_unlocked') === 'true';
-  });
-  const [visitor, setVisitor] = useState<VisitorInfo | null>(null);
-
-  useEffect(() => { fetchVisitorInfo().then(setVisitor); }, []);
-
-  const page1Ref = useRef<HTMLDivElement>(null);
-  const page2Ref = useRef<HTMLDivElement>(null);
-  const page3Ref = useRef<HTMLDivElement>(null);
-  const page4Ref = useRef<HTMLDivElement>(null);
-  const heroRef = useRef<HTMLDivElement>(null);
-
-  const navigateToPage = (pageIdx: number) => {
-    setCurrentPageIndex(pageIdx);
-    if (pageIdx === 0) page1Ref.current?.scrollIntoView({ behavior: 'smooth' });
-    else if (pageIdx === 1) page2Ref.current?.scrollIntoView({ behavior: 'smooth' });
-    else if (pageIdx === 2) page3Ref.current?.scrollIntoView({ behavior: 'smooth' });
-    else if (pageIdx === 3) page4Ref.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const handleRunCommand = (cmd: string) => {
-    if (cmd === 'admin') {
-      window.history.pushState({ viewMode: 'admin' }, '', window.location.pathname + '?admin');
-      window.dispatchEvent(new PopStateEvent('popstate'));
-      return;
-    }
-    
-    if (showSplash) {
-      if (['intro', 'portfolio', 'cvweb', 'cvmb'].includes(cmd)) {
-        setShowSplash(false);
-        setTimeout(() => {
-          if (cmd === 'cvweb') navigateToPage(1);
-          if (cmd === 'cvmb') navigateToPage(2);
-        }, 50);
-      } else if (cmd === 'workspace') {
-        onEnterWorkspace();
-      }
-      return;
-    }
-
-    if (cmd === 'portfolio') heroRef.current?.scrollIntoView({ behavior: 'smooth' });
-    else if (cmd === 'cvweb') navigateToPage(1);
-    else if (cmd === 'cvmb') navigateToPage(2);
-    else if (cmd === 'workspace') onEnterWorkspace();
-  };
-
-  const techCategories = [
-    { title: 'Frontend & UI', items: ['React 18', 'Next.js 14', 'TypeScript', 'Tailwind CSS', 'Zustand', 'Vite'] },
-    { title: 'Backend & Systems', items: ['Node.js', 'Express.js', 'Bun', 'Rust', 'WebSocket', 'Socket.IO', 'JWT'] },
-    { title: 'Mobile', items: ['React Native', 'Expo', 'Cross-Platform Security'] },
-    { title: 'Cloud & Database', items: ['AWS EC2/RDS', 'Cloudflare R2/Tunnels', 'MySQL', 'MongoDB', 'Nginx', 'PM2'] },
-  ];
-
-  return (
-    <div className="w-screen overflow-y-auto" style={{ background: '#000000', fontFamily: "'Helvetica Neue', 'SF Pro Display', sans-serif", color: '#e6edf3', height: '100dvh' }}>
-      <ZenSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600;700&family=Caveat:wght@600;700&display=swap');
-        .tag { display:inline-block; padding:2px 10px; border-radius:9999px; font-size:11px; letter-spacing:0.05em; text-transform:uppercase; font-weight:500; }
-        .tag-blue   { background:rgba(56,130,246,0.15); color:#93b4e8; }
-        .tag-green  { background:rgba(16,185,129,0.15); color:#6ee7b7; }
-        .tag-yellow { background:rgba(245,158,11,0.15); color:#fcd34d; }
-        .tag-purple { background:rgba(139,92,246,0.15); color:#c4b5fd; }
-        .tag-red    { background:rgba(239,68,68,0.12);  color:#fca5a5; }
-        .card { background:#0d1117; border:1px solid #21262d; border-radius:12px; padding:24px; transition:all 200ms ease; }
-        .card:hover { border-color:#30363d; box-shadow:0 4px 20px rgba(0,0,0,0.5); }
-        .lang-btn { background:transparent; border:1px solid #30363d; border-radius:5px; padding:6px 14px; font-size:11px; font-family:'JetBrains Mono',monospace; letter-spacing:0.06em; cursor:pointer; color:#8b949e; transition:border-color 200ms,color 200ms; }
-        .lang-btn:hover { border-color:#e6edf3; color:#e6edf3; }
-        .sites-btn { height:34px; padding:0 14px; background:rgba(255,255,255,0.06); border:1px solid #30363d; border-radius:9999px; display:inline-flex; align-items:center; gap:6px; cursor:pointer; transition:all 180ms; color:#8b949e; font-size:12px; font-family:'JetBrains Mono',monospace; font-weight:600; }
-        .sites-btn:hover { border-color:#8b949e; color:#e6edf3; }
-        .social-pill { display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; background:#1E1E1E; border:1px solid #333333; border-radius:10px; color:#CCCCCC; text-decoration:none; transition:all 180ms; }
-        .social-pill:hover { background:#2E2E2E; color:#FFFFFF; border-color:#555555; transform:translateY(-1px); }
-        @keyframes zney-meteor {
-          0%   { transform:translateY(-60px) translateX(-60px) rotate(36deg); opacity:0; }
-          15%  { opacity:1; }
-          85%  { opacity:1; }
-          100% { transform:translateY(400px) translateX(400px) rotate(36deg); opacity:0; }
-        }
-        .horizontal-page-scroll::-webkit-scrollbar { display:none; }
-        .horizontal-page-scroll { -ms-overflow-style:none; scrollbar-width:none; }
-        @media (min-width: 768px) {
-          .desktop-zoom { /* removed zoom: 1.2 to fix blurriness/lag */ }
-        }
-      `}</style>
-
-      {showSplash ? (
-        <div style={{ minWidth: '100%', width: '100%', height: '100dvh', overflowY: 'auto', background: '#000000' }}>
-          <div style={{ maxWidth: '820px', margin: '0 auto', padding: '24px 24px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <button onClick={() => setSidebarOpen(true)} className="sites-btn" title="Deployed Sites">
-                <span style={{ fontSize: '14px' }}>‹</span><span>Sites</span>
-              </button>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: '#484f58', letterSpacing: '0.06em' }}>psy-zney.github.io</span>
-            </div>
-            <button className="lang-btn" onClick={onToggleLang}>{isVie ? 'VIE → ENG' : 'ENG → VIE'}</button>
-          </div>
-
-          <div className="desktop-zoom" style={{ minHeight: 'calc(100dvh - 80px)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '16px 24px 90px', maxWidth: '820px', margin: '0 auto' }}>
-            <AITerminalWindow onRunCommand={handleRunCommand} isVie={isVie} />
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '14px', justifyContent: 'center' }}>
-              {[
-                { label: '/intro', cmd: 'intro', c: 'rgba(255,255,255,0.12)', b: 'rgba(255,255,255,0.3)', t: '#ffffff' },
-                { label: '/cvweb', cmd: 'cvweb', c: 'rgba(52,211,153,0.12)', b: 'rgba(52,211,153,0.3)', t: '#34d399' },
-                { label: '/cvmb', cmd: 'cvmb', c: 'rgba(192,132,252,0.12)', b: 'rgba(192,132,252,0.3)', t: '#c084fc' },
-                { label: '/projects', cmd: 'projects', c: 'rgba(251,146,60,0.12)', b: 'rgba(251,146,60,0.3)', t: '#fb923c' },
-                { label: '/skills', cmd: 'skills', c: 'rgba(129,140,248,0.12)', b: 'rgba(129,140,248,0.3)', t: '#818cf8' },
-                { label: '/workspace', cmd: 'workspace', c: 'rgba(244,114,182,0.12)', b: 'rgba(244,114,182,0.3)', t: '#f472b6' },
-              ].map((item) => (
-                <RectGlowButton
-                  key={item.cmd}
-                  onClick={() => handleRunCommand(item.cmd === 'intro' ? 'portfolio' : item.cmd)}
-                  color={item.t}
-                  style={{
-                    background: item.c,
-                    borderColor: item.b,
-                    color: item.t,
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: '11px',
-                    fontWeight: 600,
-                  }}
-                >
-                  {item.label}
-                </RectGlowButton>
-              ))}
-            </div>
-          </div>
-          <GlobalStickyBottomBar
-            currentPageIndex={currentPageIndex}
-            onNavigatePage={navigateToPage}
-            onEnterWorkspace={onEnterWorkspace}
-            isVie={isVie}
-            isSplashMode={true}
-            onBackToTerminal={() => setShowSplash(true)}
-            theme={theme}
-            onToggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
-            isAdminUnlocked={isAdminUnlocked}
-          />
-        </div>
-      ) : (
-        <>
-          <GlobalStickyBottomBar
-            currentPageIndex={currentPageIndex}
-            onNavigatePage={navigateToPage}
-            onEnterWorkspace={onEnterWorkspace}
-            isVie={isVie}
-            isSplashMode={false}
-            onBackToTerminal={() => setShowSplash(true)}
-            theme={theme}
-            onToggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
-            isAdminUnlocked={isAdminUnlocked}
-          />
-
-          <div
-            className={`horizontal-page-scroll ${theme === 'light' ? 'light-mode-invert' : ''}`}
-            style={{
-              width: '100%', height: '100dvh', overflowX: 'auto', overflowY: 'hidden', display: 'flex', flexDirection: 'row', scrollSnapType: 'x mandatory', scrollBehavior: 'smooth',
-              transition: 'filter 300ms ease'
-            }}
-            onScroll={(e) => {
-              const el = e.currentTarget;
-              const idx = Math.round(el.scrollLeft / el.clientWidth);
-              if (idx !== currentPageIndex) setCurrentPageIndex(idx);
-            }}
+      {!resumeTrack && <JourneyAtmosphere chapter={page ?? journey[2]} />}
+      <header className="portfolio-header">
+        <a className="brand" href="#/home" aria-label="zney — Home">
+          <Sparkles size={21} />
+          <span>
+            zney<span className="brand-dot">.</span>
+          </span>
+        </a>
+        <nav
+          className={`main-nav ${menuOpen ? "is-open" : ""}`}
+          aria-label={t("Điều hướng chính", "Main navigation")}
+          id="portfolio-navigation"
+        >
+          {chapters.map((chapter) => (
+            <a
+              key={chapter.id}
+              href={`#/${chapter.id}`}
+              aria-current={active === chapter.id ? "page" : undefined}
+              onClick={() => setMenuOpen(false)}
+            >
+              {chapter.label[lang]}
+            </a>
+          ))}
+        </nav>
+        <div className="header-actions">
+          <button
+            className="language-toggle"
+            onClick={onToggleLang}
+            aria-label={
+              lang === "vie" ? "Switch to English" : "Chuyển sang tiếng Việt"
+            }
           >
-            <div ref={page1Ref} style={{ minWidth: '100%', width: '100%', height: '100dvh', overflowY: 'auto', scrollSnapAlign: 'start', flexShrink: 0, background: '#000000' }}>
-              <div style={{ maxWidth: '820px', margin: '0 auto', padding: '24px 24px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <button onClick={() => setSidebarOpen(true)} className="sites-btn" title="Deployed Sites">
-                    <span style={{ fontSize: '14px' }}>‹</span><span>Sites</span>
-                  </button>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: '#484f58', letterSpacing: '0.06em' }}>psy-zney.github.io</span>
-                </div>
-                <button className="lang-btn" onClick={onToggleLang}>{isVie ? 'VIE → ENG' : 'ENG → VIE'}</button>
-              </div>
-
-              <div ref={heroRef} style={{ maxWidth: '820px', margin: '0 auto', padding: '40px 24px 140px' }}>
-                <div style={{ borderBottom: '1px solid #21262d', paddingBottom: '36px', marginBottom: '36px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap-reverse', gap: '32px' }}>
-                  <div style={{ flex: '1 1 400px' }}>
-                    <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#484f58', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '12px' }}>{isVie ? 'Giới thiệu • Trang 1 / 3' : 'Introduction • Page 1 / 3'}</p>
-                    <p style={{ fontFamily: "'Newsreader', serif", fontStyle: 'italic', fontSize: '1.1rem', color: '#6e7681', marginBottom: '6px' }}>{isVie ? 'Xin chào —' : 'Hi there —'}</p>
-                    <h1 style={{ fontFamily: "'Newsreader', Georgia, serif", fontSize: 'clamp(2.2rem,5.5vw,3.4rem)', fontWeight: 600, letterSpacing: '-0.03em', lineHeight: 1.1, color: '#e6edf3', marginBottom: '4px' }}>Lê Quang Khánh</h1>
-                    <p style={{ fontFamily: "'Caveat', cursive", fontSize: '1.5rem', fontWeight: 700, color: '#6e7681', marginBottom: '18px' }}>— zney</p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
-                      <span className="tag tag-blue">Full Stack Web &amp; Mobile Developer</span>
-                      <span className="tag tag-green">{isVie ? '🟢 Sinh viên IT · UEH TP.HCM' : '🟢 IT Student · UEH Ho Chi Minh City'}</span>
-                      <span className="tag tag-purple">{isVie ? 'Bảo mật & Real-time Systems' : 'Security & Real-time Systems'}</span>
+            <Globe2 size={14} />
+            {lang === "vie" ? "EN" : "VI"}
+          </button>
+          <a className="header-cv" href="#/contact">
+            CV <ArrowDown size={13} />
+          </a>
+          <button
+            className="menu-toggle"
+            aria-label={t("Mở hoặc đóng menu", "Toggle navigation")}
+            aria-expanded={menuOpen}
+            aria-controls="portfolio-navigation"
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
+            {menuOpen ? <X size={21} /> : <Menu size={21} />}
+          </button>
+        </div>
+        <div
+          ref={readingProgress}
+          className="reading-progress"
+          style={{ transform: "scaleX(0)" }}
+        />
+      </header>
+      <CosmicTransitionOverlay
+        phase={transitionPhase}
+        origin={originAnchor}
+        target={targetAnchor}
+      />
+      <main
+        id="main-content"
+        ref={main}
+        tabIndex={-1}
+        key={page?.id ?? displayedHash}
+        className={`route-content page-enter ${
+          transitionPhase === "collapsing"
+            ? "page-cosmic-collapse"
+            : transitionPhase === "expanding"
+              ? "page-cosmic-unfold"
+              : ""
+        }`}
+        style={
+          {
+            "--origin-x": `${originAnchor.x}%`,
+            "--origin-y": `${originAnchor.y}%`,
+            "--target-x": `${targetAnchor.x}%`,
+            "--target-y": `${targetAnchor.y}%`,
+          } as CSSProperties
+        }
+      >
+        {resumeTrack ? (
+          <ResumePage key={resumeTrack} track={resumeTrack} lang={lang} />
+        ) : project ? (
+          <ProjectDetail key={project.id} project={project} lang={lang} />
+        ) : projectId || !page ? (
+          <section className="not-found">
+            <p className="eyebrow">404 / LOST IN SPACE</p>
+            <h1>
+              {t(
+                "Ngôi sao này chưa có trên bản đồ.",
+                "This star isn’t on the map.",
+              )}
+            </h1>
+            <a className="primary-link" href="#/projects">
+              {t("Về các dự án", "Back to projects")}
+              <ArrowRight size={16} />
+            </a>
+          </section>
+        ) : (
+          <>
+            {page.id !== "home" && (
+              <ChapterHeading chapter={page} lang={lang} />
+            )}
+            {page.id === "home" && (
+              <>
+                <section className="hero section-shell" id="home" data-chapter>
+                  <div className="hero-copy page-enter">
+                    <p className="eyebrow">
+                      <span className="status-dot" />
+                      {t(
+                        "LÊ QUANG KHÁNH · LẬP TRÌNH VIÊN",
+                        "LÊ QUANG KHÁNH · DEVELOPER",
+                      )}
+                    </p>
+                    <h1>
+                      {t("Từ những điều", "A little curiosity.")}
+                      <br />
+                      {t("tò mò nhỏ,", "A wider")}
+                      <br />
+                      <em>{t("mở một vũ trụ.", "universe.")}</em>
+                    </h1>
+                    <p className="hero-description">
+                      {t(
+                        "Mình là Khánh, hay zney. Mình xây dựng ứng dụng web, mobile và những hệ thống kết nối chúng — bắt đầu từ vấn đề gần gũi, đi sâu vào cách mọi thứ hoạt động.",
+                        "I’m Khanh, also known as zney. I build web apps, mobile experiences, and the systems that connect them — starting with everyday problems and exploring how things work.",
+                      )}
+                    </p>
+                    <div className="hero-actions">
+                      <a className="primary-link" href="#/projects">
+                        {t("Khám phá dự án", "Explore my work")}
+                        <ArrowUpRight size={17} />
+                      </a>
+                      <a className="text-link" href="#/story">
+                        {t("Câu chuyện của mình", "The story behind it")}
+                        <ArrowRight size={16} />
+                      </a>
                     </div>
-                    <p style={{ fontSize: '15px', lineHeight: 1.8, color: '#8b949e', maxWidth: '600px' }}>
-                      {isVie
-                        ? <> Sinh viên IT tại UEH TP.HCM. Đam mê phát triển Web & Mobile toàn diện với mục tiêu xây dựng phần mềm <strong style={{ color: '#c9d1d9', fontWeight: 600 }}>hiệu quả và thực dụng</strong>.</>
-                        : <> IT student at UEH Ho Chi Minh City. Building full-stack web & mobile apps focused on delivering software that <strong style={{ color: '#c9d1d9', fontWeight: 600 }}>actually works well</strong>.</>
-                      }
+                    <div className="hero-facts">
+                      <span>HCMC, VIETNAM</span>
+                      <span>WEB · MOBILE · SYSTEMS</span>
+                    </div>
+                  </div>
+                  <div className="hero-map page-enter">
+                    <Constellation lang={lang} />
+                    <p className="map-caption">
+                      <span>
+                        {String(projects.length).padStart(2, "0")} PROJECTS
+                      </span>
+                      {t(
+                        "Những dự án tạo nên góc nhìn của mình.",
+                        "The projects that shape my perspective.",
+                      )}
                     </p>
                   </div>
-                  <div style={{ flexShrink: 0, marginTop: '20px' }}>
-                    <img 
-                      src="./social/AVT.jpg" 
-                      alt="Avatar" 
-                      style={{ 
-                        width: 'clamp(140px, 15vw, 180px)', 
-                        height: 'clamp(140px, 15vw, 180px)', 
-                        borderRadius: '24px', 
-                        objectFit: 'cover', 
-                        border: '1px solid #30363d', 
-                        boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-                        transition: 'transform 300ms ease'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-                      onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                    />
+                  <div className="hero-bottom">
+                    <a href="#/story">
+                      <ArrowDown size={15} />
+                      {t(
+                        "Chặng tiếp theo: câu chuyện",
+                        "Next chapter: my story",
+                      )}
+                    </a>
+                    <span>
+                      {t(
+                        "TÌM CƠ HỘI THỰC TẬP · WEB / MOBILE",
+                        "SEEKING INTERNSHIP OPPORTUNITIES · WEB / MOBILE",
+                      )}
+                    </span>
                   </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '40px' }}>
-                  {[
-                    { label: isVie ? 'Dự án' : 'Projects', val: '4+', color: '#38bdf8' },
-                    { label: isVie ? 'Ngôn ngữ' : 'Languages', val: '8+', color: '#34d399' },
-                    { label: isVie ? 'Trường' : 'University', val: 'UEH', color: '#c084fc' },
-                    { label: isVie ? 'Cloud' : 'Cloud Infra', val: 'AWS/CF', color: '#fb923c' },
-                  ].map((m, i) => (
-                    <div key={i} className="card" style={{ padding: '16px 20px' }}>
-                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '20px', fontWeight: 700, color: m.color, display: 'block', marginBottom: '2px' }}>{m.val}</span>
-                      <span style={{ fontSize: '12px', color: '#6e7681' }}>{m.label}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ marginBottom: '40px' }}>
-                  <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#484f58', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '16px', fontWeight: 600 }}>{isVie ? 'Dự án Tiêu biểu' : 'Featured Projects'}</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '14px' }}>
-                    {FEATURED_PROJECTS.map((proj, idx) => (
-                      <div key={idx} className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
-                            <span className="tag tag-blue" style={{ fontSize: '10px' }}>{proj.time}</span>
-                            <a href={proj.demo} target="_blank" rel="noopener noreferrer" style={{ fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", color: '#4e7dbc', textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                              Live <ExternalLink size={10} />
-                            </a>
-                          </div>
-                          <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#e6edf3', marginBottom: '4px', lineHeight: 1.35 }}>{proj.title}</h3>
-                          <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: '#6e7681', marginBottom: '10px' }}>{proj.role}</p>
-                          <p style={{ fontSize: '13px', color: '#8b949e', lineHeight: 1.65, marginBottom: '14px' }}>{isVie ? proj.desc_vie : proj.desc_eng}</p>
-                        </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', paddingTop: '10px', borderTop: '1px solid #21262d' }}>
-                          {proj.tech.map((t, ti) => (
-                            <kbd key={ti} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', padding: '2px 7px', border: '1px solid #30363d', borderRadius: '4px', background: '#161b22', color: '#8b949e' }}>{t}</kbd>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Tech Stack */}
-                <div style={{ marginBottom: '40px' }}>
-                  <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#484f58', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '16px', fontWeight: 600 }}>{isVie ? 'Ma trận Công nghệ' : 'Tech Stack Matrix'}</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
-                    {techCategories.map((cat, ci) => (
-                      <div key={ci} className="card">
-                        <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#c9d1d9', fontWeight: 700, textTransform: 'uppercase', marginBottom: '12px' }}>• {cat.title}</p>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                          {cat.items.map((item, ii) => (
-                            <kbd key={ii} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', padding: '3px 9px', border: '1px solid #30363d', borderRadius: '4px', background: '#161b22', color: '#8b949e' }}>{item}</kbd>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Target role */}
-                <div style={{ borderTop: '1px solid #21262d', borderBottom: '1px solid #21262d', padding: '18px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span className="tag tag-yellow">{isVie ? 'Vị trí mong muốn' : 'Target Role'}</span>
-                    <span style={{ fontSize: '13px', color: '#c9d1d9', fontWeight: 600 }}>Full Stack Web &amp; Mobile Developer Intern</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span className="tag tag-red">{isVie ? 'Trường' : 'University'}</span>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: '#6e7681' }}>UEH — Ho Chi Minh City (GPA: 2.9)</span>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-            {/* ===== PANEL 2: Web CV ===== */}
-            <div ref={page2Ref} style={{ minWidth: '100%', width: '100%', height: '100dvh', overflowY: 'auto', scrollSnapAlign: 'start', flexShrink: 0, background: '#000000' }}>
-              <MarkdownCVPage filePath="./file/Le_Quang_Khanh_CV_Web_FullStack.md" badgeTitle="FULL-STACK WEB DEVELOPER CV" fileName="Le_Quang_Khanh_CV_Web_FullStack.md" isVie={isVie} />
-            </div>
-
-            {/* ===== PANEL 3: Mobile CV ===== */}
-            <div ref={page3Ref} style={{ minWidth: '100%', width: '100%', height: '100dvh', overflowY: 'auto', scrollSnapAlign: 'start', flexShrink: 0, background: '#000000' }}>
-              <MarkdownCVPage filePath="./file/Le_Quang_Khanh_CV_Mobile.md" badgeTitle="MOBILE DEVELOPER CV" fileName="Le_Quang_Khanh_CV_Mobile.md" isVie={isVie} />
-            </div>
-
-            {/* ===== PANEL 4: System Console Dashboard ===== */}
-            {isAdminUnlocked && (
-              <div ref={page4Ref} style={{ minWidth: '100%', width: '100%', height: '100dvh', overflowY: 'auto', scrollSnapAlign: 'start', flexShrink: 0, background: '#000000' }}>
-                <AdminTelemetryPage
-                  visitor={visitor}
-                  isVie={isVie}
-                  onLockAdmin={() => {
-                    sessionStorage.removeItem('zney_admin_unlocked');
-                    setIsAdminUnlocked(false);
-                    navigateToPage(0);
-                  }}
+                </section>
+                <DepartureRoutes
+                  lang={lang}
+                  onEnterWorkspace={onEnterWorkspace}
                 />
-              </div>
+              </>
             )}
-          </div>
-        </>
-      )}
+
+            {page.id === "story" && (
+              <>
+                <section
+                  className="story-section section-shell"
+                  id="story"
+                  data-chapter
+                >
+                  <div className="section-kicker reveal">
+                    <span>01 / {t("ĐIỂM KHỞI ĐẦU", "THE STARTING POINT")}</span>
+                    <span className="small-star">✦</span>
+                  </div>
+                  <div className="story-grid">
+                    <div className="reveal">
+                      <h2>
+                        {t(
+                          "Mỗi dự án là một câu hỏi.",
+                          "Every project starts with a question.",
+                        )}
+                        <br />
+                        <em>
+                          {t(
+                            "Các câu trả lời dần nối lại.",
+                            "The answers connect.",
+                          )}
+                        </em>
+                      </h2>
+                      <figure className="portrait">
+                        <img
+                          src="./social/AVT.jpg"
+                          alt={t(
+                            "Chân dung Lê Quang Khánh",
+                            "Portrait of Le Quang Khanh",
+                          )}
+                          loading="lazy"
+                        />
+                        <figcaption>
+                          <span>Lê Quang Khánh</span>
+                          <span>aka. zney / UEH</span>
+                        </figcaption>
+                      </figure>
+                    </div>
+                    <div className="story-copy reveal">
+                      <p className="story-opening">
+                        {t(
+                          "Làm sao để nhiều thiết bị nghe cùng một bài nhạc? Một chiếc điện thoại có thể bảo vệ chiếc PC ở xa thế nào? Và một bảng Excel có thể trở thành công cụ hữu ích cho một cửa hàng không?",
+                          "How can several devices listen to the same track? How can a phone help protect a distant PC? Can a spreadsheet become a useful tool for a small business?",
+                        )}
+                      </p>
+                      <p>
+                        {t(
+                          "Nhìn lại các dự án của mình, có một mạch chung: bắt đầu từ việc người dùng muốn làm, rồi đi qua giao diện, dữ liệu và hệ thống để biến nó thành một luồng sử dụng được.",
+                          "Looking across my projects, a common thread emerges: start with what someone needs to do, then work through the interface, data, and system to make that flow usable.",
+                        )}
+                      </p>
+                      <p>
+                        {t(
+                          "Mình đang học Công nghệ thông tin tại UEH, dự kiến tốt nghiệp tháng 8/2027. Những dự án cá nhân, dự án nhóm và công cụ cho khách hàng nhỏ cho mình các góc nhìn khác nhau về việc xây dựng phần mềm.",
+                          "I’m studying Information Technology at UEH, with graduation expected in August 2027. Personal projects, team work, and a tool for a small business have given me different perspectives on building software.",
+                        )}
+                      </p>
+                      <blockquote>
+                        {t(
+                          "Điều mình muốn nối lại: sự tỉ mỉ trong từng tương tác và hiểu biết về hệ thống phía sau.",
+                          "What I want to connect: care for each interaction and an understanding of the system behind it.",
+                        )}
+                      </blockquote>
+                      <a className="text-link" href="#/projects">
+                        {t(
+                          "Xem câu chuyện qua những gì mình xây dựng",
+                          "See that story through the work",
+                        )}
+                        <ArrowRight size={16} />
+                      </a>
+                    </div>
+                  </div>
+                  <div className="journey-notes reveal">
+                    {[
+                      [
+                        t("Hiểu nhu cầu", "Understand the need"),
+                        t(
+                          "Bắt đầu từ người sẽ sử dụng.",
+                          "Start with the person using it.",
+                        ),
+                      ],
+                      [
+                        t("Nối các thành phần", "Connect the pieces"),
+                        t(
+                          "Giao diện, dữ liệu và hệ thống.",
+                          "Interface, data, and system.",
+                        ),
+                      ],
+                      [
+                        t("Đưa vào thực tế", "Make it usable"),
+                        t(
+                          "Triển khai, quan sát, hoàn thiện.",
+                          "Deploy, observe, and refine.",
+                        ),
+                      ],
+                    ].map(([title, description], i) => (
+                      <div key={i}>
+                        <span className="journey-number">0{i + 1}</span>
+                        <h3>{title}</h3>
+                        <p>{description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section
+                  className="story-milestones-section section-shell"
+                  style={{ marginTop: "70px" }}
+                >
+                  <div className="section-kicker reveal">
+                    <span>
+                      02 /{" "}
+                      {t(
+                        "NHỮNG BƯỚC NGOẶT BẤT NGỜ",
+                        "UNEXPECTED TURNS & MEMORIES",
+                      )}
+                    </span>
+                    <span className="small-star">✦</span>
+                  </div>
+                  <div className="section-heading reveal">
+                    <h2>
+                      {t(
+                        "Những mảnh ghép làm nên zney.",
+                        "The quirks and sparks behind zney.",
+                      )}
+                    </h2>
+                    <p>
+                      {t(
+                        "Không phải mọi con đường đều thẳng tắp. Đôi khi những cú rẽ tình cờ và sự bền bỉ âm thầm lại mở ra cả một vũ trụ mới.",
+                        "Not every trajectory is a straight line. Sometimes accidental pivots and quiet determination open up an entire new orbit.",
+                      )}
+                    </p>
+                  </div>
+                  <div className="story-milestones-grid">
+                    {[
+                      {
+                        icon: "🧪",
+                        tag: t("Bước ngoặt học trò", "The Crush Catalyst"),
+                        title: t(
+                          "Học Hoá vì crush & Á khoa môn Hoá trường THPTQG",
+                          "Mastering Chemistry for a Crush & High School Salutatorian",
+                        ),
+                        desc: t(
+                          "Từ một người không mấy mặn mà với Hoá, vì muốn đủ trình độ để chỉ bài cho crush mà mình đã quyết tâm cày nát từng phản ứng và bài tập. Kết quả ngoài mong đợi: điểm Hoá luôn chạm ngưỡng gần 10 suốt từ lớp 9 đến hết cấp 3, và trở thành Á khoa môn Hoá toàn trường trong kỳ thi tốt nghiệp THPTQG. Động lực đôi khi đến từ những điều ngây ngô nhất!",
+                          "Starting from square one with zero enthusiasm for chemistry, pure determination to help my crush with questions drove me to relentlessly study. The payoff: near-perfect scores from 9th grade all the way through high school, concluding as the school's Salutatorian in Chemistry on the National High School Exam. Great journeys often ignite from the simplest sparks.",
+                        ),
+                      },
+                      {
+                        icon: "⚡",
+                        tag: t("Cú lội ngược dòng", "The Underdog Turnaround"),
+                        title: t(
+                          "Thủ khoa môn Vật lý toàn trường 2023",
+                          "School Valedictorian in Physics (2023)",
+                        ),
+                        desc: t(
+                          "Vật lý từng là môn mình cảm thấy yếu nhất và nhiều phen hoang mang nhất trong các môn tự nhiên. Nhưng chính sự kiên trì đào sâu vào bản chất hiện tượng thay vì học vẹt công thức đã tạo nên bước ngoặt ngoạn mục: bứt phá giành ngôi vị Thủ khoa môn Vật lý toàn trường năm 2023.",
+                          "Physics was once my most daunting subject, filled with doubt and confusion. Instead of mechanically memorizing formulas, I shifted to questioning first principles and physical mechanics — culminating in an underdog triumph as the school's top-ranking Valedictorian in Physics in 2023.",
+                        ),
+                      },
+                      {
+                        icon: "📐",
+                        tag: t("Tư duy thuở nhỏ", "The Math Foundation"),
+                        title: t(
+                          "Giải Ba Olympic Toán tuổi thơ & kỷ niệm khó phai",
+                          "3rd Prize Childhood Math Olympiad & Lasting Memories",
+                        ),
+                        desc: t(
+                          "Chiếc huy chương giải Ba Olympic Toán thời niên thiếu đã sớm gieo vào tâm trí mình niềm say mê bẻ khóa những câu hỏi hóc búa. Dù kỳ thi THPT môn Toán mình học nhiều nhất lại mang đến những kỷ niệm bất ngờ, đó vẫn là bài học quý giá về sự điềm tĩnh và tư duy logic kiên định.",
+                          "Winning 3rd prize in the childhood Math Olympiad early on ingrained an obsession for cracking intricate puzzles. Even when high school math delivered unexpected twists, it solidified my calm resilience and analytical problem-solving foundation.",
+                        ),
+                      },
+                      {
+                        icon: "🍀",
+                        tag: t("Cơ duyên công nghệ", "Serendipitous Spark"),
+                        title: t(
+                          "Ngã rẽ bất ngờ bước vào thế giới máy tính",
+                          "The Serendipitous Gateway to Computing",
+                        ),
+                        desc: t(
+                          "Cả tuổi thơ mình hầu như không tiếp xúc với máy tính, môn tin học ở trường cũng rất mờ nhạt. Nhưng như một cơ duyên tình cờ và may mắn, ngọn lửa tò mò mãnh liệt với công nghệ đã thức tỉnh, mở ra một hành trình lập trình đầy đam mê mà mình luôn trân trọng.",
+                          "Throughout childhood, computers were practically absent from my daily life, and school computing classes were fleeting. Yet pure serendipity stepped in — an unexpected spark awakened an insatiable curiosity for software, opening an engineering journey I remain deeply grateful for.",
+                        ),
+                      },
+                      {
+                        icon: "🚀",
+                        tag: t("Hành trình UEH", "The UEH Odyssey"),
+                        title: t(
+                          "Tờ giấy trắng: Từ if/else đến hệ thống thực tế tại UEH",
+                          "Blank Canvas at UEH: From if/else to Production Systems",
+                        ),
+                        desc: t(
+                          "Bước chân vào giảng đường UEH giữa rất nhiều bạn bè xuất sắc và tiếp xúc code từ sớm, mình khởi đầu như một tờ giấy trắng. Không nản lòng, mình tự mò mẫm từ những dòng if/else của trò kéo búa bao đầu tiên, bền bỉ tích lũy từng ngày để hôm nay tự tay xây dựng những ứng dụng và hệ thống thực tế hoàn chỉnh.",
+                          "Stepping into UEH surrounded by extraordinarily talented peers who had coded for years, I began as an absolute blank sheet. Undeterred, I built upwards from the humblest if/else rock-paper-scissors game, methodically leveling up every day to now architect real-world production systems and 3D web experiences.",
+                        ),
+                      },
+                    ].map((milestone, idx) => (
+                      <div
+                        key={idx}
+                        className="story-milestone-card reveal"
+                      >
+                        <div className="story-milestone-tag">
+                          <span>{milestone.icon}</span>
+                          <span>{milestone.tag}</span>
+                        </div>
+                        <h3>{milestone.title}</h3>
+                        <p>{milestone.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </>
+            )}
+
+            {page.id === "projects" && (
+              <>
+                <section
+                  className="projects-section section-shell"
+                  id="projects"
+                  data-chapter
+                >
+                  <div className="section-kicker reveal">
+                    <span>
+                      02 / {t("NHỮNG ĐIỂM SÁNG", "SELECTED EXPLORATIONS")}
+                    </span>
+                    <span>2026</span>
+                  </div>
+                  <div className="section-heading reveal">
+                    <h2>
+                      {t("Ý tưởng có hình hài.", "Ideas, made tangible.")}
+                    </h2>
+                    <p>
+                      {t(
+                        "Mỗi dự án mở một phần khác trong cách mình suy nghĩ và làm việc.",
+                        "Each project reveals a different part of how I think and build.",
+                      )}
+                    </p>
+                  </div>
+                  <div
+                    className="project-filters"
+                    role="group"
+                    aria-label={t("Lọc dự án", "Filter projects")}
+                  >
+                    {[
+                      ["all", t("Tất cả", "All work")],
+                      ["web", "Web"],
+                      ["systems", t("Hệ thống", "Systems")],
+                      ["mobile", "Mobile"],
+                      ["creative", t("3D & mô phỏng", "3D & simulation")],
+                    ].map(([id, label]) => (
+                      <button
+                        key={id}
+                        aria-pressed={filter === id}
+                        onClick={() => setFilter(id)}
+                      >
+                        {label}
+                        <span>
+                          {String(
+                            projects.filter(
+                              (p) => id === "all" || p.category === id,
+                            ).length,
+                          ).padStart(2, "0")}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="projects-grid">
+                    {projects
+                      .filter((p) => filter === "all" || p.category === filter)
+                      .map((p) => (
+                        <article key={p.id} className="project-card reveal">
+                          <a
+                            className="project-card-main"
+                            href={`#/project/${p.id}`}
+                          >
+                            <ProjectArt project={p} />
+                            <div className="project-card-meta">
+                              <span>{p.role[lang]}</span>
+                              <ArrowUpRight size={21} />
+                            </div>
+                            <h3>
+                              {p.name}
+                              <span>{p.headline[lang]}</span>
+                            </h3>
+                            <p>{p.summary[lang]}</p>
+                            <div className="project-tags">
+                              {p.stack.slice(0, 4).map((tech) => (
+                                <span key={tech}>{tech}</span>
+                              ))}
+                            </div>
+                            <span className="case-link">
+                              {t(
+                                "Đọc câu chuyện dự án",
+                                "Read the project story",
+                              )}
+                              <ArrowRight size={15} />
+                            </span>
+                          </a>
+                          {p.source && (
+                            <a
+                              className="project-source-link"
+                              href={p.source}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={`${t("Mở repository", "Open repository")}: ${p.name}`}
+                            >
+                              <Github size={15} /> GitHub{" "}
+                              <ArrowUpRight size={13} />
+                            </a>
+                          )}
+                        </article>
+                      ))}
+                  </div>
+                  <p className="project-count" aria-live="polite">
+                    {t("Đang hiển thị", "Showing")}{" "}
+                    {
+                      projects.filter(
+                        (p) => filter === "all" || p.category === filter,
+                      ).length
+                    }{" "}
+                    / {projects.length} {t("dự án", "projects")}
+                  </p>
+                </section>
+              </>
+            )}
+
+            {page.id === "skills" && (
+              <>
+                <section
+                  className="skills-section section-shell"
+                  id="skills"
+                  data-chapter
+                >
+                  <div className="section-kicker reveal">
+                    <span>
+                      03 / {t("CHÒM SAO NĂNG LỰC", "A CONSTELLATION OF SKILLS")}
+                    </span>
+                    <Orbit size={19} />
+                  </div>
+                  <div className="section-heading reveal">
+                    <h2>
+                      {t(
+                        "Kỹ năng có điểm kết nối.",
+                        "Skills with a point of reference.",
+                      )}
+                    </h2>
+                    <p>
+                      {t(
+                        "Những công nghệ mình sử dụng, những vấn đề mình đã chạm vào, và dự án để bạn tìm hiểu sâu hơn.",
+                        "The tools I use, the problems I’ve worked on, and the projects where you can see them in context.",
+                      )}
+                    </p>
+                  </div>
+                  <div className="capability-list">
+                    {capabilities.map((skill, index) => {
+                      const Icon = [Braces, Network, Smartphone, Box, Rocket][
+                        index
+                      ];
+                      return (
+                        <article
+                          id={`skill-${skill.id}`}
+                          className="capability reveal"
+                          key={skill.id}
+                        >
+                          <span className="capability-number">
+                            <Icon
+                              size={27}
+                              strokeWidth={1.3}
+                              className="capability-icon"
+                            />
+                            {skill.number}
+                            <i />
+                          </span>
+                          <div>
+                            <h3>{skill.title[lang]}</h3>
+                            <p>{skill.description[lang]}</p>
+                            <div className="project-tags">
+                              {skill.tools.map((tool) => (
+                                <span key={tool}>{tool}</span>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="capability-evidence">
+                            <span className="eyebrow">
+                              {t("THỂ HIỆN QUA", "EXPLORE IN")}
+                            </span>
+                            {skill.projects.map((id) => (
+                              <a href={`#/project/${id}`} key={id}>
+                                {projects.find((p) => p.id === id)?.name}
+                                <ArrowUpRight size={15} />
+                              </a>
+                            ))}
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
+              </>
+            )}
+
+            {page.id === "story" && (
+              <>
+                <section className="workspace-invite section-shell reveal">
+                  <div className="workspace-symbol" aria-hidden="true">
+                    <Orbit size={70} strokeWidth={0.65} />
+                    <Sparkles size={22} />
+                  </div>
+                  <div>
+                    <p className="eyebrow">
+                      04 /{" "}
+                      {t("MỘT GÓC KHÁC CỦA MÌNH", "A DIFFERENT SIDE OF ME")}
+                    </p>
+                    <h2>
+                      {t(
+                        "Ghé qua góc làm việc trong không gian.",
+                        "Step inside my little corner of space.",
+                      )}
+                    </h2>
+                    <p>
+                      {t(
+                        "Một thử nghiệm tương tác 3D với Three.js: khám phá bàn làm việc, màn hình và những chi tiết mình thích tạo ra.",
+                        "An interactive Three.js experiment: explore a desk, a screen, and the small details I enjoy building.",
+                      )}
+                    </p>
+                    <button className="text-link" onClick={onEnterWorkspace}>
+                      {t("Vào không gian 3D", "Enter the 3D workspace")}
+                      <ArrowUpRight size={17} />
+                    </button>
+                    <span className="workspace-hint">
+                      {t(
+                        "Có âm thanh · Trải nghiệm tốt nhất trên desktop",
+                        "Includes audio · Best experienced on desktop",
+                      )}
+                    </span>
+                  </div>
+                </section>
+              </>
+            )}
+
+            {page.id === "contact" && (
+              <>
+                <section
+                  className="contact-section section-shell"
+                  id="contact"
+                  data-chapter
+                >
+                  <div className="section-kicker reveal">
+                    <span>05 / {t("QUỸ ĐẠO TIẾP THEO", "THE NEXT ORBIT")}</span>
+                    <span className="small-star">✦</span>
+                  </div>
+                  <div className="contact-grid">
+                    <div className="reveal">
+                      <p className="eyebrow">
+                        FULL-STACK WEB / MOBILE DEVELOPER INTERN
+                      </p>
+                      <h2>
+                        {t("Một cuộc trò chuyện.", "One conversation.")}
+                        <br />
+                        <em>{t("Một khởi đầu mới.", "A new beginning.")}</em>
+                      </h2>
+                      <p>
+                        {t(
+                          "Mình đang tìm cơ hội thực tập để đóng góp vào sản phẩm thật, học từ đồng đội và phát triển tư duy kỹ thuật. Nếu bạn thấy một điểm kết nối, mình rất muốn được trao đổi.",
+                          "I’m looking for an internship where I can contribute to real products, learn from teammates, and deepen my engineering practice. If you see a connection, I’d love to talk.",
+                        )}
+                      </p>
+                      <a
+                        className="contact-email"
+                        href="mailto:lequangkhanh295@gmail.com"
+                      >
+                        lequangkhanh295@gmail.com
+                        <ArrowUpRight size={22} />
+                      </a>
+                      <div className="social-links">
+                        <a
+                          href="https://github.com/psy-zney"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <Github size={17} />
+                          GitHub
+                          <ArrowUpRight size={13} />
+                        </a>
+                        <a
+                          href="https://www.linkedin.com/in/psy-zney295"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <Linkedin size={17} />
+                          LinkedIn
+                          <ArrowUpRight size={13} />
+                        </a>
+                      </div>
+                    </div>
+                    <aside className="recruiter-note reveal">
+                      <span className="eyebrow">
+                        {t(
+                          "GỬI ANH CHỊ TUYỂN DỤNG",
+                          "A QUICK NOTE FOR RECRUITERS",
+                        )}
+                      </span>
+                      <h3>
+                        {t("Hồ sơ trong một phút.", "The one-minute overview.")}
+                      </h3>
+                      <dl>
+                        <div>
+                          <dt>{t("Định hướng", "Focus")}</dt>
+                          <dd>Full-stack Web / Mobile</dd>
+                        </div>
+                        <div>
+                          <dt>{t("Học vấn", "Education")}</dt>
+                          <dd>
+                            {t("CNTT · UEH", "Information Technology · UEH")}
+                            <small>
+                              {t(
+                                "Dự kiến tốt nghiệp 08/2027",
+                                "Expected graduation 08/2027",
+                              )}
+                            </small>
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{t("Địa điểm", "Based in")}</dt>
+                          <dd>
+                            {t(
+                              "TP. Hồ Chí Minh, Việt Nam",
+                              "Ho Chi Minh City, Vietnam",
+                            )}
+                          </dd>
+                        </div>
+                      </dl>
+                      <p>
+                        {t(
+                          "Chọn CV theo vị trí bạn đang tìm kiếm.",
+                          "Choose the CV that fits your opening.",
+                        )}
+                      </p>
+                      <a className="cv-download" href="#/cv/web">
+                        <span>
+                          Full-stack Web
+                          <small>
+                            {t(
+                              "Đọc CV · In / Lưu PDF",
+                              "Read CV · Print / Save PDF",
+                            )}
+                          </small>
+                        </span>
+                        <ArrowUpRight size={18} />
+                      </a>
+                      <a className="cv-download" href="#/cv/mobile">
+                        <span>
+                          Mobile Developer
+                          <small>
+                            {t(
+                              "Đọc CV · In / Lưu PDF",
+                              "Read CV · Print / Save PDF",
+                            )}
+                          </small>
+                        </span>
+                        <ArrowUpRight size={18} />
+                      </a>
+                      <a className="text-link" href="#/projects">
+                        {t("Xem các dự án trước", "Start with the projects")}
+                        <ArrowRight size={14} />
+                      </a>
+                    </aside>
+                  </div>
+                </section>
+              </>
+            )}
+            <ChapterPassage chapter={page} lang={lang} />
+          </>
+        )}
+      </main>
+      <footer className="portfolio-footer section-shell">
+        <a className="brand" href="#/home">
+          <Sparkles size={17} />
+          zney.
+        </a>
+        <span>
+          {t(
+            "Một chút tò mò. Một hành trình đang tiếp diễn.",
+            "A little curiosity. An ongoing journey.",
+          )}
+        </span>
+        <a href="mailto:lequangkhanh295@gmail.com">
+          {t("Gửi lời chào", "Say hello")}
+          <ArrowUpRight size={13} />
+        </a>
+      </footer>
+      <button
+        className="motion-toggle"
+        onClick={() => setPaused(!paused)}
+        aria-pressed={paused}
+        aria-label={
+          paused
+            ? t("Bật chuyển động", "Enable motion")
+            : t("Tạm dừng chuyển động", "Pause motion")
+        }
+        title={
+          paused
+            ? t("Bật chuyển động", "Enable motion")
+            : t("Tạm dừng chuyển động", "Pause motion")
+        }
+      >
+        {paused ? <Play size={13} /> : <Pause size={13} />}
+        <span>{t("Chuyển động", "Motion")}</span>
+      </button>
     </div>
   );
 }

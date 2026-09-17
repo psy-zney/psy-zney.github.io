@@ -7,6 +7,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
 import { DesktopOverlay } from './DesktopOverlay';
+import { ProjectShelf } from './ProjectShelf';
 import { getPreloadedIntroAudio, resumeAudioContextIfNeeded } from '../utils/audioPreloader';
 import {
   FileText,
@@ -19,8 +20,6 @@ import {
   Mail,
   Share2,
   CheckCircle2,
-  Star,
-  GitFork,
   Code2,
   UserCheck,
   Volume2,
@@ -861,14 +860,11 @@ function ModalCV({ onClose }: { onClose: () => void }) {
 
         <div className="flex items-center gap-3">
           <a
-            href={filePath}
-            download={fileName}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={`#/cv/${activeTab}`}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-sky-400 via-cyan-300 to-indigo-400 hover:from-sky-300 hover:to-cyan-200 text-slate-950 font-bold text-xs rounded-xl shadow-[0_0_20px_rgba(56,189,248,0.4)] transition hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
           >
             <Download size={15} />
-            <span>Download .MD</span>
+            <span>Read / Print CV</span>
           </a>
           <button
             onClick={onClose}
@@ -1049,106 +1045,6 @@ function ModalLanyard({ onClose }: { onClose: () => void }) {
         >
           &gt;
         </button>
-      </div>
-    </div>
-  );
-}
-
-function ModalBookshelf({ onClose }: { onClose: () => void }) {
-  const repos = [
-    {
-      name: 'psy-zney.github.io',
-      stars: '14',
-      forks: '3',
-      lang: 'TypeScript / WebGL',
-      desc: 'Interactive Cyberpunk 3D Creator Portfolio featuring desktop overlay, interactive WebGL scene & arcade mini-games.',
-      liveUrl: 'http://zney295.id.vn/',
-      repoUrl: 'https://github.com/psy-zney/psy-zney.github.io'
-    },
-    {
-      name: 'study-hub',
-      stars: '18',
-      forks: '5',
-      lang: 'React / TypeScript',
-      desc: 'Interactive learning & study dashboard platform designed for IT engineering students.',
-      liveUrl: 'https://study.zney295.id.vn/',
-      repoUrl: 'https://github.com/psy-zney'
-    },
-    {
-      name: 'beatsync-audio',
-      stars: '12',
-      forks: '2',
-      lang: 'Web Audio / React',
-      desc: 'Real-time music synchronization and dynamic audio visualization web application.',
-      liveUrl: 'https://beatsync.zney295.id.vn/',
-      repoUrl: 'https://github.com/psy-zney'
-    },
-    {
-      name: 'cybersecurity-notes',
-      stars: '21',
-      forks: '6',
-      lang: 'Python / Shell',
-      desc: 'Curated cybersecurity research, penetration testing tools, and network security notes.',
-      liveUrl: 'https://zney295.id.vn/Security/',
-      repoUrl: 'https://github.com/psy-zney'
-    },
-    {
-      name: 'mandycrimson',
-      stars: '15',
-      forks: '4',
-      lang: 'HTML5 / CSS3',
-      desc: 'Creative editorial web showcase and experimental visual interface portfolio.',
-      liveUrl: 'https://zney295.id.vn/mandycrimson/',
-      repoUrl: 'https://github.com/psy-zney'
-    }
-  ];
-
-  return (
-    <div className="bg-[#111111] border border-[#333333] rounded-2xl p-8 max-w-2xl w-full mx-4 shadow-[0_15px_50px_rgba(0,0,0,0.85)] text-slate-100 animate-in fade-in zoom-in duration-200 max-h-[85vh] overflow-y-auto">
-      <div className="flex justify-between items-start border-b border-[#2B2B2B] pb-5 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="p-3 rounded-xl bg-[#1C1C1C] text-white border border-[#333333]">
-            <BookOpen size={28} />
-          </div>
-          <div>
-            <h3 className="text-xl font-bold tracking-wide text-white">OPEN SOURCE PROJECTS & REPOS</h3>
-            <p className="text-xs text-slate-400 font-mono mt-0.5">@psy-zney — Real GitHub Repositories & Deployed Sites</p>
-          </div>
-        </div>
-        <button onClick={onClose} className="p-2 hover:bg-[#242424] text-slate-400 hover:text-white rounded-lg transition">
-          <X size={20} />
-        </button>
-      </div>
-
-      <div className="space-y-4">
-        {repos.map((repo, idx) => (
-          <div key={idx} className="p-5 bg-[#171717] hover:bg-[#1E1E1E] rounded-xl border border-[#2D2D2D] transition group">
-            <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-              <div className="flex items-center gap-2 font-bold text-sm text-white">
-                <Code2 size={16} />
-                <span>{repo.name}</span>
-              </div>
-              <div className="flex items-center gap-3 text-xs font-mono text-slate-400">
-                <span className="flex items-center gap-1 text-amber-400"><Star size={13} fill="currentColor" /> {repo.stars}</span>
-                <span className="flex items-center gap-1 text-slate-400"><GitFork size={13} /> {repo.forks}</span>
-              </div>
-            </div>
-            <p className="text-xs text-slate-300 leading-relaxed mb-4">{repo.desc}</p>
-            <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-[#2B2B2B] pt-3 flex-wrap gap-2">
-              <span className="px-2.5 py-1 rounded bg-[#242424] text-white border border-[#3A3A3A] font-mono">{repo.lang}</span>
-              <div className="flex items-center gap-4">
-                <a href={repo.liveUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-white hover:underline font-semibold">
-                  <span>Live Site</span>
-                  <ExternalLink size={12} />
-                </a>
-                <a href={repo.repoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-slate-300 hover:text-white hover:underline">
-                  <span>GitHub</span>
-                  <ExternalLink size={12} />
-                </a>
-              </div>
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   );
@@ -1523,7 +1419,7 @@ export function ModelAnalyzer({ onBackToIntro, lang = 'eng', loadingAudioBlocked
           className="absolute top-6 left-6 z-40 px-4 py-2.5 rounded-2xl bg-slate-950/85 hover:bg-slate-900 text-slate-200 hover:text-white border border-violet-400/30 shadow-[0_0_20px_rgba(0,0,0,0.5)] backdrop-blur-xl flex items-center gap-2 text-xs font-mono font-bold transition-all duration-300 cursor-pointer hover:scale-105"
         >
           <span>←</span>
-          <span>{lang === 'eng' ? 'Back to Intro' : 'Trang giới thiệu'}</span>
+          <span>{lang === 'eng' ? 'Back to portfolio' : 'Trang giới thiệu'}</span>
         </button>
       )}
 
@@ -1574,7 +1470,7 @@ export function ModelAnalyzer({ onBackToIntro, lang = 'eng', loadingAudioBlocked
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           {activeModal === 'paper' && <ModalCV onClose={() => setActiveModal(null)} />}
           {activeModal === 'lanyard' && <ModalLanyard onClose={() => setActiveModal(null)} />}
-          {activeModal === 'bookshelf' && <ModalBookshelf onClose={() => setActiveModal(null)} />}
+          {activeModal === 'bookshelf' && <ProjectShelf onClose={() => setActiveModal(null)} lang={lang} />}
         </div>
       )}
 

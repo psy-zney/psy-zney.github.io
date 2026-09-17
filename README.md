@@ -1,4 +1,12 @@
-# 🚀 Zney's Portfolio — Interactive Cyberpunk 3D Experience
+# Zney's Portfolio — A Universe of Connected Projects
+
+The portfolio opens with five separate bilingual chapters: Virgo / introduction, Lyra / story, Orion / projects, Cygnus / capabilities, and Cassiopeia / contact. Each chapter has its own hash URL, constellation sketch, scroll-driven starlight, and onward links. The original interactive 3D workspace remains available from the departure page and story. Both CVs have readable pages with browser print/PDF support.
+
+Motion uses CSS, SVG and animation frames without a new runtime dependency. Pointer tilt is desktop-only; touch users can use all navigation and discovery controls. The motion toggle follows the initial reduced-motion preference, and background animations pause when the tab is hidden. Small personal field notes are loaded separately after a hidden signal interaction; they are not part of the main recruiting narrative.
+
+Project stories live in `src/data/portfolio.ts`. See [content sources](docs/portfolio-content-sources.md) for repository snapshots, attribution, and scope notes. The 3D workspace and admin screen are loaded on demand.
+
+Verification: `npm run check:portfolio` checks bilingual route rendering, project/skill relationships, workspace links, and CV rendering. `npm run build` runs TypeScript and the production build. Browser layout and interaction checks should be run separately on desktop and mobile.
 
 <p align="center">
   <img src="https://img.shields.io/badge/React-18.3-61DAFB?style=for-the-badge&logo=react&logoColor=black" />
