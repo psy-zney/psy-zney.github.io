@@ -62,18 +62,19 @@ try {
   assert.equal(new Set([...VIRGO_STARS, ...VIRGO_SUPPORT_STARS].map(star => star.position.join(","))).size, 14);
   assert.equal(CAMERA_STOPS.length, 6);
   for (const lang of ["vie", "eng"]) {
-    for (const hash of ["", "#/cosmos", "#/home", "#/story", "#/projects", "#/skills", "#/contact", "#/project/beatsync", "#/projects/all", "#/cv/web"]) {
+    for (const hash of ["", "#/cosmos", "#/home", "#/story", "#/projects", "#/projects-more", "#/skills", "#/contact", "#/project/beatsync", "#/projects/all", "#/cv/web"]) {
       window.location.hash = hash;
       const html = renderToStaticMarkup(React.createElement(VirgoPortfolio, {
         lang, onToggleLang() {}, onEnterWorkspace() {},
       }));
-      assert.equal((html.match(/class="virgo-scroll-step"/g) || []).length, 6);
-      assert.equal((html.match(/class="virgo-overlay-panel/g) || []).length, 6);
+      assert.equal((html.match(/class="virgo-scroll-step"/g) || []).length, 7);
+      assert.equal((html.match(/class="virgo-overlay-panel/g) || []).length, 7);
       assert.equal((html.match(/<h1[ >]/g) || []).length, 1);
       assert(html.includes('class="virgo-overlay-panel virgo-cosmos"'));
       assert(html.includes('Enter the 3D world through Zavijava') || html.includes('Chạm ngôi sao Zavijava để vào game 3D'));
       assert(html.includes("SPICA") && html.includes("PORRIMA") && html.includes("VINDEMIATRIX") && html.includes("ZAVIJAVA"));
       assert.equal((html.match(/class="virgo-project-link"/g) || []).length, 3);
+      assert.equal((html.match(/class="virgo-row-star"/g) || []).length >= projects.length, true);
       assert.equal((html.match(/aria-pressed="(?:true|false)"/g) || []).length, capabilities.length);
       assert(html.includes(`${projects.length} projects in orbit`) || html.includes(`${projects.length} vệ tinh dự án đang quay`));
       if (hash === "#/project/beatsync") assert(html.includes(projects[0].problem[lang]));
