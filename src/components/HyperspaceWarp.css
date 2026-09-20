@@ -1,0 +1,123 @@
+.hyperspace-warp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #000000;
+  overflow: hidden;
+  pointer-events: all;
+  transition: opacity 0.15s ease-out;
+}
+
+.hyperspace-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Spaceship Cockpit Minimal HUD */
+.cockpit-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hud-corner {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-color: rgba(255, 255, 255, 0.35);
+  border-style: solid;
+}
+
+.hud-corner.top-left {
+  top: 24px;
+  left: 24px;
+  border-width: 1px 0 0 1px;
+}
+
+.hud-corner.top-right {
+  top: 24px;
+  right: 24px;
+  border-width: 1px 1px 0 0;
+}
+
+.hud-corner.bottom-left {
+  bottom: 24px;
+  left: 24px;
+  border-width: 0 0 1px 1px;
+}
+
+.hud-corner.bottom-right {
+  bottom: 24px;
+  right: 24px;
+  border-width: 0 1px 1px 0;
+}
+
+/* Minimal starlight reticle crosshair (+) without circular ring */
+.hud-crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: 0.65;
+}
+
+.hud-crosshair::before,
+.hud-crosshair::after {
+  content: "";
+  position: absolute;
+  background: #ffffff;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+}
+
+.hud-crosshair::before {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  transform: translateY(-50%);
+}
+
+.hud-crosshair::after {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  transform: translateX(-50%);
+}
+
+/* Clean, crisp starlight HUD readout */
+.hud-warp-readout {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  text-align: center;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.readout-status {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  color: #ffffff;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
+}
+
+.readout-velocity {
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.5);
+}

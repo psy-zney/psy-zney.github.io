@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useState, useEffect } from "react";
-import { IntroPage } from "./components/IntroPage";
+import { VirgoPortfolio as IntroPage } from "./components/VirgoPortfolio";
 import { startIntroAudioFromGesture } from "./utils/audioPreloader";
 import { trackPageView } from "./utils/visitorTracker";
 

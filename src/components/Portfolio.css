@@ -678,7 +678,131 @@
   --star-color: #a8c8ff;
 }
 .node-lavender {
-  --star-color: #b6bcdd;
+  --star-color: #c0b6e3;
+}
+.node-story {
+  --star-color: #7dd3fc;
+}
+.node-projects {
+  --star-color: #facc15;
+}
+.node-skills {
+  --star-color: #38bdf8;
+}
+.node-home {
+  --star-color: #ffffff;
+}
+.node-cloud-pos {
+  --star-color: #fbbf24;
+}
+.node-luckyfood {
+  --star-color: #a3e635;
+}
+.node-security-core {
+  --star-color: #34d399;
+}
+.node-contact {
+  --star-color: #c084fc;
+}
+
+/* Starmap Header Button */
+.starmap-header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 9999px;
+  padding: 4px 11px;
+  color: #7dd3fc;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.starmap-header-btn:hover {
+  background: rgba(30, 58, 138, 0.5);
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+}
+
+/* Starmap Modal HUD Overlay */
+.starmap-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99995;
+  background: rgba(3, 7, 18, 0.92);
+  backdrop-filter: blur(16px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: starmap-fade-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.starmap-modal-box {
+  position: relative;
+  width: 100%;
+  max-width: 820px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.starmap-modal-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 0 12px;
+}
+
+.starmap-modal-title {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #7dd3fc;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.starmap-modal-close {
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.starmap-modal-close:hover {
+  border-color: #7dd3fc;
+  color: #ffffff;
+  transform: rotate(90deg);
+}
+
+@keyframes starmap-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 .node-purple {
   --star-color: #c0b6e3;

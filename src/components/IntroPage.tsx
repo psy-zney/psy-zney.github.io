@@ -38,11 +38,15 @@ import {
   useStarFlight,
 } from "./StarJourney";
 import {
-  CosmicTransitionOverlay,
   getRouteAnchor,
   type CelestialPoint,
-  type TransitionPhase,
 } from "./CosmicTransition";
+import { HyperspaceWarp } from "./HyperspaceWarp";
+import { ConstellationIntro } from "./ConstellationIntro";
+import {
+  CONSTELLATION_STARS,
+  FULL_CONSTELLATION_PATH,
+} from "../data/constellation";
 
 interface IntroPageProps {
   onEnterWorkspace: () => void;
@@ -117,92 +121,14 @@ function ProjectArt({
   );
 }
 
-function Constellation({ lang }: { lang: Language }) {
-  const nodes = [
-    {
-      id: "study-cabin",
-      label: "Study Cabin",
-      star: "β Zavijava",
-      x: 18,
-      y: 16,
-      cls: "node-blue",
-    },
-    {
-      id: "mandy-crimson",
-      label: "Mandy Crimson",
-      star: "η Zaniah",
-      x: 33,
-      y: 25,
-      cls: "node-pink",
-    },
-    {
-      id: "sentinellan",
-      label: "SentinelLAN",
-      star: "γ Porrima",
-      x: 50,
-      y: 26,
-      cls: "node-gold",
-    },
-    {
-      id: "cloud-pos",
-      label: "Cloud POS",
-      star: "δ Minelauva",
-      x: 67,
-      y: 23,
-      cls: "node-gold",
-    },
-    {
-      id: "chemistry-lab",
-      label: "Chemistry Lab 3D",
-      star: "ε Vindemiatrix",
-      x: 81,
-      y: 15,
-      cls: "node-cyan",
-    },
-    {
-      id: "backup-data",
-      label: "Zney Backup",
-      star: "θ Vir",
-      x: 25,
-      y: 56,
-      cls: "node-lavender",
-    },
-    {
-      id: "security-core",
-      label: "Security Core",
-      star: "ζ Heze",
-      x: 73,
-      y: 54,
-      cls: "node-green",
-    },
-    {
-      id: "beatsync",
-      label: "BeatSync",
-      star: "α Spica",
-      x: 48,
-      y: 78,
-      cls: "node-blue node-spica",
-    },
-    {
-      id: "luckyfood",
-      label: "LuckyFood",
-      star: "ι Syrma",
-      x: 74,
-      y: 70,
-      cls: "node-cream",
-    },
-    {
-      id: "micro4nerds",
-      label: "Micro4Nerds",
-      star: "μ Rijl al Awwa",
-      x: 86,
-      y: 84,
-      cls: "node-purple",
-    },
-  ];
-
-  const constellationPath =
-    "M18 16 33 25 50 26 67 23 81 15 M50 26 25 56 48 78 73 54 50 26 M50 26 48 78 M73 54 74 70 86 84 M48 78 74 70";
+function Constellation({
+  lang,
+  onSelectStar,
+}: {
+  lang: Language;
+  onSelectStar?: () => void;
+}) {
+  const constellationPath = FULL_CONSTELLATION_PATH;
 
   return (
     <div className="constellation-viewport" data-depth>
@@ -210,8 +136,8 @@ function Constellation({ lang }: { lang: Language }) {
         className="constellation"
         aria-label={
           lang === "vie"
-            ? "Chòm sao Xử Nữ (Virgo) — chọn một ngôi sao để khám phá dự án"
-            : "Virgo constellation — choose a star to explore projects"
+            ? "Chòm sao Zney — chọn một ngôi sao để du hành vũ trụ"
+            : "Zney constellation — choose a star to travel through space"
         }
       >
         <div className="constellation-halo" />
@@ -244,18 +170,18 @@ function Constellation({ lang }: { lang: Language }) {
           <path
             data-flight-path
             className="flight-base"
-            d="M18 16 L33 25 L50 26 L67 23 L81 15 L67 23 L50 26 L25 56 L48 78 L73 54 L74 70 L86 84"
+            d={constellationPath}
           />
           <path
             data-flight-trail
             className="flight-trail"
             pathLength="100"
             strokeDasharray="0 100"
-            d="M18 16 L33 25 L50 26 L67 23 L81 15 L67 23 L50 26 L25 56 L48 78 L73 54 L74 70 L86 84"
+            d={constellationPath}
           />
           <g
             data-flight-runner
-            transform="translate(18 16)"
+            transform="translate(36.5 26.5)"
             className="flight-runner"
           >
             <circle r="4" className="flight-corona" />
@@ -265,38 +191,41 @@ function Constellation({ lang }: { lang: Language }) {
         </svg>
         <a
           className="central-star"
-          href="#/story"
+          href="#/home"
+          style={{ left: "58.9%", top: "47.8%" }}
+          onClick={onSelectStar}
           aria-label={
-            lang === "vie" ? "Đọc câu chuyện của Khánh" : "Read Khanh’s story"
+            lang === "vie" ? "Trọng tâm vũ trụ Zney" : "Zney Universe Center"
           }
         >
           <Sparkles size={26} />
           <span>Z</span>
         </a>
-        {nodes.map((node) => (
+        {CONSTELLATION_STARS.map((node) => (
           <a
             key={node.id}
-            href={`#/project/${node.id}`}
-            className={`constellation-node ${node.cls}`}
+            href={node.route}
+            onClick={onSelectStar}
+            className={`constellation-node node-${node.id}`}
             style={{ left: `${node.x}%`, top: `${node.y}%` }}
-            title={`${node.label} · ${node.star}`}
+            title={`${node.name[lang]} · ${node.starName}`}
           >
             <div className="star-point-wrap">
               <i />
               <span className="star-flare" />
               <span className="star-ripple" />
             </div>
-            <span>{node.label}</span>
-            <small className="node-star-name">{node.star}</small>
+            <span>{node.name[lang]}</span>
+            <small className="node-star-name">{node.starName}</small>
           </a>
         ))}
         <span className="map-coordinate coordinate-top">
-          VIRGO ♍ &nbsp; 13h 25m · -11°09′ &nbsp; | &nbsp; 10°49′ N 106°41′ E
+          CONSTELLATION ZNEY ✦ 8 CELESTIAL STATIONS · WARP READY
         </span>
         <span className="map-coordinate coordinate-bottom">
           {lang === "vie"
-            ? "CHÒM SAO XỬ NỮ · MỖI DỰ ÁN, MỘT ĐIỂM KẾT NỐI"
-            : "VIRGO CONSTELLATION · EACH PROJECT, A POINT OF CONNECTION"}
+            ? "CHÒM SAO ZNEY · MỖI MỤC LÀ MỘT VÌ SAO DU HÀNH"
+            : "ZNEY CONSTELLATION · EACH SECTION A STAR TO TRAVEL TO"}
         </span>
       </div>
     </div>
@@ -461,14 +390,51 @@ export function IntroPage({
   const [displayedHash, setDisplayedHash] = useState(
     () => window.location.hash || "#/home",
   );
-  const [transitionPhase, setTransitionPhase] =
-    useState<TransitionPhase>("idle");
   const [originAnchor, setOriginAnchor] = useState<CelestialPoint>(() =>
     getRouteAnchor(window.location.hash || "#/home"),
   );
   const [targetAnchor, setTargetAnchor] = useState<CelestialPoint>(() =>
     getRouteAnchor(window.location.hash || "#/home"),
   );
+  const [warpTransition, setWarpTransition] = useState<{
+    origin: CelestialPoint;
+    target: CelestialPoint;
+    nextHash: string;
+  } | null>(null);
+
+  // Mở đầu chòm sao trên nền đen khi mới vào máy tính
+  const [showConstellationIntro, setShowConstellationIntro] = useState<boolean>(
+    () => {
+      try {
+        if (typeof window === "undefined") return false;
+        if (!window.sessionStorage) return false;
+        if (
+          window.location.search.includes("admin") ||
+          window.location.hash === "#/workspace"
+        ) {
+          return false;
+        }
+        return !sessionStorage.getItem("zney-constellation-intro-seen");
+      } catch {
+        return false;
+      }
+    },
+  );
+  const [starmapModalOpen, setStarmapModalOpen] = useState(false);
+
+  const handleIntroComplete = () => {
+    try {
+      sessionStorage.setItem("zney-constellation-intro-seen", "true");
+    } catch {}
+    setShowConstellationIntro(false);
+    setDisplayedHash("#/story");
+    window.location.hash = "#/story";
+  };
+
+  const replayConstellationIntro = () => {
+    setShowConstellationIntro(true);
+  };
+
   const transitionTimeouts = useRef<number[]>([]);
   const displayedHashRef = useRef(displayedHash);
   displayedHashRef.current = displayedHash;
@@ -479,12 +445,8 @@ export function IntroPage({
     const currentHash = displayedHashRef.current;
     if (nextHash === currentHash) return;
 
-    transitionTimeouts.current.forEach(clearTimeout);
-    transitionTimeouts.current = [];
-
     if (pausedRef.current) {
       setDisplayedHash(nextHash);
-      setTransitionPhase("idle");
       return;
     }
 
@@ -492,25 +454,33 @@ export function IntroPage({
     const toAnchor = getRouteAnchor(nextHash);
     setOriginAnchor(fromAnchor);
     setTargetAnchor(toAnchor);
-    setTransitionPhase("collapsing");
 
-    const t1 = window.setTimeout(() => {
-      setTransitionPhase("shooting");
-      setDisplayedHash(nextHash);
-      if (!nextHash.startsWith("#/skills/")) {
+    // Kích hoạt chuyến bay phi thuyền gia tốc siêu không gian (Hyperspace Warp) đến vì sao đích đến
+    setWarpTransition({
+      origin: fromAnchor,
+      target: toAnchor,
+      nextHash,
+    });
+  };
+
+  const handleWarpArrive = () => {
+    if (!warpTransition) return;
+    const next = warpTransition.nextHash;
+    setDisplayedHash(next);
+    if (!next.startsWith("#/skills/")) {
+      root.current?.scrollTo({ top: 0, behavior: "instant" });
+    }
+  };
+
+  const handleWarpComplete = () => {
+    if (warpTransition) {
+      const next = warpTransition.nextHash;
+      setDisplayedHash(next);
+      if (!next.startsWith("#/skills/")) {
         root.current?.scrollTo({ top: 0, behavior: "instant" });
       }
-    }, 360);
-
-    const t2 = window.setTimeout(() => {
-      setTransitionPhase("expanding");
-    }, 860);
-
-    const t3 = window.setTimeout(() => {
-      setTransitionPhase("idle");
-    }, 1280);
-
-    transitionTimeouts.current = [t1, t2, t3];
+    }
+    setWarpTransition(null);
   };
 
   const readingProgress = useRef<HTMLDivElement>(null);
@@ -647,6 +617,9 @@ export function IntroPage({
           <i key={i} style={style} />
         ))}
       </div>
+      {showConstellationIntro && (
+        <ConstellationIntro lang={lang} onComplete={handleIntroComplete} />
+      )}
       {!resumeTrack && <JourneyAtmosphere chapter={page ?? journey[2]} />}
       <header className="portfolio-header">
         <a className="brand" href="#/home" aria-label="zney — Home">
@@ -672,6 +645,16 @@ export function IntroPage({
           ))}
         </nav>
         <div className="header-actions">
+          <button
+            type="button"
+            className="starmap-header-btn"
+            onClick={() => setStarmapModalOpen(true)}
+            title={t("Mở Bản đồ Chòm sao Vũ trụ", "Open Constellation Starmap")}
+            aria-label={t("Bản đồ chòm sao", "Constellation map")}
+          >
+            <Orbit size={14} />
+            <span>{t("Chòm sao", "Starmap")}</span>
+          </button>
           <button
             className="language-toggle"
             onClick={onToggleLang}
@@ -701,23 +684,59 @@ export function IntroPage({
           style={{ transform: "scaleX(0)" }}
         />
       </header>
-      <CosmicTransitionOverlay
-        phase={transitionPhase}
-        origin={originAnchor}
-        target={targetAnchor}
-      />
+      {starmapModalOpen && (
+        <div
+          className="starmap-modal-overlay"
+          onClick={(e) => {
+            if (
+              (e.target as HTMLElement).classList.contains(
+                "starmap-modal-overlay",
+              )
+            ) {
+              setStarmapModalOpen(false);
+            }
+          }}
+        >
+          <div className="starmap-modal-box">
+            <div className="starmap-modal-header">
+              <span className="starmap-modal-title">
+                <Orbit size={16} />
+                {t(
+                  "BẢN ĐỒ CHÒM SAO VŨ TRỤ · CHỌN VÌ SAO ĐỂ DU HÀNH",
+                  "CONSTELLATION STARMAP · SELECT STAR TO WARP TRAVEL",
+                )}
+              </span>
+              <button
+                type="button"
+                className="starmap-modal-close"
+                onClick={() => setStarmapModalOpen(false)}
+                aria-label={t("Đóng", "Close")}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <Constellation
+              lang={lang}
+              onSelectStar={() => setStarmapModalOpen(false)}
+            />
+          </div>
+        </div>
+      )}
+      {warpTransition && (
+        <HyperspaceWarp
+          origin={warpTransition.origin}
+          target={warpTransition.target}
+          targetName={warpTransition.target.starName}
+          durationMs={750}
+          onArrive={handleWarpArrive}
+          onComplete={handleWarpComplete}
+        />
+      )}
       <main
         id="main-content"
         ref={main}
         tabIndex={-1}
-        key={page?.id ?? displayedHash}
-        className={`route-content page-enter ${
-          transitionPhase === "collapsing"
-            ? "page-cosmic-collapse"
-            : transitionPhase === "expanding"
-              ? "page-cosmic-unfold"
-              : ""
-        }`}
+        className="route-content"
         style={
           {
             "--origin-x": `${originAnchor.x}%`,
@@ -783,6 +802,15 @@ export function IntroPage({
                         {t("Câu chuyện của mình", "The story behind it")}
                         <ArrowRight size={16} />
                       </a>
+                      <button
+                        type="button"
+                        className="text-link"
+                        onClick={replayConstellationIntro}
+                        style={{ cursor: "pointer", background: "none", border: "none", font: "inherit" }}
+                      >
+                        <Sparkles size={16} />
+                        {t("Xem lại mở đầu chòm sao", "Replay constellation intro")}
+                      </button>
                     </div>
                     <div className="hero-facts">
                       <span>HCMC, VIETNAM</span>

@@ -48,6 +48,62 @@ try {
   const { IntroPage } = await server.ssrLoadModule(
     "/src/components/IntroPage.tsx",
   );
+  const { ScrollPortfolio } = await server.ssrLoadModule(
+    "/src/components/ScrollPortfolio.tsx",
+  );
+  const { VirgoPortfolio } = await server.ssrLoadModule(
+    "/src/components/VirgoPortfolio.tsx",
+  );
+  const { VIRGO_STARS, VIRGO_SUPPORT_STARS, CAMERA_STOPS } = await server.ssrLoadModule(
+    "/src/components/VirgoScene.tsx",
+  );
+  assert.deepEqual(VIRGO_STARS.map(star => star.name), ["Spica", "Porrima", "Vindemiatrix", "Zavijava"]);
+  assert.equal(VIRGO_SUPPORT_STARS.length, 10, "The opening view should include the full supporting constellation");
+  assert.equal(new Set([...VIRGO_STARS, ...VIRGO_SUPPORT_STARS].map(star => star.position.join(","))).size, 14);
+  assert.equal(CAMERA_STOPS.length, 6);
+  for (const lang of ["vie", "eng"]) {
+    for (const hash of ["", "#/cosmos", "#/home", "#/story", "#/projects", "#/skills", "#/contact", "#/project/beatsync", "#/projects/all", "#/cv/web"]) {
+      window.location.hash = hash;
+      const html = renderToStaticMarkup(React.createElement(VirgoPortfolio, {
+        lang, onToggleLang() {}, onEnterWorkspace() {},
+      }));
+      assert.equal((html.match(/class="virgo-scroll-step"/g) || []).length, 6);
+      assert.equal((html.match(/class="virgo-overlay-panel/g) || []).length, 6);
+      assert.equal((html.match(/<h1[ >]/g) || []).length, 1);
+      assert(html.includes('class="virgo-overlay-panel virgo-cosmos"'));
+      assert(html.includes('Enter the 3D world through Zavijava') || html.includes('Chạm ngôi sao Zavijava để vào game 3D'));
+      assert(html.includes("SPICA") && html.includes("PORRIMA") && html.includes("VINDEMIATRIX") && html.includes("ZAVIJAVA"));
+      assert.equal((html.match(/class="virgo-project-link"/g) || []).length, 3);
+      assert.equal((html.match(/aria-pressed="(?:true|false)"/g) || []).length, capabilities.length);
+      assert(html.includes(`${projects.length} projects in orbit`) || html.includes(`${projects.length} vệ tinh dự án đang quay`));
+      if (hash === "#/project/beatsync") assert(html.includes(projects[0].problem[lang]));
+      if (hash === "#/projects/all") {
+        assert.equal((html.match(/class="virgo-archive"/g) || []).length, 1);
+        for (const item of projects) assert(html.includes(`href="#/project/${item.id}"`));
+      }
+      assert(!html.includes("undefined") && !html.includes("\ufffd"));
+    }
+  }
+  for (const lang of ["vie", "eng"]) {
+    for (const hash of ["", ...projects.map(p => `#/project/${p.id}`), "#/cv/web", "#/cv/mobile"]) {
+      window.location.hash = hash;
+      const html = renderToStaticMarkup(React.createElement(ScrollPortfolio, {
+        lang, onToggleLang() {}, onEnterWorkspace() {},
+      }));
+      assert.equal((html.match(/<section /g) || []).length, projects.length + 4,
+        "Each project needs its own scroll panel, alongside home, story, skills and contact");
+      assert.equal((html.match(/<h1[ >]/g) || []).length, 1);
+      for (const project of projects) {
+        assert(html.includes(`id="work-${project.id}"`));
+        assert(html.includes(`href="#/project/${project.id}"`));
+      }
+      if (hash.startsWith("#/project/")) {
+        const project = projects.find(p => hash.endsWith(`/${p.id}`));
+        assert(html.includes(project.problem[lang]), "Deep links must render project details");
+      }
+      assert(!html.includes("undefined") && !html.includes("\ufffd"));
+    }
+  }
   const { ResumeContent } = await server.ssrLoadModule(
     "/src/components/ResumePage.tsx",
   );
@@ -198,7 +254,7 @@ try {
   );
   assert(!unsafe.includes('href="javascript:') && !unsafe.includes("<script>"));
   console.log(
-    `PASS: ${rendered} bilingual route renders, ${projects.length} projects and skill links, workspace links, both CVs, and safe Markdown rendering.`,
+    `PASS: 20 Virgo scrollytelling renders, 26 scroll portfolio renders, ${rendered} legacy bilingual route renders, ${projects.length} projects and skill links, workspace links, both CVs, and safe Markdown rendering.`,
   );
 } finally {
   await server.close();

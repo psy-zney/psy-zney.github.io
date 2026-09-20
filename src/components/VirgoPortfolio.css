@@ -1,0 +1,326 @@
+.virgo-page {
+  --virgo-white: #f4f6fd;
+  --virgo-muted: #a4b1cb;
+  --virgo-line: rgba(182, 206, 255, .2);
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  background: #000;
+  color: var(--virgo-white);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: -.025em;
+  -webkit-font-smoothing: antialiased;
+  user-select: text;
+  overflow: hidden;
+}
+
+.virgo-page * { box-sizing: border-box; }
+.virgo-page a { color: inherit; text-decoration: none; }
+.virgo-page button { font: inherit; cursor: pointer; }
+.virgo-page :focus-visible { outline: 2px solid #bbd7ff; outline-offset: 5px; }
+.virgo-page h1, .virgo-page h2, .virgo-page h3, .virgo-page p { margin: 0; }
+
+.virgo-scroll {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #556788 #000;
+}
+.virgo-scroll-content { position: relative; }
+.virgo-scroll-step { height: 100dvh; }
+.virgo-canvas { position: absolute !important; inset: 0; z-index: 1; pointer-events: none !important; }
+.virgo-canvas canvas { pointer-events: none !important; }
+.virgo-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, .48) 0%, rgba(0, 0, 0, .18) 35%, transparent 72%),
+    radial-gradient(ellipse at 50% 50%, transparent 42%, rgba(0, 0, 0, .3) 100%);
+}
+
+.virgo-header {
+  position: absolute;
+  z-index: 5;
+  inset: 0 0 auto;
+  height: 78px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 clamp(26px, 5.4vw, 92px);
+  border-bottom: 1px solid var(--virgo-line);
+  background: linear-gradient(#000a, transparent);
+  transition: opacity .55s ease, visibility .55s ease;
+}
+.virgo-header-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.virgo-brand { font-size: 27px; font-weight: 760; letter-spacing: -.065em; }
+.virgo-brand span { color: #b1cfff; font-size: 14px; vertical-align: top; margin-left: 6px; }
+.virgo-header nav { display: flex; align-items: center; gap: clamp(17px, 3vw, 42px); }
+.virgo-header nav a { color: #9caac3; font-size: 12px; letter-spacing: .02em; transition: color .2s; }
+.virgo-header nav a:hover, .virgo-header nav a[aria-current] { color: #fff; }
+.virgo-header nav a[aria-current]::after { content: ""; display: block; width: 3px; height: 3px; border-radius: 50%; background: #b4d2ff; margin: 6px auto -9px; }
+.virgo-language { padding: 9px 13px; background: #ffffff0b; color: #fff; border: 1px solid var(--virgo-line); border-radius: 22px; font-size: 11px !important; }
+.virgo-skip { position: absolute; z-index: 10; top: -100px; left: 15px; padding: 12px; background: #13233a; }
+.virgo-skip:focus { top: 85px; }
+
+.virgo-overlay { position: absolute; z-index: 3; inset: 0; overflow: clip; pointer-events: none; }
+.virgo-overlay-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  visibility: hidden;
+  opacity: 0;
+  padding: 94px clamp(26px, 7vw, 115px) 84px;
+  pointer-events: none;
+}
+.virgo-overlay-panel:first-child { visibility: visible; opacity: 1; }
+.virgo-panel-content {
+  position: relative;
+  max-width: 520px;
+  width: 100%;
+  padding: clamp(22px, 2.2vw, 29px);
+  border: 1px solid rgba(218, 234, 255, .32);
+  border-radius: 25px;
+  background: linear-gradient(142deg, rgba(208, 226, 255, .15), rgba(76, 103, 155, .07) 24%, rgba(11, 20, 37, .5) 76%), rgba(7, 15, 29, .42);
+  box-shadow: 0 28px 70px #0008, inset 0 1px rgba(255, 255, 255, .27), inset 1px 0 rgba(230, 241, 255, .08);
+  backdrop-filter: blur(20px) saturate(145%);
+  -webkit-backdrop-filter: blur(20px) saturate(145%);
+  pointer-events: none;
+}
+.virgo-panel-content::before {
+  content: "";
+  position: absolute;
+  inset: 1px 1px auto;
+  height: 40%;
+  border-radius: 24px 24px 45% 45%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .08), transparent);
+  pointer-events: none;
+}
+.virgo-hero .virgo-panel-content { max-width: 470px; }
+.virgo-kicker { color: #a8c6f3; font-size: 11px; font-weight: 620; letter-spacing: .2em; line-height: 1.6; text-transform: uppercase; }
+.virgo-overlay h1, .virgo-overlay h2 {
+  margin: 25px 0 23px;
+  font-size: clamp(46px, 5.8vw, 90px);
+  line-height: 1.04;
+  font-weight: 620;
+  letter-spacing: -.065em;
+  text-wrap: balance;
+}
+.virgo-overlay h2 { font-size: clamp(43px, 5vw, 74px); }
+.virgo-hero h1 { font-size: clamp(46px, 4.5vw, 68px); }
+.virgo-overlay em { color: #aac8f4; font-style: normal; }
+.virgo-description { max-width: 490px; color: var(--virgo-muted); font-size: clamp(16px, 1.3vw, 19px); line-height: 1.7; }
+.virgo-aside { margin-top: 26px !important; padding-top: 18px; border-top: 1px solid var(--virgo-line); color: #8191ad; font-size: 12px; }
+.virgo-scroll-hint { display: inline-flex; align-items: center; gap: 12px; margin-top: 40px; color: #c2cee0; font-size: 12px; }
+
+/* Only actual controls reclaim pointer events; the overlay never blocks wheel input. */
+.virgo-overlay a, .virgo-overlay button { pointer-events: auto; }
+.virgo-projects-list { max-width: 540px; margin: 24px 0 20px; border-top: 1px solid var(--virgo-line); }
+.virgo-project-link, .virgo-archive a {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 80px 18px;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--virgo-line);
+  min-height: 64px;
+  transition: padding-left .2s, color .2s;
+}
+.virgo-project-link:hover, .virgo-archive a:hover { color: #b7d6ff; padding-left: 6px; }
+.virgo-project-link span, .virgo-archive a span { color: #8396b6; font-size: 10px; }
+.virgo-project-link .virgo-row-star, .virgo-archive .virgo-row-star { color: var(--star-color); font-size: 15px; text-shadow: 0 0 9px var(--star-color); }
+.virgo-project-link strong, .virgo-archive a strong { font-size: 16px; font-weight: 530; }
+.virgo-project-link small, .virgo-archive a small { color: #8696b2; font-size: 10px; text-transform: uppercase; }
+.virgo-more { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; color: #bfd6f9 !important; font-size: 12px; }
+.virgo-orbit-caption { min-height: 19px; color: #8193b3; font-size: 10px; letter-spacing: .11em; text-transform: uppercase; }
+.virgo-skill-list { max-width: 520px; margin-top: 27px; border-top: 1px solid var(--virgo-line); }
+.virgo-skills-panel .virgo-panel-content { padding-top: 25px; padding-bottom: 24px; }
+.virgo-skills-panel h2 { font-size: clamp(40px, 4.5vw, 65px); margin: 16px 0 !important; }
+.virgo-skills-panel .virgo-skill-list { margin-top: 18px; }
+.virgo-skill-list button {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  width: 100%;
+  min-height: 39px;
+  padding: 7px 0;
+  text-align: left;
+  color: #afbdd4;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--virgo-line);
+  font-size: 14px;
+  pointer-events: auto;
+  transition: color .2s, padding-left .25s;
+}
+.virgo-skill-list button:hover, .virgo-skill-list button[aria-pressed="true"] { color: #f4f6ff; padding-left: 6px; }
+.virgo-skill-list .virgo-row-star { color: #a8b9fc; font-size: 14px; text-shadow: 0 0 9px #8298f5; }
+.virgo-skill-detail { min-height: 38px; margin-top: 10px !important; color: #99abc9; font-size: 12px; line-height: 1.55; }
+.virgo-email { display: inline-flex; align-items: center; gap: 14px; padding-bottom: 9px; border-bottom: 1px solid #b3ccf266; font-size: clamp(16px, 1.65vw, 23px); }
+.virgo-contact-links { display: flex; flex-wrap: wrap; gap: 17px 27px; margin-top: 30px; }
+.virgo-contact-links a { display: inline-flex; gap: 7px; align-items: center; min-height: 32px; color: #bdcce4; font-size: 12px; }
+.virgo-workspace { display: inline-flex; align-items: center; gap: 12px; margin-top: 38px; padding: 12px 16px; color: #e9f0fd; background: #a4c5ff0d; border: 1px solid var(--virgo-line); border-radius: 32px; font-size: 12px !important; }
+.virgo-workspace:hover { background: #a4c5ff1c; }
+.virgo-opening-cue {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  bottom: 35px;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  color: #d6e5ff;
+  border: 1px solid #dbeaff55;
+  border-radius: 50%;
+  background: #bdcff218;
+  backdrop-filter: blur(14px);
+  transform: translateX(-50%) translateY(10px);
+  opacity: 0;
+  transition: opacity .5s, transform .5s;
+  pointer-events: none;
+}
+.virgo-opening-cue.is-active { opacity: 1; transform: translateX(-50%) translateY(0); }
+.virgo-star-portal {
+  position: absolute;
+  z-index: 4;
+  display: none;
+  place-items: center;
+  width: 86px;
+  height: 86px;
+  padding: 0;
+  color: #e8f3ff;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  transform: translate(-50%, -50%) scale(.8);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .4s, transform .4s, visibility .4s;
+}
+.virgo-star-portal.is-active { display: grid; opacity: 1; visibility: visible; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+.virgo-portal-ring {
+  width: 76px;
+  height: 76px;
+  border: 1px solid #c8dbff88;
+  border-radius: 50%;
+  box-shadow: 0 0 25px #a7cfff44, inset 0 0 18px #b9d8ff22;
+  animation: virgo-portal-pulse 3s ease-in-out infinite;
+}
+.virgo-portal-label {
+  position: absolute;
+  top: calc(100% + 4px);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  white-space: nowrap;
+  font-size: 11px;
+  letter-spacing: .06em;
+  border: 1px solid #d3e4ff66;
+  border-radius: 25px;
+  background: #0e1b30bb;
+  backdrop-filter: blur(15px);
+}
+.virgo-star-portal:hover .virgo-portal-ring, .virgo-star-portal:focus-visible .virgo-portal-ring { border-color: #fff; box-shadow: 0 0 38px #b8daff88, inset 0 0 20px #d9e8ff33; }
+@keyframes virgo-portal-pulse { 50% { box-shadow: 0 0 38px #a7cfff77, inset 0 0 24px #b9d8ff44; } }
+.virgo-is-opening .virgo-index, .virgo-is-opening .virgo-station { visibility: hidden; }
+.virgo-index, .virgo-station { position: absolute; z-index: 3; bottom: 30px; color: #8799b6; pointer-events: none; font-size: 10px; letter-spacing: .17em; }
+.virgo-index { left: clamp(26px, 5.4vw, 92px); }.virgo-index span { color: #e0edff; }
+.virgo-station { right: clamp(26px, 5.4vw, 92px); }
+
+.virgo-dialog {
+  position: fixed;
+  inset: 0;
+  width: min(900px, calc(100% - 30px));
+  max-height: 90dvh;
+  margin: auto;
+  padding: 0;
+  color: #f0f5ff;
+  background: #0a1221;
+  border: 1px solid #aec8f83d;
+  border-radius: 18px;
+  box-shadow: 0 35px 120px #000b;
+  overscroll-behavior: contain;
+}
+.virgo-dialog::backdrop { background: #000c; backdrop-filter: blur(9px); }
+.virgo-dialog-inner { position: relative; padding: clamp(30px, 6vw, 72px); }
+.virgo-close { position: sticky; top: 4px; z-index: 6; float: right; display: grid; place-items: center; width: 40px; height: 40px; margin: -20px -20px 0 0; color: #fff; background: #24344a; border: 1px solid #b9d1ff42; border-radius: 50%; }
+.virgo-dialog h2 { font-size: clamp(34px, 4vw, 56px); line-height: 1.05; letter-spacing: -.05em; margin: 15px 0 22px; }
+.virgo-archive { margin-top: 30px; border-top: 1px solid var(--virgo-line); }
+.virgo-detail { max-width: 720px; }
+.virgo-detail-headline { font-size: 23px !important; color: #dce9fc !important; }
+.virgo-detail p, .virgo-detail li { color: #aab9d2; font-size: 15px; line-height: 1.78; margin: 12px 0; }
+.virgo-detail h3 { margin: 31px 0 7px; font-size: 17px; font-weight: 600; }
+.virgo-detail ul { padding-left: 20px; }.virgo-detail li { padding-left: 5px; }
+.virgo-detail-note { border-left: 2px solid #92aed9; padding-left: 18px; }
+.virgo-stack { display: flex; flex-wrap: wrap; gap: 8px; margin: 25px 0; }
+.virgo-stack span { border: 1px solid var(--virgo-line); padding: 6px 9px; border-radius: 5px; color: #bbcae0; font-size: 11px; }
+.virgo-detail-links { display: flex; gap: 24px; flex-wrap: wrap; }
+.virgo-detail-links a { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; min-height: 40px; }
+.virgo-dialog .resume-toolbar, .virgo-dialog .resume-toolbar>div { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.virgo-dialog .resume-toolbar { margin: 10px 0 25px; font-size: 12px; }
+.virgo-dialog .resume-toolbar a, .virgo-dialog .resume-toolbar button { display: inline-flex; align-items: center; gap: 6px; }
+.virgo-dialog .resume-toolbar button { padding: 8px; color: #fff; background: #1d2b43; border: 1px solid var(--virgo-line); border-radius: 5px; }
+.virgo-dialog .resume-language-note { color: #9eb0cd; font-size: 12px; margin-bottom: 15px; }
+.virgo-dialog .resume-paper { font-size: 14px; line-height: 1.7; }.virgo-dialog .resume-paper h1 { font-size: 32px; }.virgo-dialog .resume-paper h2 { font-size: 21px; margin: 25px 0 10px; }
+.virgo-dialog .resume-paper a { color: #a8ceff; text-decoration: underline; }.virgo-dialog .resume-paper table { width: 100%; border-collapse: collapse; }.virgo-dialog .resume-paper td, .virgo-dialog .resume-paper th { padding: 7px; border-bottom: 1px solid var(--virgo-line); text-align: left; }
+
+@media (max-width: 700px) {
+  .virgo-header { height: 64px; padding: 0 22px; }
+  .virgo-brand { font-size: 24px; }
+  .virgo-header nav { gap: 15px; }
+  .virgo-header nav a { font-size: 10px; }
+  .virgo-header nav a:first-child { display: none; }
+  .virgo-language { padding: 7px 9px; }
+  .virgo-vignette { background: linear-gradient(#0004 0%, transparent 28%, #0009 57%, #000 100%); }
+  .virgo-overlay-panel { align-items: flex-end; padding: 90px 26px 85px; }
+  .virgo-panel-content { max-width: 100%; padding: 18px; border-radius: 18px; backdrop-filter: blur(15px) saturate(140%); -webkit-backdrop-filter: blur(15px) saturate(140%); }
+  .virgo-overlay h1, .virgo-overlay h2 { font-size: clamp(35px, 9vw, 49px); margin: 13px 0; }
+  .virgo-skills-panel h2 { font-size: clamp(35px, 9vw, 49px); }
+  .virgo-kicker { font-size: 9px; }
+  .virgo-description { font-size: 14px; line-height: 1.55; max-width: 350px; }
+  .virgo-aside { font-size: 10px; margin-top: 15px !important; padding-top: 12px; }
+  .virgo-scroll-hint { margin-top: 20px; }
+  .virgo-projects-list { margin: 13px 0 7px; }
+  .virgo-project-link { min-height: 48px; grid-template-columns: 23px minmax(0, 1fr) 17px; gap: 6px; }
+  .virgo-project-link small { display: none; }
+  .virgo-project-link strong { font-size: 13px; }
+  .virgo-more { font-size: 11px; min-height: 34px; }
+  .virgo-skill-list { margin-top: 12px; }
+  .virgo-skill-list button { font-size: 12px; min-height: 38px; }
+  .virgo-skill-detail { font-size: 11px; min-height: 32px; margin-top: 9px !important; }
+  .virgo-email { font-size: 15px; gap: 7px; }
+  .virgo-contact-links { margin-top: 22px; gap: 7px 22px; }
+  .virgo-contact-links a { font-size: 11px; }
+  .virgo-workspace { margin-top: 20px; }
+  .virgo-portal-label { top: auto; bottom: calc(100% + 5px); }
+  .virgo-opening-cue { bottom: 25px; }
+  .virgo-index, .virgo-station { bottom: 22px; font-size: 9px; }
+  .virgo-index { left: 25px; }.virgo-station { right: 25px; }
+  .virgo-dialog { width: calc(100% - 14px); max-height: 95dvh; border-radius: 12px; }
+  .virgo-dialog-inner { padding: 58px 22px 30px; }.virgo-close { margin-top: -40px; margin-right: -8px; }
+  .virgo-archive a { grid-template-columns: 24px minmax(0, 1fr) 17px; gap: 8px; }.virgo-archive small { display: none; }
+  .virgo-dialog .resume-paper table { font-size: 11px; overflow-wrap: anywhere; }
+}
+
+@media (max-height: 600px) and (min-width: 701px) {
+  .virgo-overlay h1, .virgo-overlay h2 { font-size: 48px; }
+  .virgo-description { font-size: 15px; }.virgo-project-link { min-height: 49px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .virgo-page *, .virgo-page *::before, .virgo-page *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+@media print {
+  .virgo-scroll, .virgo-canvas, .virgo-vignette, .virgo-header, .virgo-overlay, .virgo-index, .virgo-station, .virgo-close, .virgo-dialog .resume-toolbar, .virgo-dialog .resume-language-note { display: none !important; }
+  .virgo-page, .app-shell, html, body, #root { background: #fff !important; height: auto !important; overflow: visible !important; }
+  .virgo-dialog[open] { position: static; display: block; max-height: none; width: 100%; background: white; color: #171d2b; border: 0; box-shadow: none; }
+  .virgo-dialog-inner { padding: 0; }.virgo-dialog .resume-paper { font-size: 10pt; }
+}

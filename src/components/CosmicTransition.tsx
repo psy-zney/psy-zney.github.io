@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { type CSSProperties } from "react";
 import "./CosmicTransition.css";
 
 export interface CelestialPoint {
@@ -7,30 +7,40 @@ export interface CelestialPoint {
   starName?: string;
 }
 
-// Celestial anchors mapped from the Virgo constellation & hero map
+// 8 Celestial anchors mapped from the user's real constellation
 export const routeAnchors: Record<string, CelestialPoint> = {
-  "#/home": { x: 50, y: 48, starName: "Tâm Z / Core" },
-  "#/story": { x: 50, y: 26, starName: "γ Porrima" },
-  "#/projects": { x: 48, y: 78, starName: "α Spica" },
-  "#/project/beatsync": { x: 48, y: 78, starName: "α Spica" },
-  "#/project/sentinellan": { x: 50, y: 26, starName: "γ Porrima" },
-  "#/project/chemistry-lab": { x: 81, y: 15, starName: "ε Vindemiatrix" },
-  "#/project/cloud-pos": { x: 67, y: 23, starName: "δ Minelauva" },
-  "#/project/study-cabin": { x: 18, y: 16, starName: "β Zavijava" },
-  "#/project/mandy-crimson": { x: 33, y: 25, starName: "η Zaniah" },
-  "#/project/backup-data": { x: 25, y: 56, starName: "θ Vir" },
-  "#/project/security-core": { x: 73, y: 54, starName: "ζ Heze" },
-  "#/project/luckyfood": { x: 74, y: 70, starName: "ι Syrma" },
-  "#/project/micro4nerds": { x: 86, y: 84, starName: "μ Rijl al Awwa" },
-  "#/skills": { x: 73, y: 54, starName: "ζ Heze" },
-  "#/skills/interfaces": { x: 67, y: 23, starName: "δ Minelauva" },
-  "#/skills/systems": { x: 50, y: 26, starName: "γ Porrima" },
-  "#/skills/mobile": { x: 74, y: 70, starName: "ι Syrma" },
-  "#/skills/simulation": { x: 81, y: 15, starName: "ε Vindemiatrix" },
-  "#/skills/delivery": { x: 48, y: 78, starName: "α Spica" },
-  "#/contact": { x: 80, y: 75, starName: "ι Syrma" },
-  "#/cv/web": { x: 48, y: 78, starName: "α Spica" },
-  "#/cv/mobile": { x: 74, y: 70, starName: "ι Syrma" },
+  // Star 1 (A: 36.5, 26.5) - Giới thiệu & Khởi nguyên
+  "#/story": { x: 36.5, y: 26.5, starName: "α Zney (Khởi nguồn / Story)" },
+
+  // Star 2 (B: 49.6, 14.3) - Kho Dự Án
+  "#/projects": { x: 49.6, y: 14.3, starName: "β Polaris (Kho Dự Án)" },
+
+  // Star 3 (C: 36.3, 45.5) - Kỹ Năng & Năng Lực
+  "#/skills": { x: 36.3, y: 45.5, starName: "γ Rigel (Kỹ Năng & Năng Lực)" },
+  "#/skills/interfaces": { x: 36.3, y: 45.5, starName: "γ Rigel (Giao diện)" },
+  "#/skills/systems": { x: 53.2, y: 68.4, starName: "η Antares (Hệ thống)" },
+  "#/skills/mobile": { x: 73.6, y: 62.1, starName: "ζ Betelgeuse (Mobile)" },
+  "#/skills/delivery": { x: 75.1, y: 31.4, starName: "ε Sirius (Triển khai)" },
+
+  // Star 4 (D: 58.9, 47.8) - Tâm Vũ Trụ & Trang Chủ
+  "#/home": { x: 58.9, y: 47.8, starName: "δ Vega (Tâm Vũ Trụ / Home)" },
+
+  // Star 5 (E: 75.1, 31.4) - Web Applications
+  "#/project/cloud-pos": { x: 75.1, y: 31.4, starName: "ε Sirius (Cloud POS)" },
+  "#/project/mandy-crimson": { x: 75.1, y: 31.4, starName: "ε Sirius (Mandy Crimson)" },
+  "#/cv/web": { x: 75.1, y: 31.4, starName: "ε Sirius (Web Full-Stack CV)" },
+
+  // Star 6 (F: 73.6, 62.1) - Mobile Applications
+  "#/project/luckyfood": { x: 73.6, y: 62.1, starName: "ζ Betelgeuse (LuckyFood)" },
+  "#/project/micro4nerds": { x: 73.6, y: 62.1, starName: "ζ Betelgeuse (Micro4Nerds)" },
+  "#/cv/mobile": { x: 73.6, y: 62.1, starName: "ζ Betelgeuse (Mobile CV)" },
+
+  // Star 7 (G: 53.2, 68.4) - Systems & Realtime
+  "#/project/security-core": { x: 53.2, y: 68.4, starName: "η Antares (Security Core)" },
+  "#/project/beatsync": { x: 53.2, y: 68.4, starName: "η Antares (BeatSync Realtime)" },
+
+  // Star 8 (H: 39.7, 79.3) - Kết Nối & Liên Hệ
+  "#/contact": { x: 39.7, y: 79.3, starName: "θ Altair (Kết nối & Liên hệ)" },
 };
 
 export function getRouteAnchor(route: string): CelestialPoint {
@@ -38,12 +48,12 @@ export function getRouteAnchor(route: string): CelestialPoint {
   if (route.startsWith("#/project/")) {
     const id = route.replace("#/project/", "");
     if (routeAnchors[`#/project/${id}`]) return routeAnchors[`#/project/${id}`];
-    return { x: 50, y: 48, starName: "Chòm sao Xử Nữ" };
+    return { x: 49.6, y: 14.3, starName: "Kho Dự Án" };
   }
   if (route.startsWith("#/skills/")) {
-    return { x: 70, y: 54, starName: "ζ Heze" };
+    return { x: 36.3, y: 45.5, starName: "Kỹ Năng & Năng Lực" };
   }
-  return { x: 50, y: 48, starName: "Tâm Z" };
+  return { x: 58.9, y: 47.8, starName: "Tâm Vũ Trụ" };
 }
 
 export type TransitionPhase = "idle" | "collapsing" | "shooting" | "expanding";
@@ -56,64 +66,26 @@ interface CosmicTransitionProps {
 
 export function CosmicTransitionOverlay({
   phase,
-  origin,
   target,
 }: CosmicTransitionProps) {
   if (phase === "idle") return null;
 
-  // Calculate the flight angle for the comet tail
-  const dx = target.x - origin.x;
-  const dy = target.y - origin.y;
-  // Comet tail should point opposite to direction of travel
-  const angleRad = Math.atan2(dy, dx);
-  const tailAngleDeg = (angleRad * 180) / Math.PI + 180;
-
   return (
     <div
-      className="cosmic-transition-overlay"
+      className={`cosmic-transition-overlay phase-${phase}`}
       aria-hidden="true"
       style={
         {
-          "--origin-x": `${origin.x}%`,
-          "--origin-y": `${origin.y}%`,
           "--target-x": `${target.x}%`,
           "--target-y": `${target.y}%`,
-          "--comet-angle": `${tailAngleDeg}deg`,
         } as CSSProperties
       }
     >
-      {/* Phase 1: Black Hole Collapse */}
-      {phase === "collapsing" && <div className="black-hole-vortex" />}
+      {/* Tia sáng starlight thanh tú lướt nhanh qua đỉnh trang */}
+      <div className="cosmic-starlight-streamer" />
 
-      {/* Phase 2: Comet Transit with Particle Tail & Warp Rays */}
-      {phase === "shooting" && (
-        <>
-          <div className="cosmic-warp-field">
-            {Array.from({ length: 14 }, (_, i) => (
-              <span
-                key={i}
-                className="warp-ray"
-                style={
-                  {
-                    left: `${(i * 17) % 95}%`,
-                    top: `${(i * 29) % 92}%`,
-                    width: `${40 + ((i * 37) % 120)}px`,
-                    transform: `rotate(${tailAngleDeg - 180}deg)`,
-                    opacity: 0.4 + (i % 3) * 0.25,
-                  } as CSSProperties
-                }
-              />
-            ))}
-          </div>
-          <div className="comet-transit-flight">
-            <div className="comet-nucleus" />
-            <div className="comet-tail" />
-          </div>
-        </>
-      )}
-
-      {/* Phase 3: White Hole Supernova Unfold Burst */}
-      {phase === "expanding" && <div className="white-hole-supernova" />}
+      {/* Vầng sáng starlight nhẹ dịu tỏa ra tại tọa độ vì sao đích đến */}
+      <div className="cosmic-celestial-shimmer" />
     </div>
   );
 }

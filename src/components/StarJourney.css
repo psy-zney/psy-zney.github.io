@@ -163,6 +163,8 @@
   letter-spacing: -0.045em;
   margin-block: 20px;
   text-wrap: balance;
+  color: #ffffff;
+  text-shadow: 0 0 25px rgba(255, 255, 255, 0.12);
 }
 .chapter-description {
   color: #b4bdcb;

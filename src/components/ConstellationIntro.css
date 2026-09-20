@@ -1,0 +1,260 @@
+/* Root Fullscreen Black Container */
+.constellation-intro-root {
+  position: fixed;
+  inset: 0;
+  z-index: 99990;
+  background-color: #000000;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  user-select: none;
+  transition: opacity 0.5s ease;
+}
+
+/* SVG Space Canvas */
+.space-canvas-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: 900px;
+  max-height: 900px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.constellation-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Star Nodes Animation */
+.star-node {
+  opacity: 0;
+  transform-origin: center;
+}
+
+.star-node.star-ignited {
+  animation: star-ignite-flare 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.star-node.star-clickable {
+  cursor: pointer;
+}
+
+/* Ngôi sao tròn đều, thon gọn, không viền xanh */
+.star-core {
+  fill: #ffffff;
+  filter: drop-shadow(0 0 2px #ffffff) drop-shadow(0 0 4.5px rgba(255, 255, 255, 0.75));
+}
+
+.origin-star .star-core {
+  fill: #ffffff;
+  filter: drop-shadow(0 0 2.5px #ffffff) drop-shadow(0 0 7px rgba(255, 255, 255, 0.9));
+}
+
+/* Đường nối thu nhỏ lại, thanh mảnh, màu trắng tinh khiết */
+.line-segment {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 0.17;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.75));
+  stroke-dasharray: 120;
+  stroke-dashoffset: 120;
+}
+
+/* Kích hoạt vẽ tuần tự từ 2s -> 4.8s */
+.constellation-lines.is-drawing .line-1 {
+  animation: draw-line-segment 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.05s forwards;
+}
+
+.constellation-lines.is-drawing .line-2 {
+  animation: draw-line-segment 0.9s cubic-bezier(0.4, 0, 0.2, 1) 0.5s forwards;
+}
+
+.constellation-lines.is-drawing .line-3 {
+  animation: draw-line-segment 0.5s cubic-bezier(0.4, 0, 0.2, 1) 1.35s forwards;
+}
+
+.constellation-lines.is-drawing .line-4 {
+  animation: draw-line-segment 0.55s cubic-bezier(0.4, 0, 0.2, 1) 1.8s forwards;
+}
+
+.constellation-lines.is-drawing .line-5 {
+  animation: draw-line-segment 0.55s cubic-bezier(0.4, 0, 0.2, 1) 1.95s forwards;
+}
+
+.constellation-lines.is-drawing .line-6 {
+  animation: draw-line-segment 0.55s cubic-bezier(0.4, 0, 0.2, 1) 2.1s forwards;
+}
+
+.constellation-lines.is-drawing .line-7 {
+  animation: draw-line-segment 0.55s cubic-bezier(0.4, 0, 0.2, 1) 2.6s forwards;
+}
+
+/* Start Anchor Container tại Star 1 (36.5%, 26.5%) */
+.start-anchor-container {
+  position: absolute;
+  z-index: 50;
+  pointer-events: none;
+  animation: start-fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Chữ start thuần túy không khung, không chấm, chỉ là text trắng phát sáng cạnh vì sao */
+.start-btn-trigger {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-124%, -50%);
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  background: none;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  padding: 0;
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: lowercase;
+  cursor: pointer;
+  white-space: nowrap;
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.75);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.start-btn-trigger:hover,
+.start-btn-trigger:focus,
+.start-btn-trigger:focus-visible {
+  background: none;
+  border: none;
+  outline: none !important;
+  box-shadow: none !important;
+  color: #ffffff;
+  transform: translate(-124%, -50%) scale(1.12);
+  text-shadow: 0 0 12px rgba(255, 255, 255, 1);
+}
+
+.start-btn-trigger:active {
+  transform: translate(-124%, -50%) scale(0.95);
+}
+
+.start-label {
+  font-weight: 500;
+  color: #ffffff;
+  letter-spacing: 0.1em;
+}
+
+/* Nút bỏ qua >> nhỏ gọn, màu trắng, không khung */
+.intro-skip-btn {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  color: rgba(255, 255, 255, 0.65);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.intro-skip-btn:hover,
+.intro-skip-btn:focus,
+.intro-skip-btn:focus-visible {
+  outline: none !important;
+  color: #ffffff;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+}
+
+/* HUD Footer: font gọn hơn, nhỏ hơn, màu trắng */
+.intro-hud-footer {
+  position: absolute;
+  bottom: 18px;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  pointer-events: none;
+}
+
+.hud-code {
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+}
+
+.hud-status {
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+}
+
+/* Animations */
+@keyframes star-ignite-flare {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes draw-line-segment {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes start-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes beacon-expand {
+  0% {
+    width: 14px;
+    height: 14px;
+    opacity: 0.8;
+  }
+  100% {
+    width: 50px;
+    height: 50px;
+    opacity: 0;
+  }
+}
