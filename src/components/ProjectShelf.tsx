@@ -46,10 +46,11 @@ export function ProjectShelf({
           }
         }
       }}
-      className="bg-[#0d1625] border border-slate-600 rounded-2xl p-6 max-w-2xl w-full mx-4 shadow-2xl text-slate-100 max-h-[85vh] overflow-y-auto"
+      className="workspace-dialog workspace-shelf-dialog bg-[#0d1625] border border-slate-600 rounded-2xl p-6 max-w-2xl w-full mx-4 shadow-2xl text-slate-100 max-h-[85vh] overflow-y-auto"
     >
-      <div className="flex items-start justify-between gap-5 border-b border-slate-700 pb-5 mb-5">
+      <div className="workspace-shelf-header flex items-start justify-between gap-5 border-b border-slate-700 pb-5 mb-5">
         <div>
+          <span className="workspace-dialog-kicker">ARCHIVE / PROJECT SIGNALS</span>
           <BookOpen className="text-amber-200 mb-3" size={25} />
           <h2 id="shelf-title" className="text-xl">
             {t(
@@ -67,14 +68,14 @@ export function ProjectShelf({
         <button
           onClick={onClose}
           aria-label={t("Đóng dự án", "Close projects")}
-          className="p-3 hover:bg-slate-800 rounded-lg"
+          className="workspace-dialog-close p-3 hover:bg-slate-800 rounded-lg"
         >
           <X size={20} />
         </button>
       </div>
-      <div className="divide-y divide-slate-700">
+      <div className="workspace-shelf-list divide-y divide-slate-700">
         {projects.map((project) => (
-          <div key={project.id} className="py-5">
+          <div key={project.id} className="workspace-shelf-item py-5">
             <a
               href={`#/project/${project.id}`}
               className="block group focus-visible:outline focus-visible:outline-amber-200"

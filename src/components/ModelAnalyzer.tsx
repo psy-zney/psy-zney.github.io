@@ -28,32 +28,49 @@ import {
   MessageCircle
 } from 'lucide-react';
 
+import './WorkspaceHUD.css';
+
 export type ItemType = 'paper' | 'lanyard' | 'bookshelf' | 'screen';
 
-const ITEM_CONFIG: Record<ItemType, { title: string; buttonText: string; color: string; bgGlow: string }> = {
+const ITEM_CONFIG: Record<ItemType, {
+  title: { vie: string; eng: string };
+  buttonText: { vie: string; eng: string };
+  index: string;
+  coord: string;
+  color: string;
+  bgGlow: string;
+}> = {
   paper: {
-    title: '📄 Curriculum Vitae (A4 Paper)',
-    buttonText: 'CV',
-    color: '#38bdf8', // Neon Cyan
-    bgGlow: 'rgba(56, 189, 248, 0.25)'
+    title: { vie: 'Hồ sơ năng lực', eng: 'Curriculum Vitae' },
+    buttonText: { vie: 'Hồ sơ', eng: 'CV Dossier' },
+    index: '01',
+    coord: 'RA 13h 25m',
+    color: '#7dd3fc',
+    bgGlow: 'rgba(56, 189, 248, 0.35)'
   },
   lanyard: {
-    title: '🪪 Developer Info & Socials',
-    buttonText: 'Info',
-    color: '#f59e0b', // Neon Amber Gold
-    bgGlow: 'rgba(245, 158, 11, 0.25)'
+    title: { vie: 'Danh tính & kết nối', eng: 'Identity & Signals' },
+    buttonText: { vie: 'Danh thiếp', eng: 'Identity' },
+    index: '02',
+    coord: 'DEC -11° 09\'',
+    color: '#fde047',
+    bgGlow: 'rgba(253, 224, 71, 0.35)'
   },
   bookshelf: {
-    title: '📚 Open Source Projects & Repos',
-    buttonText: 'Projects', // Concise, professional agency term for the bookshelf
-    color: '#2f4786ff', // Soft Neon Purple
-    bgGlow: 'rgba(192, 132, 252, 0.25)'
+    title: { vie: 'Kho lưu trữ dự án', eng: 'Project Archive' },
+    buttonText: { vie: 'Kho dự án', eng: 'Archive' },
+    index: '03',
+    coord: 'MAG +0.98',
+    color: '#a7f3d0',
+    bgGlow: 'rgba(52, 211, 153, 0.35)'
   },
   screen: {
-    title: 'Interactive desktop',
-    buttonText: 'Screen',
-    color: '#8b5cf6',
-    bgGlow: 'rgba(139, 92, 246, 0.28)'
+    title: { vie: 'Đài quan sát & Máy trạm', eng: 'Orbital Terminal' },
+    buttonText: { vie: 'Máy trạm', eng: 'Terminal' },
+    index: '04',
+    coord: 'SPICA // 04',
+    color: '#93c5fd',
+    bgGlow: 'rgba(147, 197, 253, 0.4)'
   }
 };
 
@@ -415,9 +432,10 @@ interface ModelContentProps {
   onSelectItem: (item: ItemType) => void;
   activeModal: ItemType | null;
   interactionsDisabled: boolean;
+  lang: 'vie' | 'eng';
 }
 
-function ModelContent({ hoveredItem, onHoverItem, onHoverObject, onSelectItem, activeModal, interactionsDisabled }: ModelContentProps) {
+function ModelContent({ hoveredItem, onHoverItem, onHoverObject, onSelectItem, activeModal, interactionsDisabled, lang }: ModelContentProps) {
   const gltf = useGLTF('./model/main.glb');
   const modelGroupRef = useRef<THREE.Group>(null);
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -744,7 +762,8 @@ function ModelContent({ hoveredItem, onHoverItem, onHoverObject, onSelectItem, a
             distanceFactor={key === 'screen' ? 5 : 12}
             zIndexRange={[100, 0]}
           >
-            <div
+            <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onSelectItem(key);
@@ -757,30 +776,17 @@ function ModelContent({ hoveredItem, onHoverItem, onHoverObject, onSelectItem, a
                 onHoverItem(null);
                 document.body.style.cursor = 'grab';
               }}
-              className={`flex items-center rounded-md font-sans font-semibold transition-all duration-200 cursor-pointer select-none whitespace-nowrap backdrop-blur-md border shadow-md ${key === 'screen' ? 'gap-1 px-1 py-px text-[8px]' : 'gap-1.5 px-2.5 py-1 text-[11px]'} ${isHovered
-                ? 'scale-105 opacity-100 ring-1 ring-white/30'
-                : 'scale-100 opacity-80 hover:opacity-100'
-                }`}
+              className={`workspace-hotspot${isHovered ? ' is-active' : ''}${key === 'screen' ? ' is-screen' : ''}`}
               style={{
-                backgroundColor: isHovered ? 'rgba(15, 23, 42, 0.92)' : 'rgba(15, 23, 42, 0.75)',
-                borderColor: isHovered ? config.color : 'rgba(255, 255, 255, 0.15)',
-                color: '#f8fafc',
-                boxShadow: isHovered ? `0 0 15px ${config.bgGlow}` : `0 2px 6px rgba(0,0,0,0.4)`
-              }}
+                '--hotspot-color': config.color,
+                '--hotspot-glow': config.bgGlow,
+              } as React.CSSProperties}
+              aria-label={config.title[lang]}
             >
-              <span className="relative flex h-2 w-2 shrink-0">
-                <span
-                  className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-                  style={{ backgroundColor: config.color }}
-                />
-                <span
-                  className="relative inline-flex rounded-full h-2 w-2"
-                  style={{ backgroundColor: config.color }}
-                />
-              </span>
-
-              <span className="tracking-wide">{config.buttonText}</span>
-            </div>
+              <span className="workspace-hotspot-signal" aria-hidden="true"><i /></span>
+              <span className="workspace-hotspot-index">{config.index}</span>
+              <strong>{config.buttonText[lang]}</strong>
+            </button>
           </Html>
         );
       })}
@@ -826,7 +832,7 @@ function ModalCV({ onClose }: { onClose: () => void }) {
   }, [filePath]);
 
   return (
-    <div className="bg-[#111622]/95 border border-sky-500/40 rounded-2xl max-w-5xl w-full mx-4 shadow-[0_0_60px_rgba(56,189,248,0.25)] backdrop-blur-2xl text-slate-100 animate-in fade-in zoom-in duration-200 h-[88vh] flex flex-col overflow-hidden">
+    <div className="workspace-dialog workspace-cv-dialog bg-[#111622]/95 border border-sky-500/40 rounded-2xl max-w-5xl w-full mx-4 shadow-[0_0_60px_rgba(56,189,248,0.25)] backdrop-blur-2xl text-slate-100 animate-in fade-in zoom-in duration-200 h-[88vh] flex flex-col overflow-hidden">
       {/* Header Bar */}
       <div className="flex justify-between items-center px-6 py-4 bg-[#161b26] border-b border-sky-500/20 shrink-0 flex-wrap gap-3">
         <div className="flex items-center gap-3">
@@ -951,7 +957,7 @@ function ModalLanyard({ onClose }: { onClose: () => void }) {
   ];
 
   return (
-    <div className="relative flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300 w-full max-w-md mx-auto select-none">
+    <div className="workspace-dialog workspace-lanyard-dialog relative flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300 w-full max-w-md mx-auto select-none">
       {/* Top Header: Minimalist // social links + round Close X button */}
       <div className="w-[340px] sm:w-[370px] flex items-center justify-between mb-4 px-2">
         <span className="font-mono text-sm text-slate-300 tracking-wider">// social links • lê quang khánh</span>
@@ -1413,14 +1419,28 @@ export function ModelAnalyzer({ onBackToIntro, lang = 'eng', loadingAudioBlocked
     >
       {isAppLoading && <InitialPageLoader onFinish={() => setIsAppLoading(false)} audioBlocked={loadingAudioBlocked} />}
 
-      {onBackToIntro && !isAppLoading && !screenTransitionActive && !screenOverlayVisible && (
-        <button
-          onClick={onBackToIntro}
-          className="absolute top-6 left-6 z-40 px-4 py-2.5 rounded-2xl bg-slate-950/85 hover:bg-slate-900 text-slate-200 hover:text-white border border-violet-400/30 shadow-[0_0_20px_rgba(0,0,0,0.5)] backdrop-blur-xl flex items-center gap-2 text-xs font-mono font-bold transition-all duration-300 cursor-pointer hover:scale-105"
-        >
-          <span>←</span>
-          <span>{lang === 'eng' ? 'Back to portfolio' : 'Trang giới thiệu'}</span>
-        </button>
+      {onBackToIntro && !isAppLoading && !screenTransitionActive && !screenOverlayVisible && !activeModal && (
+        <div className="workspace-hud" aria-label={lang === 'vie' ? 'Điều khiển không gian 3D' : '3D workspace controls'}>
+          <div className="workspace-hud-top">
+            <button onClick={onBackToIntro} className="workspace-back-button">
+              <span className="workspace-back-arrow">←</span>
+              <span><small>ZNEY // OBSERVATORY</small><strong>{lang === 'eng' ? 'Back to portfolio' : 'Về portfolio'}</strong></span>
+            </button>
+            <div className="workspace-hud-status" aria-hidden="true"><i /><span>OBSERVATORY ONLINE</span><b>04 NODES</b></div>
+          </div>
+          <aside className={`workspace-guide${hoveredItem ? ' has-target' : ''}`}>
+            <span>OBSERVATORY // SECTOR-VIRGO</span>
+            <strong>{hoveredItem ? ITEM_CONFIG[hoveredItem].title[lang] : (lang === 'vie' ? 'Đài quan sát cá nhân' : 'Personal Observatory')}</strong>
+            <p>{hoveredItem
+              ? (lang === 'vie' ? 'Nhấp để truy cập nguồn dữ liệu này.' : 'Click to access this data signal.')
+              : (lang === 'vie' ? 'Kéo chuột để quan sát xung quanh · chọn các điểm tọa độ.' : 'Drag to survey surroundings · select coordinate signals.')}</p>
+          </aside>
+          <div className="workspace-hud-bottom" aria-hidden="true">
+            <span>POV / DESK-01 · RA 13h 25m</span>
+            <span>DRAG TO SURVEY HORIZON</span>
+            <span>VIRGO UTC+7</span>
+          </div>
+        </div>
       )}
 
       <Canvas
@@ -1457,6 +1477,7 @@ export function ModelAnalyzer({ onBackToIntro, lang = 'eng', loadingAudioBlocked
             onSelectItem={handleSelectItem}
             activeModal={activeModal}
             interactionsDisabled={screenTransitionActive || screenOverlayVisible}
+            lang={lang}
           />
           <ContactShadows position={[0, -0.01, 0]} opacity={0.55} scale={40} blur={2} far={10} />
           <Environment preset="city" />
@@ -1467,7 +1488,7 @@ export function ModelAnalyzer({ onBackToIntro, lang = 'eng', loadingAudioBlocked
       </Canvas>
 
       {activeModal && activeModal !== 'screen' && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="workspace-modal-layer absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           {activeModal === 'paper' && <ModalCV onClose={() => setActiveModal(null)} />}
           {activeModal === 'lanyard' && <ModalLanyard onClose={() => setActiveModal(null)} />}
           {activeModal === 'bookshelf' && <ProjectShelf onClose={() => setActiveModal(null)} lang={lang} />}

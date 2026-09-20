@@ -78,10 +78,10 @@ const CODE_TO_SCAN_CODE: Record<string, string> = {
 type LedMode = 'wave' | 'reactive' | 'ripple' | 'off';
 
 const LED_MODES: Array<{ id: LedMode; label: string; color: string }> = [
-  { id: 'wave', label: 'White', color: '#FFFFFF' },
-  { id: 'reactive', label: 'Silver', color: '#C0C0C0' },
-  { id: 'ripple', label: 'Slate', color: '#64748B' },
-  { id: 'off', label: 'Off', color: 'transparent' },
+  { id: 'wave', label: 'Starlight', color: '#38bdf8' },
+  { id: 'reactive', label: 'Ice Blue', color: '#7dd3fc' },
+  { id: 'ripple', label: 'Pulsar', color: '#fde047' },
+  { id: 'off', label: 'Stealth', color: 'transparent' },
 ];
 
 interface DesktopOverlayProps {
@@ -396,29 +396,37 @@ export function DesktopOverlay({ onExit, lang }: DesktopOverlayProps) {
         <div ref={pointerRef} className={`virtual-pointer ${mouseButton ? 'is-clicking' : ''}`} aria-hidden="true"><span /></div>
 
         <header className="desktop-topbar">
-          <div className="desktop-brand"><span className="desktop-brand-mark">Z</span><span>ZNEY OS</span></div>
-          <div className="desktop-status"><span>WEBGL ONLINE</span><span>LOCAL SESSION</span></div>
+          <div className="desktop-brand">
+            <span className="desktop-brand-mark">✦</span>
+            <span><b>ZNEY</b><small>ORBITAL OBSERVATORY</small></span>
+          </div>
+          <div className="desktop-status"><i /><span>LINK STABLE</span><span>SPICA // 01</span></div>
           <button type="button" className="desktop-exit" onClick={onExit} data-native-cursor>
-            {isVie ? 'Rời màn hình' : 'Exit screen'}
+            <span>←</span>{isVie ? 'Trở lại phòng' : 'Back to room'}
           </button>
         </header>
 
         <main className="desktop-monitor">
           <nav className="desktop-dock" aria-label="Pixel arcade">
-            <button type="button" className="is-active" data-native-cursor>PX</button>
+            <button type="button" className="is-active" data-native-cursor><b>01</b><span>RADAR</span></button>
+            <div className="desktop-dock-line" aria-hidden="true" />
+            <small>NODE<br />ACTIVE</small>
           </nav>
 
           <section className="desktop-content">
             <div className="desktop-heading">
-              <p>PIXEL ARCADE ONLINE</p>
-              <h1>Catch the signal. Wake the grid.</h1>
+              <p><i /> ASTRO-RADAR // MINI GAME</p>
+              <div className="desktop-heading-row">
+                <h1>{isVie ? 'Bắt tín hiệu.' : 'Catch the signal.'}<br /><em>{isVie ? 'Đánh thức lưới sao.' : 'Wake the celestial grid.'}</em></h1>
+                <span>WASD: MOVE<br />SPACE: DASH</span>
+              </div>
             </div>
 
             <div className="terminal-grid pixel-terminal-grid">
               <article className="terminal-panel pixel-game">
                 <div className="terminal-bar">
-                  <span>NEKO BYTE RUN</span>
-                  <span>SCORE {String(gameScore).padStart(3, '0')}</span>
+                  <span><i /> RADAR // NEKO BYTE RUN</span>
+                  <span>CORE COUNT&nbsp; <b>{String(gameScore).padStart(3, '0')}</b></span>
                 </div>
                 <div
                   className="pixel-stage"
@@ -450,20 +458,21 @@ export function DesktopOverlay({ onExit, lang }: DesktopOverlayProps) {
                     </span>
                   </div>
                   <div className="pixel-game-hud">
-                    <span>WASD MOVE</span>
-                    <span>SPACE DASH</span>
-                    <span>{String(gameMoves).padStart(3, '0')} STEPS</span>
+                    <span><kbd>WASD</kbd> {isVie ? 'DI CHUYỂN' : 'MOVE'}</span>
+                    <span><kbd>SPACE</kbd> DASH</span>
+                    <span>{String(gameMoves).padStart(3, '0')} {isVie ? 'BƯỚC' : 'STEPS'}</span>
                   </div>
                 </div>
               </article>
 
               <aside className="terminal-panel system-panel">
-                <div className="terminal-bar"><span>ARCADE</span><span>READY</span></div>
+                <div className="terminal-bar"><span>SIGNAL DATA</span><span><i /> LIVE</span></div>
                 <dl>
                   <div><dt>PLAYER</dt><dd>NEKO-01</dd></div>
                   <div><dt>CORES</dt><dd>{String(gameScore).padStart(2, '0')}</dd></div>
                   <div><dt>INPUT</dt><dd>WASD</dd></div>
                 </dl>
+                <p className="system-mission">{isVie ? 'Đi tới nguồn sáng để thu thập lõi tín hiệu.' : 'Reach the light source to collect signal cores.'}</p>
                 <div className="led-controller">
                   <div className="led-controller-heading">
                     <span>KEYBOARD FX</span>
