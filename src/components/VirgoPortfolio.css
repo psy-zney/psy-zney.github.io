@@ -1,4 +1,13 @@
 .virgo-page {
+  --flight-progress: 0;
+  --flight-thrust: 0;
+  --intro-cover: 0;
+  --intro-caption-lift: 0;
+  --intro-flare: 0;
+  --intro-crack: 0;
+  --intro-energy: 0;
+  --intro-flow: 0;
+  --intro-gap: 3;
   --virgo-white: #f4f6fd;
   --virgo-muted: #a4b1cb;
   --virgo-line: rgba(182, 206, 255, .2);
@@ -55,7 +64,7 @@
 }
 
 .virgo-scroll-step {
-  height: 112dvh;
+  height: 132dvh;
 }
 
 .virgo-canvas {
@@ -68,6 +77,32 @@
 .virgo-canvas canvas {
   pointer-events: none !important;
 }
+
+/* An opaque tear hides the intro/world swap while narration stays above it. */
+.virgo-intro-fracture {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+.virgo-page[data-intro-fracture="active"] .virgo-intro-fracture,
+.virgo-page[data-rift-reading="active"] .virgo-intro-fracture { visibility: visible; }
+.virgo-fracture-backdrop {
+  position: absolute;
+  inset: 0;
+  background: #02040b;
+  opacity: var(--intro-cover);
+}
+.virgo-space-rift {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.virgo-fracture-sound { display: none; }
 
 .virgo-vignette {
   position: absolute;
@@ -84,67 +119,6 @@
   background:
     linear-gradient(270deg, rgba(0, 0, 0, .5) 0%, rgba(0, 0, 0, .2) 35%, transparent 72%),
     radial-gradient(ellipse at 50% 50%, transparent 42%, rgba(0, 0, 0, .3) 100%);
-}
-
-.virgo-header {
-  position: absolute;
-  z-index: 5;
-  inset: 0 0 auto;
-  height: 78px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 clamp(26px, 5.4vw, 92px);
-  border-bottom: 1px solid var(--virgo-line);
-  background: linear-gradient(#000a, transparent);
-  transition: opacity .55s ease, visibility .55s ease;
-}
-
-.virgo-header-hidden {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.virgo-brand {
-  font-size: 27px;
-  font-weight: 760;
-  letter-spacing: -.065em;
-}
-
-.virgo-brand span {
-  color: #b1cfff;
-  font-size: 14px;
-  vertical-align: top;
-  margin-left: 6px;
-}
-
-.virgo-header nav {
-  display: flex;
-  align-items: center;
-  gap: clamp(17px, 3vw, 42px);
-}
-
-.virgo-header nav a {
-  color: #9caac3;
-  font-size: 12px;
-  letter-spacing: .02em;
-  transition: color .2s;
-}
-
-.virgo-header nav a:hover,
-.virgo-header nav a[aria-current] {
-  color: #fff;
-}
-
-.virgo-header nav a[aria-current]::after {
-  content: "";
-  display: block;
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: #b4d2ff;
-  margin: 6px auto -9px;
 }
 
 .virgo-language {
@@ -199,6 +173,131 @@
   justify-content: flex-end;
 }
 
+.virgo-panel-left {
+  justify-content: flex-start;
+}
+
+.virgo-panel-center {
+  justify-content: center;
+  text-align: center;
+}
+
+.virgo-panel-bottom-left {
+  justify-content: flex-start;
+  align-items: flex-end;
+}
+
+.virgo-panel-bottom-right {
+  justify-content: flex-end;
+  align-items: flex-end;
+}
+
+.virgo-panel-top-left {
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+.virgo-panel-top-right {
+  justify-content: flex-end;
+  align-items: flex-start;
+}
+
+/* ─── Cinematic Bare Text Panels ─── */
+.virgo-bare-chapter {
+  padding: 94px clamp(36px, 6vw, 100px) clamp(48px, 7vh, 96px);
+}
+
+.virgo-bare {
+  position: relative;
+  max-width: 520px;
+  pointer-events: none;
+}
+
+.virgo-bare-right {
+  text-align: right;
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+}
+
+.virgo-bare-label {
+  font-family: "Orbitron", sans-serif;
+  font-size: 9px;
+  letter-spacing: .22em;
+  color: rgba(120, 165, 230, 0.6);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  display: block;
+}
+
+.virgo-bare h2 {
+  font-family: "Orbitron", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: clamp(32px, 4.5vw, 62px);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -.03em;
+  text-wrap: balance;
+  color: #ffffff;
+  text-shadow:
+    0 0 80px rgba(130, 180, 255, 0.55),
+    0 0 200px rgba(100, 160, 255, 0.25),
+    0 4px 40px rgba(0, 0, 0, 0.9);
+  margin: 0 0 20px;
+  white-space: pre-line;
+}
+
+.virgo-bare h2 em {
+  color: #a8d0ff;
+  font-style: normal;
+  text-shadow:
+    0 0 60px rgba(140, 195, 255, 0.7),
+    0 0 180px rgba(100, 170, 255, 0.35);
+}
+
+.virgo-bare-sub {
+  font-size: clamp(13px, 1vw, 15px);
+  color: rgba(180, 200, 230, 0.7);
+  line-height: 1.65;
+  max-width: 400px;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.8);
+  margin-bottom: 20px;
+}
+
+.virgo-bare-facts {
+  display: flex;
+  gap: 28px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(120, 160, 220, 0.18);
+}
+
+.virgo-bare-facts > span {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.virgo-bare-facts small {
+  font-size: 8px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(100, 140, 190, 0.6);
+}
+
+.virgo-bare-facts strong {
+  font-family: "Orbitron", sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  color: rgba(200, 220, 255, 0.85);
+}
+
+/* pointer events restored for interactives within bare panels */
+.virgo-bare a,
+.virgo-bare button {
+  pointer-events: auto;
+}
+
 .virgo-panel-content {
   position: relative;
   max-width: 438px;
@@ -238,8 +337,31 @@
   box-shadow: 0 0 18px rgba(154, 195, 255, .55);
 }
 
-.virgo-hero .virgo-panel-content {
-  max-width: 420px;
+.virgo-prologue-content {
+  position: relative;
+  max-width: 600px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  text-shadow: 0 8px 30px rgba(0, 0, 0, 0.9);
+}
+
+.virgo-prologue-hero h1 {
+  font-family: "Orbitron", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: clamp(34px, 4vw, 54px);
+  margin-bottom: 24px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.virgo-prologue-hero p {
+  font-size: clamp(15px, 1.2vw, 17px);
+  color: #c4d4ec;
+  line-height: 1.6;
+  max-width: 520px;
 }
 
 .virgo-card-coordinate {
@@ -277,10 +399,6 @@
 
 .virgo-overlay h2 {
   font-size: clamp(30px, 3.2vw, 44px);
-}
-
-.virgo-hero h1 {
-  font-size: clamp(32px, 3.35vw, 48px);
 }
 
 .virgo-overlay em {
@@ -737,7 +855,7 @@
   border: 1px solid #c8dbff88;
   border-radius: 50%;
   box-shadow: 0 0 25px #a7cfff44, inset 0 0 18px #b9d8ff22;
-  animation: virgo-portal-pulse 3s ease-in-out infinite;
+  animation: none;
 }
 
 .virgo-portal-label {
@@ -1252,6 +1370,340 @@
   }
 }
 
+.virgo-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.virgo-motion {
+  display: grid;
+  place-items: center;
+  width: 39px;
+  height: 39px;
+  padding: 0;
+  color: #abc5e7;
+  border: 1px solid #d7e6ff26;
+  border-radius: 50%;
+  background: #ffffff06;
+  pointer-events: auto;
+  transition: color .2s, border-color .2s;
+}
+
+.virgo-motion:hover,
+.virgo-motion[aria-pressed="true"] {
+  color: #fff;
+  border-color: #b2d4ff88;
+}
+
+.virgo-prologue {
+  position: absolute;
+  left: 50%;
+  top: 12%;
+  width: min(90%, 560px);
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.virgo-prologue > span {
+  color: #b4cce7;
+  font-family: "Orbitron", sans-serif;
+  font-size: 10px;
+  letter-spacing: .42em;
+}
+
+.virgo-prologue p {
+  margin-top: 15px;
+  color: #e1eafa;
+  font-size: clamp(15px, 2vw, 22px);
+  font-weight: 350;
+  letter-spacing: -.01em;
+}
+
+.virgo-opening-cue {
+  width: auto;
+  height: auto;
+  min-width: 210px;
+  gap: 12px;
+  padding: 14px 20px;
+  border-radius: 28px;
+  font-size: 11px;
+  letter-spacing: .04em;
+}
+
+.virgo-orbit-labels {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.virgo-orbit-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 174px;
+  display: grid;
+  gap: 7px;
+  padding: 13px 15px;
+  border-left: 1px solid var(--hologram-color);
+  background: linear-gradient(90deg, #081423c9, #08142318);
+  color: #deebfb;
+  opacity: 0;
+  will-change: transform;
+}
+
+.virgo-orbit-label::before {
+  content: "";
+  position: absolute;
+  left: -18px;
+  top: 31px;
+  width: 18px;
+  height: 1px;
+  background: var(--hologram-color);
+}
+
+.virgo-orbit-label .virgo-hologram-code {
+  color: var(--hologram-color);
+  font-size: 8px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+
+.virgo-orbit-label strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.virgo-orbit-label > span:not(.virgo-hologram-code) {
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.virgo-orbit-label small {
+  color: #96abc8;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.virgo-orbit-label svg {
+  width: 100%;
+  height: 24px;
+  overflow: visible;
+  stroke: var(--hologram-color);
+  stroke-width: 1;
+  fill: none;
+}
+
+.virgo-skill-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.virgo-skill-tools span {
+  padding: 4px 7px;
+  border: 1px solid #bcd3ff30;
+  border-radius: 4px;
+  color: #abc1e1;
+  font-size: 9px;
+}
+
+.virgo-flight-progress {
+  position: absolute;
+  z-index: 8;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #b8d8ff0c;
+  pointer-events: none;
+}
+
+.virgo-flight-progress > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #789ed8, #b9d9fa, #efd5b6);
+  box-shadow: 0 0 12px #b9d9fa88;
+  transform: scaleX(var(--flight-progress));
+  transform-origin: left;
+}
+
+.virgo-is-entering .virgo-utilities,
+.virgo-is-entering .virgo-constellation-map,
+.virgo-is-entering .virgo-index,
+.virgo-is-entering .virgo-station,
+.virgo-is-entering .virgo-star-portal,
+.virgo-is-entering .virgo-flight-progress {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s ease;
+}
+
+.virgo-scroll.is-paused {
+  overflow: hidden;
+}
+
+/* Each sentence has its own composition; the cosmic accent follows its ink. */
+.virgo-is-opening .virgo-vignette { background: none; }
+.virgo-sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+.virgo-narrative { position: absolute; inset: 0; pointer-events: none; }
+.virgo-narrative-line {
+  position: absolute;
+  top: 26%;
+  width: 34%;
+  max-width: 490px;
+  color: #ede9e2;
+  font-family: "Newsreader", Georgia, "Times New Roman", serif;
+  font-size: clamp(28px, 2.8vw, 42px);
+  font-weight: 400;
+  font-style: normal;
+  line-height: 1.35;
+  letter-spacing: -.022em;
+  text-wrap: balance;
+  opacity: 0;
+  visibility: hidden;
+  will-change: opacity;
+}
+.virgo-narrative-left { left: 7%; }
+.virgo-narrative-right { right: 7%; }
+.virgo-narrative-center { top: 84%; bottom: auto; left: 50%; width: 76%; max-width: 700px; transform: translate(-50%, -50%); text-align: center; }
+.virgo-narrative-middle { top: 50%; left: 50%; width: 76%; max-width: 700px; transform: translate(-50%, -50%); text-align: center; }
+.virgo-placement-upper-left,
+.virgo-placement-lower-left,
+.virgo-placement-upper-right,
+.virgo-placement-lower-right {
+  width: 34%; max-width: 490px; transform: none; text-align: left;
+}
+.virgo-placement-upper-left { top: 20%; left: 7%; right: auto; }
+.virgo-placement-lower-left { top: 72%; left: 7%; right: auto; }
+.virgo-placement-upper-right { top: 18%; left: auto; right: 7%; }
+.virgo-placement-lower-right { top: 75%; left: auto; right: 7%; text-align: right; }
+.virgo-placement-top { top: 17%; left: 50%; right: auto; width: 52%; max-width: 650px; transform: translateX(-50%); text-align: center; }
+.virgo-narrative-line > span {
+  position: relative;
+  display: block;
+  text-shadow: 0 2px 16px #020408, 0 0 1px #b7cff522;
+  clip-path: none;
+  opacity: var(--text-reveal, 0);
+  filter: blur(calc((1 - var(--text-reveal, 0)) * .8px));
+}
+.virgo-page[data-story="center"] .virgo-opening-cue,
+.virgo-page[data-story="middle"] .virgo-opening-cue { opacity: 0; visibility: hidden; pointer-events: none; }
+.virgo-overlay-panel:not(.virgo-cosmos):not(.virgo-prologue-hero) {
+  align-items: flex-start;
+  padding-top: 48dvh;
+  padding-bottom: 65px;
+  will-change: opacity;
+}
+.virgo-overlay-panel .virgo-bare { width: 34vw; max-width: 490px; text-align: left; }
+@media (min-width: 701px) {
+  .virgo-projects-more-panel.virgo-overlay-panel:not(.virgo-cosmos):not(.virgo-prologue-hero) { padding-top: 20dvh; }
+  .virgo-skills-panel.virgo-overlay-panel:not(.virgo-cosmos):not(.virgo-prologue-hero) { padding-top: 35dvh; }
+  .virgo-skills-panel .virgo-bare { max-height: calc(40dvh - 28px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: #52657c transparent; }
+  .virgo-skills-panel .virgo-skill-tools { margin-top: 8px; }
+  .virgo-overlay-panel[aria-labelledby="virgo-contact-title"]:not(.virgo-cosmos):not(.virgo-prologue-hero) { padding-top: 39dvh; }
+}
+.virgo-bare-label { font-size: 9px; letter-spacing: .17em; margin-bottom: 18px !important; }
+.virgo-project-link { min-height: 54px; padding-block: 10px; grid-template-columns: 16px 1fr 18px; }
+.virgo-project-link > small { display: none; }
+.virgo-project-copy strong { font-size: 15px; font-weight: 500; }
+.virgo-project-copy > span { font-size: 11px; line-height: 1.45; }
+.virgo-projects-more-list a { min-height: 44px; }
+.virgo-projects-more-list small { display: none; }
+.virgo-projects-more-list a { grid-template-columns: 15px 1fr 16px; }
+.virgo-skill-list button { min-height: 36px; font-size: 13px; }
+.virgo-skill-detail { max-width: 400px; font-size: 12px; line-height: 1.6; margin-top: 15px; }
+.virgo-orbit-caption { display: none; }
+.virgo-email { font-size: clamp(14px, 1.4vw, 20px); }
+.virgo-opening-cue {
+  width: 58px;
+  height: 58px;
+  min-width: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: #11151bdd;
+  color: #cddff5;
+  border: 1px solid #aabfd84d;
+  pointer-events: none;
+}
+.virgo-opening-cue.is-active { pointer-events: auto; }
+
+@media (max-width: 700px) {
+  .virgo-narrative-line { top: var(--mobile-narrative-top, 50%); left: 26px; right: 26px; width: auto; max-width: none; font-size: clamp(21px, 5.8vw, 27px); }
+  .virgo-narrative-center { top: 74%; bottom: auto; left: 30px; right: 30px; width: auto; transform: translateY(-50%); }
+  .virgo-narrative-middle { top: 50%; left: 30px; right: 30px; width: auto; transform: translateY(-50%); }
+  .virgo-narrative-line[class*="virgo-placement-"]:not(.virgo-placement-middle) {
+    top: var(--mobile-narrative-top, 50%); left: 26px; right: 26px; width: auto; max-width: none; transform: none;
+  }
+  .virgo-narrative-middle.virgo-placement-upper-left { top: 29%; right: 50px; }
+  .virgo-narrative-middle.virgo-placement-lower-right { top: 64%; left: 50px; }
+  .virgo-placement-upper-right { text-align: right; }
+  .virgo-placement-top { text-align: center; }
+  .virgo-overlay-panel:not(.virgo-cosmos):not(.virgo-prologue-hero) { padding: var(--mobile-controls-top, 61dvh) 26px 58px; }
+  .virgo-overlay-panel .virgo-bare { width: 100%; max-width: none; }
+  .virgo-bare-label { margin-bottom: 10px !important; font-size: 8px; }
+  .virgo-project-link { min-height: 43px; padding-block: 7px; }
+  .virgo-project-copy strong { font-size: 13px; }
+  .virgo-project-copy > span { font-size: 10px; }
+  .virgo-projects-more-list { grid-template-columns: 1fr 1fr; }
+  .virgo-projects-more-list a,
+  .virgo-projects-more-list a:nth-child(even) { grid-template-columns: 15px minmax(0, 1fr) 16px; min-height: 35px; font-size: 11px; gap: 5px; }
+  .virgo-projects-more-footer { margin-top: 12px; }
+  .virgo-skill-list button { min-height: 29px; font-size: 12px; }
+  .virgo-skill-detail { font-size: 10px; margin-top: 8px; }
+  .virgo-contact-links { gap: 12px; margin-block: 16px; }
+}
+@media (max-height: 650px) and (min-width: 701px) {
+  .virgo-narrative-line { top: 22%; font-size: 27px; }
+  .virgo-narrative-center { top: 84%; }
+  .virgo-narrative-middle { top: 50%; }
+  .virgo-placement-upper-left { top: 20%; }
+  .virgo-placement-upper-right { top: 18%; }
+  .virgo-placement-lower-left { top: 72%; }
+  .virgo-placement-lower-right { top: 75%; }
+  .virgo-overlay-panel:not(.virgo-cosmos):not(.virgo-prologue-hero) { padding-top: 44dvh; }
+}
+@media (max-width: 700px) and (max-height: 680px) {
+  .virgo-overlay-panel .virgo-bare {
+    max-height: calc(100dvh - var(--mobile-controls-top, 61dvh) - 60px);
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #52657c transparent;
+  }
+  .virgo-bare-label { margin-bottom: 6px !important; }
+  .virgo-projects-list { margin: 6px 0 4px; }
+  .virgo-project-link { min-height: 35px; padding-block: 4px; }
+  .virgo-project-copy { gap: 1px; }
+  .virgo-project-copy strong { line-height: 1.2; }
+}
+.virgo-reduced-motion .virgo-space-rift { display: none; }
+.virgo-reduced-motion .virgo-narrative-line > span { clip-path: none; filter: none; opacity: 1; }
+
+@media (max-width: 700px) {
+  .virgo-orbit-labels { display: none; }
+  .virgo-header-controls { gap: 7px; }
+  .virgo-motion { width: 33px; height: 33px; }
+  .virgo-prologue { top: 15%; }
+  .virgo-prologue > span { font-size: 9px; letter-spacing: .3em; }
+  .virgo-opening-cue { bottom: 35px; font-size: 10px; }
+  .virgo-skill-tools { margin-top: 9px; gap: 5px; }
+  .virgo-skill-tools span { font-size: 8px; }
+}
+
 @media print {
 
   .virgo-scroll,
@@ -1296,3 +1748,27 @@
     font-size: 10pt;
   }
 }
+
+/* Small constellation navigation replaces both the header and dot rail. */
+.virgo-constellation-map { position: absolute; z-index: 5; right: 26px; top: 20px; width: 152px; height: 92px; }
+.virgo-constellation-map svg { width: 100%; height: 100%; overflow: visible; }
+.virgo-constellation-map line { stroke: #7b96b6; stroke-width: .035; opacity: .65; }
+.virgo-constellation-map circle { fill: #a6bad4; opacity: .65; }
+.virgo-constellation-map circle.is-active { fill: #e4f1ff; opacity: 1; filter: drop-shadow(0 0 .35px #acccff); r: .27; }
+.virgo-map-star { position: absolute; transform: translate(-50%,-50%); width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; }
+.virgo-map-star:focus-visible { outline: 1px solid #bedcff; outline-offset: 1px; }
+.virgo-map-star span { position: absolute; top: 32px; font-size: 9px; letter-spacing: .04em; color: #d4e5fc; opacity: 0; white-space: nowrap; background: #020408e8; padding: 3px 5px; border-radius: 4px; }
+.virgo-map-star:hover span,.virgo-map-star:focus-visible span { opacity: 1; }
+.virgo-map-home { position: absolute; top: 100%; right: 0; font-size: 8px; color: #8fa5c0; letter-spacing: .24em; padding: 6px; }
+.virgo-utilities { position: absolute; z-index: 5; right: 26px; bottom: 18px; }
+.virgo-utility-buttons { display: flex; gap: 8px; align-items: center; }
+.virgo-utility-buttons button { width: 38px; height: 38px; padding: 0; display: grid; place-items: center; background: #040911b8; border-color: #7189ab35; }
+.virgo-station { display: none; }
+@media (max-width: 700px) {
+  .virgo-constellation-map { width: 112px; height: 68px; right: 15px; top: 14px; }
+  .virgo-utilities { right: 15px; bottom: max(10px,env(safe-area-inset-bottom)); }
+  .virgo-utility-buttons { gap: 4px; }
+  .virgo-utility-buttons button { width: 34px; height: 34px; }
+  .virgo-map-star { width: 30px; height: 30px; }
+}
+@media print { .virgo-constellation-map,.virgo-utilities { display: none !important; } }

@@ -35,8 +35,8 @@ export const projects: Project[] = [
       "Open-source adaptation & development",
     ),
     headline: copy(
-      "Nhiều thiết bị. Một nhịp nghe chung.",
-      "Different devices. One shared moment.",
+      "Nghe nhạc cùng nhau trên nhiều thiết bị.",
+      "Listen together on different devices.",
     ),
     summary: copy(
       "Từ trải nghiệm nghe nhạc cùng nhau đến bài toán đồng bộ thời gian thực và tự vận hành hạ tầng.",
@@ -88,8 +88,8 @@ export const projects: Project[] = [
       "Graduation project · System development",
     ),
     headline: copy(
-      "Nhìn toàn cảnh mạng. Hiểu từng thiết bị.",
-      "See the network. Understand each endpoint.",
+      "Theo dõi và quản lý máy tính trong mạng.",
+      "Monitor and manage computers on a network.",
     ),
     summary: copy(
       "Hệ thống quản lý thiết bị trong mạng LAN, nối dashboard, API và Windows Agent bằng phân quyền và dữ liệu thời gian thực.",
@@ -143,8 +143,8 @@ export const projects: Project[] = [
       "Personal project · Learning tool",
     ),
     headline: copy(
-      "Học hôm nay. Nhớ lại vào ngày mai.",
-      "Learn today. Come back remembering.",
+      "Ôn bài và theo dõi việc học.",
+      "Review lessons and track your learning.",
     ),
     summary: copy(
       "Biến việc tự học TOEIC thành một vòng lặp: học mẫu câu, ôn đến hạn, luyện Part 5 và theo dõi tiến độ.",
@@ -192,8 +192,8 @@ export const projects: Project[] = [
       "Desktop developer · Windows utility",
     ),
     headline: copy(
-      "Cài lại Windows. Giữ lại những điều cần thiết.",
-      "A fresh Windows install. A familiar workspace.",
+      "Sao lưu dữ liệu trước khi cài lại Windows.",
+      "Back up your data before reinstalling Windows.",
     ),
     summary: copy(
       "Ứng dụng WPF đóng gói dữ liệu và cấu hình được chọn vào file .zney, với kiểm tra trước khi khôi phục.",
@@ -240,8 +240,8 @@ export const projects: Project[] = [
       "Full-stack developer · Team project",
     ),
     headline: copy(
-      "Một đơn hàng phải đúng, từ giỏ hàng đến tồn kho.",
-      "From a cart to an order you can trust.",
+      "Quản lý bán hàng, đơn hàng và tồn kho.",
+      "Manage sales, orders and inventory.",
     ),
     summary: copy(
       "Đóng góp vào hệ thống bán hàng đa doanh nghiệp, với trọng tâm là thanh toán, tồn kho và tính nhất quán dữ liệu.",
@@ -288,8 +288,8 @@ export const projects: Project[] = [
       "System & application developer",
     ),
     headline: copy(
-      "Khoảng cách giữa một chiếc điện thoại và chiếc PC.",
-      "Bridging a phone and a distant PC.",
+      "Điều khiển máy tính từ điện thoại.",
+      "Control your computer from your phone.",
     ),
     summary: copy(
       "Bốn module phối hợp để điều khiển bảo mật PC từ mobile, kể cả khi kết nối bị gián đoạn.",
@@ -337,8 +337,8 @@ export const projects: Project[] = [
       "Frontend developer · Small business client",
     ),
     headline: copy(
-      "Từ bảng tính lộn xộn đến nhãn hàng sẵn in.",
-      "From spreadsheets to labels ready to print.",
+      "Xử lý đơn Excel và in nhãn.",
+      "Process Excel orders and print labels.",
     ),
     summary: copy(
       "Một công cụ phục vụ công việc cụ thể: đọc đơn hàng Excel và tạo nhãn nhận hàng, vận chuyển quốc tế.",
@@ -383,8 +383,8 @@ export const projects: Project[] = [
     year: "04 — 05 / 2026",
     role: copy("Mobile developer", "Mobile developer"),
     headline: copy(
-      "Hôm nay ăn gì? Bắt đầu từ nguyên liệu đang có.",
-      "What’s for dinner? Start with what you have.",
+      "Chọn món ăn từ nguyên liệu có sẵn.",
+      "Find meals using the ingredients you have.",
     ),
     summary: copy(
       "Ứng dụng gợi ý món ăn, lọc theo nguyên liệu và chọn bữa ăn ngẫu nhiên, với lưu trữ cục bộ.",
@@ -432,8 +432,8 @@ export const projects: Project[] = [
     year: "2026",
     role: copy("Phát triển mô phỏng Unity", "Unity simulation developer"),
     headline: copy(
-      "Học hóa học bằng cách bước vào phòng thí nghiệm.",
-      "Learn chemistry by stepping inside the lab.",
+      "Thử phản ứng hóa học trong phòng thí nghiệm 3D.",
+      "Try chemistry reactions in a 3D lab.",
     ),
     summary: copy(
       "Trò chơi desktop Unity/C# cho phép khám phá phòng lab 3D, chuẩn bị mẫu, quan sát phản ứng và học từ hệ quả an toàn.",
@@ -477,8 +477,8 @@ export const projects: Project[] = [
     year: "03 — 05 / 2026",
     role: copy("Android developer", "Android developer"),
     headline: copy(
-      "Một góc nhỏ dành cho người yêu máy ảnh.",
-      "A small corner for camera enthusiasts.",
+      "Ứng dụng dành cho người dùng máy ảnh.",
+      "An app for camera enthusiasts.",
     ),
     summary: copy(
       "Ứng dụng Android native cho máy ảnh và ống kính Micro Four Thirds, từ khám phá sản phẩm đến đặt hàng.",
@@ -519,10 +519,10 @@ export const capabilities = [
   {
     id: "interfaces",
     number: "01",
-    title: copy("Giao diện có mục đích", "Interfaces with purpose"),
+    title: copy("Giao diện web", "Web interfaces"),
     description: copy(
-      "Đưa quy trình thực tế vào giao diện: từ giỏ hàng và thanh toán đến xử lý đơn Excel và học tập hằng ngày.",
-      "Turning real workflows into interfaces, from carts and checkout to Excel orders and daily study.",
+      "Làm giao diện cho việc bán hàng, xử lý đơn và học tập.",
+      "Build interfaces for sales, order processing and learning.",
     ),
     tools: ["React", "Next.js", "TypeScript"],
     projects: ["cloud-pos", "mandy-crimson", "study-cabin"],
@@ -530,10 +530,10 @@ export const capabilities = [
   {
     id: "systems",
     number: "02",
-    title: copy("Các phần kết nối với nhau", "Systems that connect"),
+    title: copy("Kết nối hệ thống", "Connected systems"),
     description: copy(
-      "Thiết kế cách client, server và thiết bị trao đổi trạng thái, kể cả khi kết nối gián đoạn.",
-      "Designing how clients, servers, and devices exchange state, including interrupted connections.",
+      "Kết nối ứng dụng, máy chủ và thiết bị; xử lý khi mất mạng.",
+      "Connect apps, servers and devices, and handle lost connections.",
     ),
     tools: ["Go", "Rust", "ASP.NET Core", "WebSocket"],
     projects: ["beatsync", "security-core", "sentinellan"],
@@ -541,10 +541,10 @@ export const capabilities = [
   {
     id: "mobile",
     number: "03",
-    title: copy("Trải nghiệm trong tầm tay", "Experiences in your hands"),
+    title: copy("Ứng dụng di động", "Mobile apps"),
     description: copy(
-      "Xây dựng luồng mobile với điều hướng theo vai trò, lưu trữ cục bộ và tích hợp cloud.",
-      "Building mobile flows with role-based navigation, local persistence, and cloud integration.",
+      "Làm ứng dụng điện thoại, lưu dữ liệu và kết nối dịch vụ trực tuyến.",
+      "Build phone apps with saved data and online services.",
     ),
     tools: ["React Native", "Expo", "Java", "SQLite"],
     projects: ["luckyfood", "micro4nerds", "security-core"],
@@ -552,10 +552,10 @@ export const capabilities = [
   {
     id: "simulation",
     number: "04",
-    title: copy("Mô phỏng có quy tắc", "Simulation with rules"),
+    title: copy("Mô phỏng 3D", "3D simulation"),
     description: copy(
-      "Biến dữ liệu hóa học và luật phản ứng thành trải nghiệm 3D nơi thao tác của người chơi tạo ra kết quả có thể hiểu được.",
-      "Turning chemistry data and reaction rules into a 3D experience where player actions lead to understandable outcomes.",
+      "Dùng Unity để mô phỏng thí nghiệm và phản ứng hóa học.",
+      "Use Unity to simulate experiments and chemistry reactions.",
     ),
     tools: ["Unity", "C#", "3D", "Data modeling"],
     projects: ["chemistry-lab"],
@@ -563,10 +563,10 @@ export const capabilities = [
   {
     id: "delivery",
     number: "05",
-    title: copy("Từ code đến sử dụng", "From code to use"),
+    title: copy("Triển khai sản phẩm", "Deployment"),
     description: copy(
-      "Làm việc với triển khai cloud, giới hạn bộ nhớ, đóng gói desktop và kiểm tra dữ liệu trước khi khôi phục.",
-      "Working with cloud deployment, memory limits, desktop packaging, and data validation before restoration.",
+      "Đưa web lên máy chủ, đóng gói ứng dụng và kiểm tra dữ liệu sao lưu.",
+      "Deploy websites, package apps and check backup data.",
     ),
     tools: ["AWS", "Cloudflare", "Docker", ".NET / WPF"],
     projects: ["cloud-pos", "beatsync", "backup-data"],

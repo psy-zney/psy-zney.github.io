@@ -103,16 +103,8 @@ function MobileLandscapeOverlay({
 
 export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>(readViewMode);
-  const [lang, setLang] = useState<"vie" | "eng">(() => {
-    try {
-      return localStorage.getItem("zney-language") === "vie" ? "vie" : "eng";
-    } catch {
-      return "eng";
-    }
-  });
+  const lang = "eng" as const;
   const isPortraitMobile = usePortraitMobile();
-
-  const toggleLang = () => setLang((prev) => (prev === "vie" ? "eng" : "vie"));
 
   const navigateTo = (mode: ViewMode) => {
     let nextUrl = window.location.pathname;
@@ -120,6 +112,8 @@ export default function App() {
       nextUrl += "#/workspace";
     } else if (mode === "admin") {
       nextUrl += "?admin";
+    } else if (viewMode === "workspace") {
+      nextUrl += "#/contact";
     }
     window.history.pushState({ viewMode: mode }, "", nextUrl);
     setViewMode(mode);
@@ -140,13 +134,13 @@ export default function App() {
   }, [viewMode]);
 
   useEffect(() => {
-    document.documentElement.lang = lang === "vie" ? "vi" : "en";
+    document.documentElement.lang = "en";
     try {
       localStorage.setItem("zney-language", lang);
     } catch {
       /* Storage may be unavailable in private browsing. */
     }
-  }, [lang]);
+  }, []);
 
   useEffect(() => {
     if (viewMode !== "intro")
@@ -196,27 +190,24 @@ export default function App() {
       )}
       {viewMode === "intro" ? (
         <IntroPage
-          onEnterWorkspace={() => {
+          onPrepareWorkspace={() => {
             if (!getIsPortraitMobile()) {
               startIntroAudioFromGesture(0);
             }
-            navigateTo("workspace");
           }}
+          onEnterWorkspace={() => navigateTo("workspace")}
           lang={lang}
-          onToggleLang={toggleLang}
         />
       ) : (
         <Suspense
           fallback={
             <div role="status" className="p-8 text-slate-200">
-              {lang === "vie"
-                ? "Đang mở không gian 3D…"
-                : "Opening the 3D workspace…"}
+              Opening the 3D workspace…
               <button
                 className="block mt-5 underline"
                 onClick={() => navigateTo("intro")}
               >
-                {lang === "vie" ? "Về portfolio" : "Back to portfolio"}
+                Back to portfolio
               </button>
             </div>
           }

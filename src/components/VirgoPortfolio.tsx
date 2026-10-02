@@ -1,24 +1,21 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { ArrowDown, ArrowUpRight, Github, Linkedin, X } from "lucide-react";
 import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import "lenis/dist/lenis.css";
 import { capabilities, projects, type Language, type Project } from "../data/portfolio";
 import { ResumePage } from "./ResumePage";
 import { VIRGO_STARS } from "../data/virgoStations";
+import { FLIGHT_MOTION, navigationDuration, scrollOffsetForPosition, smooth } from "../data/virgoFlight";
+import { FLIGHT_TRACK_VH } from "../data/virgoSpace";
+import { NARRATIVE_BEATS, advanceStoryGesture } from "../data/virgoNarrative";
+import { OPENING_EDGES, OPENING_STARS } from "../data/virgoOpening";
+import { VirgoIntroFracture } from "./VirgoIntroFracture";
 import "./VirgoPortfolio.css";
 
-gsap.registerPlugin(ScrollTrigger);
 const VirgoScene = lazy(() => import("./VirgoScene").then(module => ({ default: module.VirgoScene })));
 
 const CHAPTERS = ["cosmos", "home", "story", "projects", "projects-more", "skills", "contact"] as const;
-const NAV_CHAPTERS = [
-  { chapter: "story", index: 2, vie: "Giới thiệu", eng: "About" },
-  { chapter: "projects", index: 3, vie: "Dự án", eng: "Projects" },
-  { chapter: "skills", index: 5, vie: "Kỹ năng", eng: "Skills" },
-  { chapter: "contact", index: 6, vie: "Liên hệ", eng: "Contact" },
-] as const;
 
 function chapterFromHash(hash: string) {
   const route = hash.replace(/^#\//, "").split("/")[0];
@@ -54,29 +51,75 @@ function ProjectDetails({ project, lang }: { project: Project; lang: Language })
   </article>;
 }
 
-export function VirgoPortfolio({ lang, onToggleLang, onEnterWorkspace }: {
+export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
   lang: Language;
-  onToggleLang: () => void;
+  onToggleLang?: () => void;
+  onPrepareWorkspace?: () => void;
   onEnterWorkspace: () => void;
 }) {
   const t = (vi: string, en: string) => lang === "vie" ? vi : en;
+  const pageRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const portalRef = useRef<HTMLButtonElement>(null);
+  const labelsRef = useRef<HTMLDivElement>(null);
   const lenisRef = useRef<Lenis | null>(null);
+  const interactionPaused = useRef(false);
+  const navigatedHash = useRef<string | null>(null);
+  const navigationTarget = useRef<number | null>(null);
   const [ready, setReady] = useState(false);
   const [hash, setHash] = useState(() => window.location.hash);
   const [active, setActive] = useState(() => chapterFromHash(window.location.hash));
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
   const [selectedSkill, setSelectedSkill] = useState(0);
+  const [entering, setEntering] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const project = hash.startsWith("#/project/") ? projects.find(item => item.id === hash.split("/")[2]) : undefined;
   const resumeTrack = hash === "#/cv/web" ? "web" : hash === "#/cv/mobile" ? "mobile" : undefined;
   const allProjects = hash === "#/projects/all";
   const showDialog = !!project || !!resumeTrack || allProjects;
+  interactionPaused.current = showDialog || entering;
   const onChapter = useCallback((index: number) => setActive(current => current === index ? current : index), []);
+  const enterWorkspace = () => {
+    if (entering) return;
+    onPrepareWorkspace?.();
+    setEntering(true);
+  };
+  const scrollToChapter = useCallback((index: number, immediate = false) => {
+    const scroller = scrollerRef.current;
+    const content = contentRef.current;
+    const target = content?.children[index] as HTMLElement | undefined;
+    if (!scroller || !content || !target) return;
+    if (lenisRef.current) {
+      navigationTarget.current = immediate ? null : index;
+      lenisRef.current.scrollTo(target.offsetTop, {
+        immediate,
+        lerp: 0,
+        duration: navigationDuration((target.offsetTop - scroller.scrollTop) / (scroller.clientHeight * 1.32)),
+        easing: value => smooth(0, 1, value),
+        onComplete: () => { if (navigationTarget.current === index) navigationTarget.current = null; },
+      });
+    } else {
+      navigationTarget.current = null;
+      scroller.scrollTo({ top: target.offsetTop, behavior: "instant" });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!entering) return;
+    const timer = window.setTimeout(onEnterWorkspace, reducedMotion ? 0 : (FLIGHT_MOTION.exitDuration + .10) * 1000);
+    return () => window.clearTimeout(timer);
+  }, [entering, onEnterWorkspace, reducedMotion]);
+
+  useEffect(() => {
+    if (showDialog || entering) {
+      navigationTarget.current = null;
+      lenisRef.current?.scrollTo(scrollerRef.current?.scrollTop ?? 0, { immediate: true });
+    }
+  }, [showDialog, entering]);
+
 
   useEffect(() => {
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -86,15 +129,40 @@ export function VirgoPortfolio({ lang, onToggleLang, onEnterWorkspace }: {
   }, []);
 
   useEffect(() => {
+    const page = pageRef.current;
     const scroller = scrollerRef.current;
     const content = contentRef.current;
-    if (!scroller || !content) return;
-    // A single GSAP ticker drives Lenis and ScrollTrigger, so the camera does not
-    // observe a different scroll frame than the browser's visual position.
+    if (!page || !scroller || !content) return;
+    let gesture = { direction: 0, at: -Infinity, destination: -1 };
+    // Lenis advances on GSAP's ticker. The scene samples actual scrollTop inside
+    // its render frame, avoiding a second ScrollTrigger scrub animation.
     if (!reducedMotion) {
-      const lenis = new Lenis({ wrapper: scroller, content, lerp: .11, smoothWheel: true, syncTouch: false });
+      // The fixed reading panels and controls are siblings of the scroll track.
+      // Receive their wheel events on the page as well as events on the scene.
+      const lenis: Lenis = new Lenis({ wrapper: scroller, content, eventsTarget: page, lerp: FLIGHT_MOTION.scrollLerp, wheelMultiplier: FLIGHT_MOTION.wheelMultiplier, smoothWheel: true, syncTouch: false, virtualScroll: data => {
+        if (interactionPaused.current) return false;
+        const event = data.event;
+        if (event.type !== "wheel" || event.ctrlKey || event.defaultPrevented || Math.abs(data.deltaY) < Math.abs(data.deltaX)) return true;
+        if (event.target instanceof Element && event.target.closest("[data-lenis-prevent]")) return true;
+        const direction = Math.sign(data.deltaY);
+        if (!direction || Math.abs(data.deltaY) < 2) return false;
+        if (event.cancelable) event.preventDefault();
+        const progress = page.style.getPropertyValue("--flight-progress");
+        const position = progress ? Number(progress) * 6 : 0;
+        const offsets = Array.from(content.children, child => (child as HTMLElement).offsetTop);
+        const inputDestination = scrollOffsetForPosition(gesture.destination, offsets);
+        const externallyNavigated = navigationTarget.current !== null || gesture.destination >= 0 && Math.abs(lenis.targetScroll - inputDestination) > 2;
+        if (externallyNavigated) gesture = { direction: 0, at: -Infinity, destination: -1 };
+        const step = advanceStoryGesture(gesture, position, direction, performance.now());
+        gesture = step.gesture;
+        if (!step.accepted) return false;
+        navigationTarget.current = null;
+        // The invisible scroll track changes immediately; camera, words and
+        // effects all follow the same paced, reversible render coordinate.
+        lenis.scrollTo(scrollOffsetForPosition(gesture.destination, offsets), { immediate: true });
+        return false;
+      } });
       lenisRef.current = lenis;
-      lenis.on("scroll", ScrollTrigger.update);
       const tick = (time: number) => lenis.raf(time * 1000);
       gsap.ticker.add(tick);
       gsap.ticker.lagSmoothing(0);
@@ -102,13 +170,29 @@ export function VirgoPortfolio({ lang, onToggleLang, onEnterWorkspace }: {
       return () => {
         setReady(false);
         gsap.ticker.remove(tick);
-        lenis.off("scroll", ScrollTrigger.update);
         lenis.destroy();
         lenisRef.current = null;
       };
     }
+    // Apply the same wheel speed across the scene and its fixed controls,
+    // using immediate native scrolling when smooth motion is disabled.
+    const wheel = (event: WheelEvent) => {
+      if (interactionPaused.current || event.ctrlKey || event.defaultPrevented || Math.abs(event.deltaY) < Math.abs(event.deltaX)) return;
+      if (event.target instanceof Element && event.target.closest("[data-lenis-prevent]")) return;
+      const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16 : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? scroller.clientHeight : 1;
+      event.preventDefault();
+      const offsets = Array.from(content.children, child => (child as HTMLElement).offsetTop);
+      const position = Number(page.style.getPropertyValue("--flight-progress") || 0) * 6;
+      const step = advanceStoryGesture(gesture, position, Math.sign(event.deltaY * unit), performance.now());
+      gesture = step.gesture;
+      if (step.accepted) scroller.scrollTo({ top: scrollOffsetForPosition(gesture.destination, offsets), behavior: "instant" });
+    };
+    page.addEventListener("wheel", wheel, { passive: false });
     setReady(true);
-    return () => setReady(false);
+    return () => {
+      page.removeEventListener("wheel", wheel);
+      setReady(false);
+    };
   }, [reducedMotion]);
 
   useEffect(() => {
@@ -118,15 +202,44 @@ export function VirgoPortfolio({ lang, onToggleLang, onEnterWorkspace }: {
   }, []);
 
   useEffect(() => {
+    const scroller = scrollerRef.current;
+    const content = contentRef.current;
+    if (!scroller || !content) return;
+    let previousStep = (content.children[1] as HTMLElement).offsetTop;
+    const resize = new ResizeObserver(() => {
+      const step = (content.children[1] as HTMLElement).offsetTop;
+      if (Math.abs(step - previousStep) < 1) return;
+      // Preserve the current story beat when orientation or viewport height changes.
+      const progress = scroller.parentElement?.style.getPropertyValue("--flight-progress");
+      if (progress) {
+        const destination = navigationTarget.current;
+        const offsets = Array.from(content.children, child => (child as HTMLElement).offsetTop);
+        const top = scrollOffsetForPosition(Number(progress) * 6, offsets);
+        lenisRef.current?.resize();
+        if (lenisRef.current) lenisRef.current.scrollTo(top, { immediate: true });
+        else scroller.scrollTo({ top, behavior: "instant" });
+        // Continue a menu flight after resize instead of leaving it halfway
+        // between stations with the destination already in the URL.
+        if (destination !== null) scrollToChapter(destination);
+      }
+      previousStep = step;
+    });
+    resize.observe(scroller);
+    return () => resize.disconnect();
+  }, [scrollToChapter]);
+
+  useEffect(() => {
     if (!ready) return;
+    const initialRoute = navigatedHash.current === null;
+    const routeChanged = navigatedHash.current !== hash;
+    navigatedHash.current = hash;
     const index = chapterFromHash(hash);
     const target = contentRef.current?.children[index] as HTMLElement | undefined;
-    if (target && hash && Math.abs((scrollerRef.current?.scrollTop ?? 0) - target.offsetTop) > 2) {
-      if (lenisRef.current) lenisRef.current.scrollTo(target.offsetTop, { immediate: showDialog });
-      else target.scrollIntoView({ behavior: "instant", block: "start" });
+    if (routeChanged && target && hash && Math.abs((scrollerRef.current?.scrollTop ?? 0) - target.offsetTop) > 2) {
+      scrollToChapter(index, initialRoute || showDialog);
     }
     document.title = `${project?.name ?? (resumeTrack ? "CV" : "Virgo Portfolio")} | Lê Quang Khánh — zney`;
-  }, [hash, project, ready, resumeTrack, showDialog]);
+  }, [hash, project, ready, resumeTrack, showDialog, scrollToChapter]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -138,14 +251,16 @@ export function VirgoPortfolio({ lang, onToggleLang, onEnterWorkspace }: {
   const closeDialog = () => { window.location.hash = resumeTrack ? "#/contact" : "#/projects"; };
   const navigate = (index: number) => {
     const target = contentRef.current?.children[index] as HTMLElement | undefined;
-    if (target && window.location.hash === `#/${CHAPTERS[index]}`) lenisRef.current?.scrollTo(target.offsetTop);
+    if (target && window.location.hash === `#/${CHAPTERS[index]}`) {
+      scrollToChapter(index);
+    }
   };
 
-  return <div className={`virgo-page${active === 0 ? " virgo-is-opening" : ""}`}>
+  return <div ref={pageRef} className={`virgo-page${active === 0 ? " virgo-is-opening" : ""}${entering ? " virgo-is-entering" : ""}${reducedMotion ? " virgo-reduced-motion" : ""}`}>
     <a className="virgo-skip" href="#/home" onClick={() => navigate(1)}>{t("Bỏ qua chòm sao mở đầu", "Skip constellation opening")}</a>
-    <div ref={scrollerRef} className="virgo-scroll" aria-label={t("Cuộn để bay qua chòm sao Xử Nữ", "Scroll through the Virgo constellation")}>
+    <div ref={scrollerRef} className={`virgo-scroll${showDialog || entering ? " is-paused" : ""}`} aria-label={t("Cuộn để bay qua các ngôi sao", "Scroll to travel between stars")}>
       <div ref={contentRef} className="virgo-scroll-content" aria-hidden="true">
-        {CHAPTERS.map(chapter => <div className="virgo-scroll-step" key={chapter} data-chapter={chapter} />)}
+        {CHAPTERS.map((chapter, index) => <div className="virgo-scroll-step" key={chapter} data-chapter={chapter} style={{ height: `${FLIGHT_TRACK_VH[index]}dvh` }} />)}
       </div>
     </div>
     {ready && scrollerRef.current && contentRef.current && overlayRef.current && <Suspense fallback={null}><VirgoScene
@@ -157,51 +272,48 @@ export function VirgoPortfolio({ lang, onToggleLang, onEnterWorkspace }: {
       selectedProject={selectedProject}
       selectedSkill={selectedSkill}
       portalRef={portalRef}
+      labelsRef={labelsRef}
+      entering={entering}
+      paused={showDialog}
     /></Suspense>}
-    <div className={`virgo-vignette${active === 2 || active === 5 ? " virgo-vignette-right" : ""}`} aria-hidden="true" />
-
-    <header className={`virgo-header${active === 0 ? " virgo-header-hidden" : ""}`}>
-      <a href="#/cosmos" className="virgo-brand" onClick={() => navigate(0)}>zney<span>✦</span></a>
-      <nav aria-label={t("Điều hướng", "Navigation")}>
-        {NAV_CHAPTERS.map(item => <a key={item.chapter} href={`#/${item.chapter}`} aria-current={active === item.index || (item.chapter === "projects" && active === 4) ? "location" : undefined} onClick={() => navigate(item.index)}>{t(item.vie, item.eng)}</a>)}
-      </nav>
-      <button className="virgo-language" onClick={onToggleLang} aria-label={t("Switch to English", "Chuyển sang tiếng Việt")}>{lang === "vie" ? "EN" : "VI"}</button>
-    </header>
+    <div ref={labelsRef} className="virgo-orbit-labels" aria-hidden="true">{projects.map((item, index) => <div key={item.id} className={`virgo-orbit-label virgo-hologram-${item.category}`} style={{ "--hologram-color": item.color } as CSSProperties}>
+      <span className="virgo-hologram-code">{String(index + 1).padStart(2, "0")} / {item.category}</span>
+      <strong>{item.name}</strong><span>{item.headline[lang]}</span>
+      <small>{item.stack.slice(0, 3).join(" · ")}</small>
+    </div>)}</div>
+    <div className="virgo-vignette virgo-vignette-right" aria-hidden="true" />
+    <VirgoIntroFracture soundEnabled />
 
     <main ref={overlayRef} className="virgo-overlay">
-      <section className="virgo-overlay-panel virgo-cosmos" aria-label={t("Chòm sao Xử Nữ xuất hiện", "Virgo constellation appearing")} aria-hidden={active !== 0} />
-      <section className="virgo-overlay-panel virgo-panel-left virgo-hero" aria-labelledby="virgo-home-title" aria-hidden={active !== 1}>
-        <div className="virgo-panel-content">
-          <span className="virgo-card-coordinate" aria-hidden="true">00° 00′ / ORIGIN</span>
-          <p className="virgo-kicker">ZNEY / VIRGO CONSTELLATION</p>
-          <h1 id="virgo-home-title">{t("Ý tưởng nhỏ.", "Small ideas.")}<br /><em>{t("Vũ trụ rộng.", "Infinite space.")}</em></h1>
-          <p className="virgo-description">{t("Mình là Lê Quang Khánh. Cuộn xuống để theo ánh sao, từ câu chuyện của mình đến những sản phẩm đã tạo ra.", "I'm Lê Quang Khánh. Follow the stars from my story to the things I've built.")}</p>
-          <div className="virgo-signal" aria-label={t("Lĩnh vực tập trung", "Areas of focus")}>
-            <span>WEB</span><span>SYSTEMS</span><span>INTERACTION</span>
-          </div>
-          <span className="virgo-scroll-hint"><ArrowDown size={16} />{t("Cuộn để khám phá", "Scroll to explore")}</span>
-        </div>
+      <div className="virgo-narrative" aria-label={t("Dẫn truyện", "Story")}>
+        {NARRATIVE_BEATS.map((beat, index) => <p key={index} className={`virgo-narrative-line virgo-narrative-${beat.side} virgo-placement-${beat.placement}`} aria-hidden="true">
+          <span>{beat[lang]}</span>
+        </p>)}
+      </div>
+      <section className="virgo-overlay-panel virgo-cosmos" aria-label={t("Chòm sao Xử Nữ xuất hiện", "Virgo constellation appearing")} aria-hidden={active !== 0}>
+      </section>
+      <section className="virgo-overlay-panel virgo-panel-center virgo-prologue-hero" aria-labelledby="virgo-home-title" aria-hidden={active !== 1}>
+        <h1 className="virgo-sr-only" id="virgo-home-title">Lê Quang Khánh — Portfolio</h1>
       </section>
 
-      <section className="virgo-overlay-panel virgo-panel-right" aria-labelledby="virgo-about-title" aria-hidden={active !== 2}>
-        <div className="virgo-panel-content">
-          <span className="virgo-card-coordinate" aria-hidden="true">201° 18′ / SPICA</span>
-          <p className="virgo-kicker">01 / SPICA · {t("GIỚI THIỆU", "ABOUT ME")}</p>
-          <h2 id="virgo-about-title">{t("Bắt đầu bằng", "It starts with")}<br /><em>{t("một câu hỏi.", "a question.")}</em></h2>
-          <p className="virgo-description">{t("Mình xây dựng giao diện và các hệ thống kết nối phía sau. Mỗi dự án bắt đầu từ việc hiểu người dùng thực sự muốn làm gì.", "I build thoughtful interfaces and the systems behind them. Each project starts with understanding what someone really needs to do.")}</p>
-          <div className="virgo-facts">
+      {/* Keep the reading area on the side opposite the focused star. */}
+      <section className="virgo-overlay-panel virgo-panel-right virgo-bare-chapter" aria-labelledby="virgo-about-title" aria-hidden={active !== 2}>
+        <div className="virgo-bare">
+          <p className="virgo-bare-label">01 / SPICA · {t("GIỚI THIỆU", "ABOUT ME")}</p>
+          <h2 className="virgo-sr-only" id="virgo-about-title">{t("Giới thiệu", "About me")}</h2>
+          <div className="virgo-bare-facts">
             <span><small>{t("Đang học", "Studying")}</small><strong>UEH · IT</strong></span>
-            <span><small>{t("Tập trung", "Focus")}</small><strong>WEB + SYSTEMS</strong></span>
+            <span><small>{t("Tập trung", "Focus")}</small><strong>{t("Web và hệ thống", "Web & systems")}</strong></span>
             <span><small>{t("Tốt nghiệp", "Graduation")}</small><strong>08 / 2027</strong></span>
           </div>
         </div>
       </section>
 
-      <section className="virgo-overlay-panel virgo-panel-left" aria-labelledby="virgo-projects-title" aria-hidden={active !== 3}>
-        <div className="virgo-panel-content">
-          <span className="virgo-card-coordinate" aria-hidden="true">191° 24′ / PORRIMA</span>
-          <p className="virgo-kicker">02 / PORRIMA · {t("DỰ ÁN", "PROJECTS")}</p>
-          <h2 id="virgo-projects-title">{t("Những gì mình", "Ideas made")}<br /><em>{t("đã tạo ra.", "real.")}</em></h2>
+      {/* CHAPTER 3 — PROJECTS (Porrima) */}
+      <section className="virgo-overlay-panel virgo-panel-left virgo-bare-chapter" aria-labelledby="virgo-projects-title" aria-hidden={active !== 3}>
+        <div className="virgo-bare">
+          <p className="virgo-bare-label">02 / PORRIMA · {t("DỰ ÁN", "PROJECTS")}</p>
+          <h2 className="virgo-sr-only" id="virgo-projects-title">{t("Dự án", "Projects")}</h2>
           <div className="virgo-projects-list">
             {projects.slice(0, 3).map((item, index) => <a key={item.id} href={`#/project/${item.id}`} className="virgo-project-link"
               onMouseEnter={() => setSelectedProject(index)} onFocus={() => setSelectedProject(index)} onMouseLeave={() => setSelectedProject(null)}>
@@ -211,15 +323,15 @@ export function VirgoPortfolio({ lang, onToggleLang, onEnterWorkspace }: {
             </a>)}
           </div>
           <a className="virgo-more virgo-more-scroll" href="#/projects-more" onClick={() => navigate(4)}>{t(`Cuộn tiếp · ${projects.length - 3} dự án còn lại`, `Keep scrolling · ${projects.length - 3} more projects`)} <ArrowDown size={15} /></a>
-          <p className="virgo-orbit-caption">{selectedProject === null ? t(`${projects.length} vệ tinh dự án đang quay`, `${projects.length} projects in orbit`) : `${String(selectedProject + 1).padStart(2, "0")} / ${projects[selectedProject].name}`}</p>
+          <p className="virgo-orbit-caption">{selectedProject === null ? t(`${projects.length} vệ tinh dự án đang quay`, `${projects.length} projects in orbit`) : `${String(selectedProject + 1).padStart(2, "00")} / ${projects[selectedProject].name}`}</p>
         </div>
       </section>
 
-      <section className="virgo-overlay-panel virgo-panel-left virgo-projects-more-panel" aria-labelledby="virgo-projects-more-title" aria-hidden={active !== 4}>
-        <div className="virgo-panel-content">
-          <span className="virgo-card-coordinate" aria-hidden="true">191° 24′ / PORRIMA · HOLD</span>
-          <p className="virgo-kicker">02B / PORRIMA · {t("QUỸ ĐẠO NGOÀI", "OUTER ORBIT")}</p>
-          <h2 id="virgo-projects-more-title">{t("Những dự án", "More signals")}<br /><em>{t("còn lại.", "in orbit.")}</em></h2>
+      {/* CHAPTER 4 — PROJECTS MORE (Porrima outer) — top-left */}
+      <section className="virgo-overlay-panel virgo-panel-left virgo-projects-more-panel virgo-bare-chapter" aria-labelledby="virgo-projects-more-title" aria-hidden={active !== 4}>
+        <div className="virgo-bare">
+          <p className="virgo-bare-label">02B / PORRIMA · {t("DỰ ÁN KHÁC", "MORE PROJECTS")}</p>
+          <h2 className="virgo-sr-only" id="virgo-projects-more-title">{t("Dự án khác", "More projects")}</h2>
           <div className="virgo-projects-more-list">
             {projects.slice(3).map((item, index) => {
               const projectIndex = index + 3;
@@ -230,54 +342,65 @@ export function VirgoPortfolio({ lang, onToggleLang, onEnterWorkspace }: {
             })}
           </div>
           <div className="virgo-projects-more-footer">
-            <span>{t(`${projects.length} / ${projects.length} dự án đã định vị`, `${projects.length} / ${projects.length} projects mapped`)}</span>
-            <a href="#/projects/all">{t("Mở toàn bộ", "Open archive")} <ArrowUpRight size={14} /></a>
+            <span>{t(`${projects.length} dự án`, `${projects.length} projects`)}</span>
+            <a href="#/projects/all">{t("Xem tất cả", "View all")} <ArrowUpRight size={14} /></a>
           </div>
         </div>
       </section>
 
-      <section className="virgo-overlay-panel virgo-panel-right virgo-skills-panel" aria-labelledby="virgo-skills-title" aria-hidden={active !== 5}>
-        <div className="virgo-panel-content">
-          <span className="virgo-card-coordinate" aria-hidden="true">195° 33′ / VINDEMIATRIX</span>
-          <p className="virgo-kicker">03 / VINDEMIATRIX · {t("KỸ NĂNG", "SKILLS")}</p>
-          <h2 id="virgo-skills-title">{t("Từng chi tiết.", "Every detail.")}<br /><em>{t("Một tổng thể.", "One whole.")}</em></h2>
-          <p className="virgo-description">{t("Giao diện, dữ liệu và hệ thống: mình nối từng phần thành một trải nghiệm sử dụng được.", "Interfaces, data and systems: connecting the pieces into one usable experience.")}</p>
+      {/* CHAPTER 5 — SKILLS (Vindemiatrix) — center-right */}
+      <section className="virgo-overlay-panel virgo-panel-right virgo-skills-panel virgo-bare-chapter" aria-labelledby="virgo-skills-title" aria-hidden={active !== 5}>
+        <div className="virgo-bare">
+          <p className="virgo-bare-label">03 / VINDEMIATRIX · {t("KỸ NĂNG", "SKILLS")}</p>
+          <h2 className="virgo-sr-only" id="virgo-skills-title">{t("Kỹ năng", "Skills")}</h2>
           <div className="virgo-skill-list">{capabilities.map((item, index) => <button key={item.id} type="button" aria-pressed={selectedSkill === index}
             onMouseEnter={() => setSelectedSkill(index)} onFocus={() => setSelectedSkill(index)} onClick={() => setSelectedSkill(index)}>
             <span className="virgo-row-star" aria-hidden="true">●</span>{item.title[lang]}
           </button>)}</div>
           <p className="virgo-skill-detail" aria-live="polite">{capabilities[selectedSkill].description[lang]}</p>
+          <div className="virgo-skill-tools">{capabilities[selectedSkill].tools.map(tool => <span key={tool}>{tool}</span>)}</div>
         </div>
       </section>
 
-      <section className="virgo-overlay-panel virgo-panel-left" aria-labelledby="virgo-contact-title" aria-hidden={active !== 6}>
-        <div className="virgo-panel-content">
-          <span className="virgo-card-coordinate" aria-hidden="true">203° 40′ / ZAVIJAVA</span>
-          <p className="virgo-kicker">04 / ZAVIJAVA · {t("LIÊN HỆ", "CONTACT")}</p>
-          <h2 id="virgo-contact-title">{t("Cùng tạo nên", "Let's make")}<br /><em>{t("điều có ý nghĩa.", "something that matters.")}</em></h2>
-          <p className="virgo-description">{t("Nếu bạn đang có một sản phẩm cần được làm rõ, xây chắc và chăm chút đến chuyển động cuối cùng, hãy gửi mình một tín hiệu.", "If you have a product that needs clarity, solid engineering, and care down to the last interaction, send me a signal.")}</p>
+      {/* CHAPTER 6 — CONTACT (Zavijava) */}
+      <section className="virgo-overlay-panel virgo-panel-right" aria-labelledby="virgo-contact-title" aria-hidden={active !== 6}>
+        <div className="virgo-bare">
+          <p className="virgo-bare-label">04 / ZAVIJAVA · {t("LIÊN HỆ", "CONTACT")}</p>
+          <h2 className="virgo-sr-only" id="virgo-contact-title">{t("Liên hệ", "Contact")}</h2>
           <a className="virgo-email" href="mailto:lequangkhanh295@gmail.com">lequangkhanh295@gmail.com <ArrowUpRight size={20} /></a>
           <div className="virgo-contact-links">
             <a href="https://github.com/psy-zney" target="_blank" rel="noreferrer"><Github size={16} /> GitHub</a>
             <a href="https://www.linkedin.com/in/psy-zney295" target="_blank" rel="noreferrer"><Linkedin size={16} /> LinkedIn</a>
             <a href="#/cv/web">Web CV</a><a href="#/cv/mobile">Mobile CV</a>
           </div>
-          <button className="virgo-workspace" onClick={onEnterWorkspace}>{t("Vào game 3D", "Enter the 3D world")} <ArrowUpRight size={17} /></button>
+          <button className="virgo-workspace" disabled={entering} onClick={enterWorkspace}>{t("Bước vào phòng học", "Enter the classroom")} <ArrowUpRight size={17} /></button>
         </div>
       </section>
     </main>
 
-    <div className={`virgo-scroll-rail${active === 0 ? " is-opening" : ""}`} aria-hidden="true">
-      <span className="virgo-rail-line" />
-      {CHAPTERS.slice(1).map((chapter, index) => <span key={chapter} className={active === index + 1 ? "is-active" : active > index + 1 ? "is-past" : ""} />)}
-    </div>
 
-    <div className={`virgo-opening-cue${active === 0 ? " is-active" : ""}`} aria-hidden="true"><ArrowDown size={19} /></div>
+    <nav className="virgo-constellation-map" aria-label={t("Bản đồ chòm Xử Nữ", "Virgo constellation map")}>
+      <svg viewBox="-10 -6 20 12" role="img" aria-label="Virgo">
+        <g transform="scale(1,-1)">
+          {OPENING_EDGES.map(([a,b], i) => <line key={i} x1={OPENING_STARS[a].position[0]} y1={OPENING_STARS[a].position[1]} x2={OPENING_STARS[b].position[0]} y2={OPENING_STARS[b].position[1]} />)}
+          {OPENING_STARS.map((star, i) => <circle key={i} cx={star.position[0]} cy={star.position[1]} r={star.main ? .18 : .08} className={i === stationFromChapter(active) ? "is-active" : ""} />)}
+        </g>
+      </svg>
+      {VIRGO_STARS.map((star, i) => {
+        const point = OPENING_STARS[i].position;
+        const chapter = [2,3,5,6][i];
+        return <a key={star.name} className="virgo-map-star" style={{ left: ((point[0]+10)/20*100)+'%', top: ((6-point[1])/12*100)+'%' }} href={'#/'+CHAPTERS[chapter]} onClick={() => navigate(chapter)} aria-label={star.name+' · '+t(['Giới thiệu','Dự án','Kỹ năng','Liên hệ'][i],['About','Projects','Skills','Contact'][i])} aria-current={stationFromChapter(active) === i ? "location" : undefined}><span>{star.name}</span></a>;
+      })}
+      <a className="virgo-map-home" href="#/cosmos" onClick={() => navigate(0)}>VIRGO</a>
+    </nav>
+
+    <button className={`virgo-opening-cue${active === 0 ? " is-active" : ""}`} aria-hidden={active !== 0} aria-label={t("Cuộn để bắt đầu hành trình", "Begin the journey")} tabIndex={active === 0 ? 0 : -1} onClick={() => navigate(1)}><ArrowDown size={19} /></button>
     <button ref={portalRef} className={`virgo-star-portal${active === 6 ? " is-active" : ""}`} type="button"
-      aria-label={t("Chạm ngôi sao Zavijava để vào game 3D", "Enter the 3D world through Zavijava")}
-      aria-hidden={active !== 6} tabIndex={active === 6 ? 0 : -1} onClick={onEnterWorkspace}>
-      <span className="virgo-portal-ring" aria-hidden="true" /><span className="virgo-portal-label">{t("Vào game 3D", "Enter 3D world")} <ArrowUpRight size={13} /></span>
+      aria-label={t("Mở phòng học qua sao Zavijava", "Open the classroom through Zavijava")}
+      aria-hidden={active !== 6} tabIndex={active === 6 ? 0 : -1} disabled={entering} onClick={enterWorkspace}>
+      <span className="virgo-portal-ring" aria-hidden="true" /><span className="virgo-portal-label">{t("Vào phòng học", "Enter classroom")} <ArrowUpRight size={13} /></span>
     </button>
+    <div className="virgo-flight-progress" aria-hidden="true"><span /></div>
     <div className="virgo-index" aria-hidden="true"><span>{String(active + 1).padStart(2, "0")}</span> / 07</div>
     <div className="virgo-station" aria-hidden="true">{stationFromChapter(active) === null ? "VIRGO / OVERVIEW" : `${VIRGO_STARS[stationFromChapter(active)!].name.toUpperCase()} / ${String(stationFromChapter(active)! + 1).padStart(2, "0")}`}</div>
 
