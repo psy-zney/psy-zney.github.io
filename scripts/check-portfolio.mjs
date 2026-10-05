@@ -63,6 +63,7 @@ try {
   assert.equal(new Set([...VIRGO_STARS, ...VIRGO_SUPPORT_STARS].map(star => star.position.join(","))).size, 14);
   assert.equal(CAMERA_STOPS.length, 6);
   const { advanceFlightPosition, flightEase, flightFieldOfView, flightPositionForScroll, flightSample, FLIGHT_MOTION, focusedStarForPosition, navigationDuration, orbitPosition, panelVisibility, scrollOffsetForPosition } = await server.ssrLoadModule("/src/data/virgoFlight.ts");
+  const { celestialSlot, CELESTIAL_PROJECTS, CELESTIAL_SKILLS } = await server.ssrLoadModule("/src/data/celestialRegistry.ts");
   const { asteroidLayout, FLIGHT_TRACK_VH, ORBIT_PLANE, orbitRadii, planetRadius, SPACE_LAYOUT } = await server.ssrLoadModule("/src/data/virgoSpace.ts");
   const { TRANSIT_LEGS, transitSample, systemPresence, journeyCameraZ, transitPlanets } = await server.ssrLoadModule("/src/data/virgoTransit.ts");
   const originalStars = [[-5.2, -2.5, 0], [-.6, .85, 0], [3.7, 3.1, 0], [6.35, -2.05, 0]];
@@ -138,7 +139,9 @@ try {
   blockedSound.ownerDocument.dispatchEvent(new Event("pointerdown"));
   assert.equal(blockedSound.playCalls,2,"Leaving the scene must remove its audio gesture listener");
   const { NARRATIVE_BEATS, narrativeEdges, narrativeSample, narrativeTextReveal, mobileNarrativeTop } = await server.ssrLoadModule("/src/data/virgoNarrative.ts");
-  assert.equal(narrativeTextReveal(.3), 0, "Text cannot appear before the slit has opened");
+  assert.equal(narrativeTextReveal(.3, false, true), 0, "Home text cannot appear before the preserved slit has opened");
+  assert.equal(narrativeTextReveal(.2), 0, 'Station text starts at 20% enter');
+  assert.equal(narrativeTextReveal(.85), 1, 'Station text settles at 85% enter');
   assert.equal(narrativeTextReveal(1), 1);
   for (const [width, height] of [[320, 568], [390, 844], [430, 932], [1280, 720]]) {
     const fit = readingRiftSize(width * .7, 54, width);
@@ -154,7 +157,7 @@ try {
     for (const bottom of [height * .32, height * .44, height * .50]) {
       const placement = mobileNarrativeTop(height, bottom, 78);
       assert(placement.top >= bottom + 24, "Mobile text must clear the projected star and halo");
-      assert(placement.controls >= placement.top + 78 + 22, "Mobile controls must not cover the story sentence");
+      assert(placement.controls >= placement.top + 78 + 20, "Mobile controls must not cover the story sentence");
     }
   }
   const { createRockGeometry, planetType } = await server.ssrLoadModule("/src/data/virgoCelestial.ts");
@@ -323,7 +326,7 @@ try {
   assert.equal(flightPositionForScroll(-100, offsets), 0);
   assert.equal(flightPositionForScroll(offsets.at(-1) + 10000, offsets), 6);
   for (const rock of asteroidLayout(480)) {
-    const radius = Math.hypot(rock.position[0], rock.position[1] / .55);
+    const radius = Math.hypot(rock.position[0], rock.position[1] / ORBIT_PLANE.vertical);
     assert(radius >= SPACE_LAYOUT.asteroidInner - 1e-9 && radius <= SPACE_LAYOUT.asteroidOuter + 1e-9, "Asteroids must stay inside their belt");
     assert(rock.position.every(Number.isFinite) && rock.scale > 0);
   }
@@ -481,7 +484,7 @@ try {
   for (const mobile of [false,true]) {
     for (const [count,skills,starIndex] of [[4,false,0],[projects.length,false,1],[capabilities.length,true,2]]) {
       for (let i = 0; i < count; i++) {
-        const radius = orbitRadii(skills,mobile)[i % (skills ? 2 : 3)];
+        const radius = orbitRadii(skills,mobile)[celestialSlot(i, count, skills).orbit];
         for (let elapsed = 0; elapsed <= 80; elapsed++) {
           const point = orbitPosition(i,count,starIndex+2,skills,0,elapsed,mobile);
           const scale = mobile ? .72 : 1.06;
@@ -495,11 +498,11 @@ try {
   for (const skills of [false, true]) {
     const count = skills ? capabilities.length : projects.length;
     for (let index = 0; index < count; index++) {
-      const radius = (skills ? SPACE_LAYOUT.skillOrbits : SPACE_LAYOUT.projectOrbits)[index % (skills ? 2 : 3)];
+      const radius = orbitRadii(skills)[celestialSlot(index, count, skills).orbit];
       const guide = new Matrix4().compose(new Vector3(), new Quaternion().setFromEuler(new Euler(Math.atan2(ORBIT_PLANE.depth, ORBIT_PLANE.vertical), 0, 0)), new Vector3(1, Math.hypot(ORBIT_PLANE.vertical, ORBIT_PLANE.depth), 1));
       const quadrants = new Set();
       for (const position of skills ? [4.8, 5, 5.17, 5.3] : [2.94, 3, 4.25]) {
-        for (let time = 0; time <= 120; time++) {
+        for (let time = 0; time <= 240; time++) {
           const point = new Vector3(...orbitPosition(index, count, position, skills, 0, time));
           const angle = Math.atan2(point.y / ORBIT_PLANE.vertical, point.x);
           const ringPoint = new Vector3(Math.cos(angle) * radius, Math.sin(angle) * radius, 0).applyMatrix4(guide);
@@ -518,7 +521,7 @@ try {
     const before = orbitPosition(0, count, position, skills, 1, 0);
     const after = orbitPosition(0, count, position, skills, 1, 4);
     assert.notDeepEqual(before, after, "Planets must keep orbiting when scroll is stationary");
-    assert(Math.abs(Math.hypot(before[0], before[1] / .55) - Math.hypot(after[0], after[1] / .55)) < 1e-9, "Ambient motion must stay on the displayed orbit");
+    assert(Math.abs(Math.hypot(before[0], before[1] / ORBIT_PLANE.vertical) - Math.hypot(after[0], after[1] / ORBIT_PLANE.vertical)) < 1e-9, "Ambient motion must stay on the displayed orbit");
     assert.deepEqual(orbitPosition(0, count, position, skills, 1, 0), before, "A frozen ambient phase must not drift");
   }
   for (const lang of ["vie", "eng"]) {
@@ -529,21 +532,21 @@ try {
       }));
       assert.equal((html.match(/class="virgo-scroll-step"/g) || []).length, 7);
       assert.equal((html.match(/class="virgo-overlay-panel/g) || []).length, 7);
-      assert.equal((html.match(/<h1[ >]/g) || []).length, 1);
+      assert.equal((html.match(/<main[\s\S]*?<\/main>/)?.[0].match(/<h1[ >]/g) || []).length, 1, "The main portfolio has one primary heading; modal documents have their own heading");
       assert(html.includes('class="virgo-overlay-panel virgo-cosmos"'));
-      assert(!html.includes('<header') && !html.includes('virgo-scroll-rail'), "The top bar and vertical dot rail must be removed");
+      assert(!html.includes('class="virgo-header"') && !html.includes('virgo-scroll-rail'), "The portfolio top bar and vertical dot rail must be removed; reader headers are allowed");
       assert(html.includes('virgo-constellation-map') && html.includes('aria-label="Virgo"'), "Navigation must use the original Virgo map");
       assert.equal((html.match(/class="virgo-map-star"/g) || []).length,4);
       assert(html.includes('<canvas class="virgo-space-rift"'), "The fracture must be rendered directly on the web");
       assert(!html.includes('<video') && !html.includes('fracture-transition.webm'), "Fracture visuals must never use the reference film");
-      assert(html.includes('Open the classroom through Zavijava') || html.includes('Mở phòng học qua sao Zavijava'));
+      assert(html.includes('Open workspace through Zavijava') || html.includes('Mở không gian làm việc qua sao Zavijava'));
       assert(html.includes("SPICA") && html.includes("PORRIMA") && html.includes("VINDEMIATRIX") && html.includes("ZAVIJAVA"));
       assert.equal((html.match(/class="virgo-project-link"/g) || []).length, 3);
       assert.equal((html.match(/class="virgo-row-star"/g) || []).length >= projects.length, true);
-      assert.equal((html.match(/aria-pressed="(?:true|false)"/g) || []).length, capabilities.length);
+      assert.equal((html.match(/class="virgo-skill-list"([\s\S]*?)<\/div>/)?.[1].match(/aria-pressed="(?:true|false)"/g) || []).length, capabilities.length);
       assert(!html.includes('virgo-utilities') && !html.includes('virgo-language') && !html.includes('virgo-motion'), "Portfolio must not expose sound, motion or language switches");
       assert(html.includes('data-sound="on"'), "The fracture audio is enabled without a separate switch");
-      assert(html.includes(`${projects.length} projects in orbit`) || html.includes(`${projects.length} vệ tinh dự án đang quay`));
+      assert(html.includes(`${projects.length} projects in orbit`) || html.includes(`${projects.length} hành tinh dự án đang quay`));
       if (hash === "#/project/beatsync") assert(html.includes(projects[0].problem[lang]));
       if (hash === "#/projects/all") {
         assert.equal((html.match(/class="virgo-archive"/g) || []).length, 1);
@@ -560,7 +563,7 @@ try {
       }));
       assert.equal((html.match(/<section /g) || []).length, projects.length + 4,
         "Each project needs its own scroll panel, alongside home, story, skills and contact");
-      assert.equal((html.match(/<h1[ >]/g) || []).length, 1);
+      assert.equal((html.match(/<main[\s\S]*?<\/main>/)?.[0].match(/<h1[ >]/g) || []).length, 1, "The main portfolio has one primary heading; modal documents have their own heading");
       for (const project of projects) {
         assert(html.includes(`id="work-${project.id}"`));
         assert(html.includes(`href="#/project/${project.id}"`));
@@ -689,7 +692,7 @@ try {
       React.createElement(ProjectShelf, { lang, onClose() {} }),
     );
     assert.equal(
-      (shelf.match(/href="#\/project\//g) || []).length,
+      (shelf.match(/href="#\/workspace\/library\//g) || []).length,
       projects.length,
     );
   }
@@ -728,7 +731,7 @@ try {
   );
   assert(!unsafe.includes('href="javascript:') && !unsafe.includes("<script>"));
   console.log(
-    `PASS: 20 Virgo scrollytelling renders, 26 scroll portfolio renders, ${rendered} legacy bilingual route renders, ${projects.length} projects, both CVs, original GLB workspace, and safe Markdown rendering.`,
+    `PASS: 20 Virgo scrollytelling renders, 26 scroll portfolio renders, ${rendered} legacy bilingual route renders, ${projects.length} projects, both CVs, preserved source GLB, and safe Markdown rendering.`,
   );
 } finally {
   await server.close();

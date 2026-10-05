@@ -87,17 +87,23 @@ const LED_MODES: Array<{ id: LedMode; label: string; color: string }> = [
 interface DesktopOverlayProps {
   onExit: () => void;
   lang: 'vie' | 'eng';
+  embedded?: boolean;
+  initialSound?: boolean;
+  onSoundChange?: () => void;
+  onKeySound?: (code: string) => void;
 }
+let playgroundSession = { player: { x: 1, y: 3 }, orb: { x: 7, y: 1 }, score: 0, moves: 0, led: 'wave' as LedMode };
 
-export function DesktopOverlay({ onExit, lang }: DesktopOverlayProps) {
+export function DesktopOverlay({ onExit, lang, embedded = false, initialSound = false, onSoundChange, onKeySound }: DesktopOverlayProps) {
   const [pressedKeys, setPressedKeys] = useState<Set<string>>(() => new Set());
-  const [playerPosition, setPlayerPosition] = useState({ x: 1, y: 3 });
-  const [orbPosition, setOrbPosition] = useState({ x: 7, y: 1 });
-  const [gameScore, setGameScore] = useState(0);
-  const [gameMoves, setGameMoves] = useState(0);
+  const [playerPosition, setPlayerPosition] = useState(embedded ? playgroundSession.player : { x: 1, y: 3 });
+  const [orbPosition, setOrbPosition] = useState(embedded ? playgroundSession.orb : { x: 7, y: 1 });
+  const [gameScore, setGameScore] = useState(embedded ? playgroundSession.score : 0);
+  const [gameMoves, setGameMoves] = useState(embedded ? playgroundSession.moves : 0);
   const [mouseButton, setMouseButton] = useState<'left' | 'right' | null>(null);
-  const [ledMode, setLedMode] = useState<LedMode>('wave');
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [ledMode, setLedMode] = useState<LedMode>(embedded ? playgroundSession.led : 'wave');
+  useEffect(() => { if (embedded) playgroundSession = { player: playerPosition, orb: orbPosition, score: gameScore, moves: gameMoves, led: ledMode }; }, [embedded, playerPosition, orbPosition, gameScore, gameMoves, ledMode]);
+  const [soundEnabled, setSoundEnabled] = useState(initialSound);
   const pointerRef = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const keyboardShellRef = useRef<HTMLDivElement>(null);
@@ -116,6 +122,7 @@ export function DesktopOverlay({ onExit, lang }: DesktopOverlayProps) {
   const ledModeRef = useRef<LedMode>(ledMode);
   const ledColorRef = useRef(LED_MODES[0].color);
   soundEnabledRef.current = soundEnabled;
+  useEffect(() => { if (embedded) setSoundEnabled(initialSound); }, [initialSound, embedded]);
   ledModeRef.current = ledMode;
   playerPositionRef.current = playerPosition;
   orbPositionRef.current = orbPosition;
@@ -123,6 +130,7 @@ export function DesktopOverlay({ onExit, lang }: DesktopOverlayProps) {
 
   const playMechanicalClick = React.useCallback((phase: 'down' | 'up', code: string) => {
     if (phase === 'up' || !soundEnabledRef.current || typeof AudioContext === 'undefined') return;
+    if (embedded) { onKeySound?.(code); return; }
 
     const context = audioContextRef.current ?? new AudioContext();
     audioContextRef.current = context;
@@ -179,7 +187,7 @@ export function DesktopOverlay({ onExit, lang }: DesktopOverlayProps) {
     noise.stop(now + 0.038);
     switchTone.start(now);
     switchTone.stop(now + 0.058);
-  }, []);
+  }, [embedded, onKeySound]);
 
   const triggerLedRipple = React.useCallback((code: string) => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -245,11 +253,11 @@ export function DesktopOverlay({ onExit, lang }: DesktopOverlayProps) {
 
   useEffect(() => {
     const keyDown = (event: KeyboardEvent) => {
-      if ((event.target as HTMLElement).closest('[data-native-cursor]')) return;
+      if (!(event.target instanceof HTMLElement) || event.target.closest('input,textarea,[contenteditable=true],[data-native-cursor]')) return;
+      if (embedded && !workspaceRef.current?.contains(document.activeElement)) return;
 
       const modifierPressed = event.ctrlKey || event.metaKey;
-      if (event.code === 'Space' || event.code === 'Tab' || event.code === 'Backspace'
-        || (modifierPressed && (event.code === 'KeyA' || event.code === 'KeyV'))) {
+      if (!modifierPressed && ['Space','KeyW','KeyA','KeyS','KeyD'].includes(event.code)) {
         event.preventDefault();
       }
 
@@ -274,18 +282,21 @@ export function DesktopOverlay({ onExit, lang }: DesktopOverlayProps) {
     };
 
     const clearKeys = () => setPressedKeys(new Set());
+    const visibility = () => { if (document.hidden) clearKeys(); };
     window.addEventListener('keydown', keyDown);
     window.addEventListener('keyup', keyUp);
     window.addEventListener('blur', clearKeys);
+    document.addEventListener('visibilitychange', visibility);
     return () => {
       window.removeEventListener('keydown', keyDown);
       window.removeEventListener('keyup', keyUp);
       window.removeEventListener('blur', clearKeys);
+      document.removeEventListener('visibilitychange', visibility);
     };
-  }, [movePixelPlayer, playMechanicalClick, triggerLedRipple]);
+  }, [movePixelPlayer, playMechanicalClick, triggerLedRipple, embedded]);
 
   useEffect(() => {
-    if (typeof AudioContext === 'undefined') return;
+    if (embedded || !soundEnabled || typeof AudioContext === 'undefined') return;
     const controller = new AbortController();
     let cancelled = false;
 
@@ -313,7 +324,7 @@ export function DesktopOverlay({ onExit, lang }: DesktopOverlayProps) {
       cancelled = true;
       controller.abort();
     };
-  }, []);
+  }, [soundEnabled, embedded]);
 
   useEffect(() => {
     return () => {
@@ -387,13 +398,14 @@ export function DesktopOverlay({ onExit, lang }: DesktopOverlayProps) {
       <div
         ref={workspaceRef}
         className="desktop-workspace"
+        tabIndex={embedded ? 0 : undefined}
         onPointerMove={handlePointerMove}
         onPointerDown={handlePointerDown}
         onPointerUp={() => setMouseButton(null)}
         onPointerCancel={() => setMouseButton(null)}
         onContextMenu={(event) => event.preventDefault()}
       >
-        <div ref={pointerRef} className={`virtual-pointer ${mouseButton ? 'is-clicking' : ''}`} aria-hidden="true"><span /></div>
+        {!embedded && <div ref={pointerRef} className={`virtual-pointer ${mouseButton ? 'is-clicking' : ''}`} aria-hidden="true"><span /></div>}
 
         <header className="desktop-topbar">
           <div className="desktop-brand">
@@ -430,6 +442,7 @@ export function DesktopOverlay({ onExit, lang }: DesktopOverlayProps) {
                 </div>
                 <div
                   className="pixel-stage"
+                  tabIndex={0}
                   role="application"
                   aria-label="Move the pixel cat with W A S D. Press Space to dash toward the signal."
                   style={{ '--game-columns': GAME_COLUMNS, '--game-rows': GAME_ROWS } as React.CSSProperties}
@@ -437,7 +450,7 @@ export function DesktopOverlay({ onExit, lang }: DesktopOverlayProps) {
                   <div className="pixel-grid-lines" aria-hidden="true" />
                   <div
                     className="pixel-entity pixel-orb"
-                    style={{ '--game-x': (orbPosition.x * 100) + '%', '--game-y': (orbPosition.y * 100) + '%' } as React.CSSProperties}
+                    style={{ '--game-x': (orbPosition.x * 100 / GAME_COLUMNS) + '%', '--game-y': (orbPosition.y * 100 / GAME_ROWS) + '%' } as React.CSSProperties}
                     aria-label="Signal target"
                   >
                     <span className="pixel-sprite pixel-orb-sprite" aria-hidden="true">
@@ -448,7 +461,7 @@ export function DesktopOverlay({ onExit, lang }: DesktopOverlayProps) {
                   </div>
                   <div
                     className="pixel-entity pixel-player"
-                    style={{ '--game-x': (playerPosition.x * 100) + '%', '--game-y': (playerPosition.y * 100) + '%' } as React.CSSProperties}
+                    style={{ '--game-x': (playerPosition.x * 100 / GAME_COLUMNS) + '%', '--game-y': (playerPosition.y * 100 / GAME_ROWS) + '%' } as React.CSSProperties}
                     aria-label="Pixel cat"
                   >
                     <span className="pixel-sprite pixel-cat-sprite" aria-hidden="true">
@@ -462,6 +475,9 @@ export function DesktopOverlay({ onExit, lang }: DesktopOverlayProps) {
                     <span><kbd>SPACE</kbd> DASH</span>
                     <span>{String(gameMoves).padStart(3, '0')} {isVie ? 'BƯỚC' : 'STEPS'}</span>
                   </div>
+                </div>
+                <div className="game-touch-controls" aria-label="Game controls">
+                  {([['KeyW','↑'],['KeyA','←'],['KeyS','↓'],['KeyD','→'],['Space','Dash']] as const).map(([code,label]) => <button key={code} type="button" onClick={() => { movePixelPlayer(code); playMechanicalClick('down', code); }} aria-label={label}>{label}</button>)}
                 </div>
               </article>
 
@@ -479,7 +495,7 @@ export function DesktopOverlay({ onExit, lang }: DesktopOverlayProps) {
                     <button
                       type="button"
                       className={'sound-toggle ' + (soundEnabled ? 'is-on' : '')}
-                      onClick={() => setSoundEnabled((value) => !value)}
+                      onClick={() => embedded ? onSoundChange?.() : setSoundEnabled((value) => !value)}
                       aria-pressed={soundEnabled}
                       data-native-cursor
                     >

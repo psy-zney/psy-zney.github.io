@@ -2,11 +2,12 @@ import { advanceFlightPosition, clamp } from "./virgoFlight";
 import { narrativeEdges, NARRATIVE_BEATS } from "./virgoNarrative";
 import { TRANSIT_LEGS } from "./virgoTransit";
 import { OPENING_HANDOFF } from "./virgoOpening";
+import { motionTokens } from './motionTokens';
 
 export const STORY_PACING = {
   travelRate: .42,
-  openSeconds: .50,
-  closeSeconds: .36,
+  openSeconds: motionTokens.storyOpen / 1000,
+  closeSeconds: motionTokens.storyClose / 1000,
   readSeconds: 1.30,
   handoffSeconds: .70,
   transitSeconds: 3.4,
@@ -17,8 +18,8 @@ export const STORY_PACING = {
 
 export const HOME_PACING = {
   travelRate: .62,
-  openSeconds: .40,
-  closeSeconds: .28,
+  openSeconds: motionTokens.homeOpen / 1000,
+  closeSeconds: motionTokens.homeClose / 1000,
   readSeconds: .75,
 } as const;
 export const narrativePacing = (index: number) => NARRATIVE_BEATS[index].side === "middle" ? HOME_PACING : STORY_PACING;

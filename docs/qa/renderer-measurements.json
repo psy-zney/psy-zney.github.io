@@ -1,0 +1,67 @@
+[
+  {
+    "mode": "overview",
+    "stats": {
+      "calls": 61,
+      "geometries": 61,
+      "p95": 8.6,
+      "samples": 432,
+      "textures": 56,
+      "tier": "low",
+      "triangles": 79888
+    },
+    "viewport": [
+      1440,
+      900
+    ]
+  },
+  {
+    "afterCycles": 20,
+    "mode": "overview",
+    "stats": {
+      "calls": 61,
+      "geometries": 65,
+      "p95": 7.5,
+      "samples": 431,
+      "textures": 63,
+      "tier": "medium",
+      "triangles": 143628
+    },
+    "viewport": [
+      1440,
+      900
+    ]
+  },
+  {
+    "label": "medium before repeat cycles",
+    "stats": {
+      "calls": 61,
+      "geometries": 65,
+      "p95": 7.5,
+      "samples": 431,
+      "textures": 63,
+      "tier": "medium",
+      "triangles": 143628
+    },
+    "viewport": [
+      1440,
+      900
+    ]
+  },
+  {
+    "afterRepeatCycles": 40,
+    "stats": {
+      "calls": 61,
+      "geometries": 66,
+      "p95": 8.3,
+      "samples": 431,
+      "textures": 63,
+      "tier": "medium",
+      "triangles": 143628
+    },
+    "viewport": [
+      1440,
+      900
+    ]
+  }
+]

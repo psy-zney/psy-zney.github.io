@@ -1,9 +1,11 @@
 import * as THREE from "three";
 import { clamp, smooth } from "./virgoFlight";
+import { CELESTIAL_PROJECTS } from './celestialRegistry';
+import { projects } from './portfolio';
 
 export const PLANET_TYPES = ["ocean", "gas", "crater", "lava", "ice", "rock"] as const;
 export type PlanetType = typeof PLANET_TYPES[number];
-export const planetType = (index: number, skills = false): PlanetType => PLANET_TYPES[(index + (skills ? 4 : 0)) % PLANET_TYPES.length];
+export const planetType = (index: number, skills = false): PlanetType => skills ? PLANET_TYPES[(index + 4) % PLANET_TYPES.length] : CELESTIAL_PROJECTS.find(item => item.id === projects[index].id)!.surface;
 const random = (seed: number) => { const n = Math.sin(seed * 127.1 + 31.7) * 43758.5453; return n - Math.floor(n); };
 const palettes: Record<PlanetType, string[]> = {
   ocean: ["#06192e", "#124566", "#4e7157", "#b1a582"],
@@ -109,7 +111,7 @@ export function createRockGeometry(detail = 1) {
 }
 
 export function createPlanetRing(radius: number) {
-  const inner = radius * 1.55, outer = radius * 2.55;
+  const inner = radius * 1.35, outer = radius * 2.10;
   const geometry = new THREE.RingGeometry(inner, outer, 96, 1);
   const positions = geometry.getAttribute("position"), uv = geometry.getAttribute("uv");
   for (let i = 0; i < positions.count; i++) uv.setXY(i, (Math.hypot(positions.getX(i), positions.getY(i)) - inner) / (outer - inner), .5);

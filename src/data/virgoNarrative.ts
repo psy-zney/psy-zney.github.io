@@ -8,12 +8,12 @@ export const NARRATIVE_BEATS = [
   { from: 1.12, to: 1.40, side: "middle", placement: "upper-left", effect: "rift", vie: "Mình học bằng cách làm.", eng: "I learn by building." },
   { from: 1.40, to: 1.82, side: "middle", placement: "lower-right", effect: "aurora", vie: "Mình biến ý tưởng thành sản phẩm.", eng: "I turn ideas into useful tools." },
   { from: 1.92, to: 2.32, side: "right", placement: "upper-right", effect: "orbit", vie: "Mình tìm hiểu người dùng cần gì.", eng: "I start with what people need." },
-  { from: 2.94, to: 3.52, side: "left", placement: "upper-left", effect: "meteor", vie: "Đây là những dự án mình đã làm.", eng: "Here are the projects I've built." },
-  { from: 3.65, to: 4.25, side: "left", placement: "lower-left", effect: "nebula", vie: "Mình vẫn tiếp tục làm và học.", eng: "I keep building and learning." },
-  { from: 4.80, to: 5.04, side: "right", placement: "upper-right", effect: "aurora", vie: "Mình làm web, ứng dụng và hệ thống.", eng: "I build websites, apps and systems." },
-  { from: 5.04, to: 5.30, side: "right", placement: "lower-right", effect: "orbit", vie: "Mình nối các phần để sản phẩm chạy tốt.", eng: "I connect the parts so they work well." },
-  { from: 5.82, to: 5.94, side: "right", placement: "top", effect: "rift", vie: "Bạn có ý tưởng?", eng: "Have an idea?" },
-  { from: 5.94, to: 6.20, side: "right", placement: "lower-right", effect: "aurora", vie: "Mình cùng trao đổi nhé.", eng: "Let's talk." },
+  { from: 2.94, to: 3.52, side: "left", placement: "upper-left", effect: "meteor", vie: "Đây là cách mình biến nhu cầu thành dự án.", eng: "Here is how I turn those needs into projects." },
+  { from: 3.65, to: 4.25, side: "left", placement: "upper-left", effect: "nebula", vie: "Mỗi dự án cho mình thêm điều để học.", eng: "Each project gives me something new to learn." },
+  { from: 4.80, to: 5.04, side: "right", placement: "upper-right", effect: "aurora", vie: "Những dự án ấy định hình cách mình xây dựng.", eng: "Those projects shape the way I build." },
+  { from: 5.04, to: 5.30, side: "right", placement: "upper-right", effect: "orbit", vie: "Giao diện, ứng dụng và hệ thống được kết nối cẩn thận.", eng: "Interfaces, apps and systems—connected with care." },
+  { from: 5.82, to: 5.94, side: "right", placement: "upper-right", effect: "rift", vie: "Bạn có ý tưởng?", eng: "Have an idea?" },
+  { from: 5.94, to: 6.20, side: "right", placement: "upper-right", effect: "aurora", vie: "Cùng trao đổi, hoặc ghé không gian làm việc của mình.", eng: "Let's talk—or explore my workspace." },
 ] as const;
 
 export function narrativeEdges(index: number) {
@@ -24,20 +24,21 @@ export function narrativeEdges(index: number) {
 
 export function narrativeSample(position: number, reduced = false) {
   const index = NARRATIVE_BEATS.findIndex(beat => position >= beat.from && position < beat.to);
-  if (index < 0) return { index: -1, opacity: 0, reveal: 0 };
+  if (index < 0) return { index: -1, opacity: 0, reveal: 0, controls: 0, interactive: false };
   const beat = NARRATIVE_BEATS[index];
   const edge = narrativeEdges(index);
-  const reveal = reduced ? 1 : smooth(beat.from, edge.open, position) * (1 - smooth(edge.close, beat.to, position));
-  return { index, opacity: reveal, reveal };
+  const enter = reduced ? 1 : smooth(beat.from, edge.open, position);
+  const exit = smooth(edge.close, beat.to, position);
+  const reveal = enter * (1 - exit);
+  return { index, opacity: reveal, reveal, controls: smooth(.5, 1, enter) * (1 - smooth(0, .55, exit)), interactive: enter >= .85 && exit === 0 };
 }
 
-export function narrativeTextReveal(amount: number, reduced = false) {
-  return reduced ? 1 : smooth(.40, .94, amount);
+export function narrativeTextReveal(amount: number, reduced = false, home = false) {
+  return reduced ? 1 : home ? smooth(.40, .94, amount) : smooth(.20, .85, amount);
 }
-export function mobileNarrativeTop(height: number, starBottom: number, lineHeight: number, preferredTop = .50) {
-  // Reserve the luminous bank and its outer wisps as well as the letters.
-  const top = Math.max(height * preferredTop, starBottom + 62);
-  return { top, controls: Math.max(height * .61, top + lineHeight + 44) };
+export function mobileNarrativeTop(height: number, starBottom: number, lineHeight: number, preferredTop = .44) {
+  const top = Math.max(height * preferredTop, starBottom + 24);
+  return { top, controls: top + lineHeight + 20 };
 }
 
 /** Reading anchors for wheel gestures; continuous touch scrolling uses the same timeline. */

@@ -7,7 +7,7 @@ Ho Chi Minh City, Vietnam · [lequangkhanh295@gmail.com](mailto:lequangkhanh295@
 
 ## Summary
 
-Mobile Developer with project experience in both cross-platform (React Native/Expo) and native Android (Java) development. Comfortable owning a mobile app end-to-end, including navigation architecture, offline-first local storage, authentication, and integration with backend/cloud services.
+Information Technology student at UEH seeking a Mobile Developer internship. Project experience includes React Native/Expo and native Android with Java: navigation, offline local storage, authentication, and integration with backend and cloud services.
 
 ---
 
@@ -27,9 +27,8 @@ Expected Aug 2027
 *Apr 2026 – May 2026*
 
 - Built a cross-platform mobile app (Expo, TypeScript) that helps users decide what to cook, with dish browsing, ingredient-based filtering, and a randomized daily meal picker.
-- Designed a role-based navigation architecture with React Navigation and Zustand, separating Admin and User flows.
+- Designed Admin/User navigation with React Navigation and Zustand; prepared Google Sign-In, which remains disabled in this repository snapshot.
 - Implemented offline-first local persistence with SQLite (expo-sqlite), automatic dataset seeding, local email/password accounts, favorites, and meal history.
-- Prepared a Google Sign-In integration; it is disabled in the current repository snapshot.
 
 **Tech stack:** React Native, Expo, TypeScript, Zustand, SQLite
 
@@ -38,8 +37,7 @@ Expected Aug 2027
 
 - Designed a 4-module remote security system for Windows PCs: a Rust background service (SYSTEM privileges), a Tauri/React desktop management app, a React Native/Expo mobile control app, and a Node.js/Socket.IO cloud relay.
 - Built the mobile control app (React Native/Expo), including remote actions such as PC lock, USB port blocking, and webcam capture, with OTP confirmation for sensitive operations.
-- Implemented HMAC-signed, time-limited commands between mobile and PC to prevent replay attacks, and QR-code based pairing between the mobile and desktop apps.
-- Implemented an offline command queue on the relay server (up to 50 buffered commands) delivered once the PC reconnects.
+- Implemented HMAC-signed, time-limited commands, QR-code pairing, and a relay queue of up to 50 commands for delivery after the PC reconnects.
 
 **Tech stack:** React Native, Expo, Rust, Tauri, Node.js, Socket.IO, WebSocket, Named Pipes
 
@@ -63,3 +61,5 @@ Expected Aug 2027
 | **Backend & Cloud** | Firebase (Auth, Firestore, Storage), Node.js, Socket.IO, REST APIs |
 | **Data & Storage** | SQLite (expo-sqlite, Android), MongoDB, offline-first architecture |
 | **Tools & Concepts** | Git, GitHub, Google Sign-In / OAuth, Data Structures & Algorithms, OOP |
+
+Updated: 5 October 2026 · Editorial restructuring from existing project sources.

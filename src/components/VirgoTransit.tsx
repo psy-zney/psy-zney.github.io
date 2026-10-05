@@ -5,7 +5,7 @@ import { createRockGeometry } from "../data/virgoCelestial";
 import { journeyCameraZ, TRANSIT_LEGS, transitPlanets, transitSample } from "../data/virgoTransit";
 import { VirgoPlanet } from "./VirgoPlanet";
 
-type TransitFlight = { position: number; time: number; reduced: boolean; mobile: boolean; speed: number };
+type TransitFlight = { position: number; time: number; reduced: boolean; mobile: boolean; speed: number; tier: 'low' | 'medium' | 'high' };
 const random = (i: number) => {
   const n = Math.sin(i * 127.1 + 43.7) * 43758.5453;
   return n - Math.floor(n);
@@ -16,9 +16,9 @@ function Passage({ index, flight, glow }: { index: number; flight: TransitFlight
   const rocks = useRef<THREE.InstancedMesh>(null);
   const dust = useRef<THREE.Points>(null);
   const opacity = useRef(0);
-  const planets = useMemo(() => transitPlanets(index, flight.mobile), [index, flight.mobile]);
+  const planets = useMemo(() => transitPlanets(index, flight.mobile).slice(0,flight.tier === 'low' ? 3 : flight.tier === 'medium' ? 4 : 6), [index, flight.mobile, flight.tier]);
   const rockGeometry = useMemo(() => createRockGeometry(index + 12), [index]);
-  const count = flight.mobile ? 48 : 110;
+  const count = flight.tier === 'low' ? 24 : flight.tier === 'medium' || flight.mobile ? 48 : 110;
   const positions = useMemo(() => {
     const leg = TRANSIT_LEGS[index];
     const from = journeyCameraZ(leg.from, flight.mobile), to = journeyCameraZ(leg.to, flight.mobile);

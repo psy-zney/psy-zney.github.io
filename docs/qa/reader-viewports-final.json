@@ -1,0 +1,134 @@
+[
+  {
+    "bodyFont": "16px",
+    "books": 10,
+    "columns": "272.8px",
+    "filtersWidth": 272.8000183105469,
+    "overflow": false,
+    "viewport": [
+      320,
+      568
+    ]
+  },
+  {
+    "bodyFont": "16px",
+    "books": 10,
+    "columns": "148.4px 148.4px",
+    "filtersWidth": 312.8000183105469,
+    "overflow": false,
+    "viewport": [
+      360,
+      800
+    ]
+  },
+  {
+    "bodyFont": "16px",
+    "books": 10,
+    "columns": "163.6px 163.6px",
+    "filtersWidth": 343.20001220703125,
+    "overflow": false,
+    "viewport": [
+      390,
+      844
+    ]
+  },
+  {
+    "bodyFont": "16px",
+    "books": 10,
+    "columns": "183.6px 183.6px",
+    "filtersWidth": 383.2000122070313,
+    "overflow": false,
+    "viewport": [
+      430,
+      932
+    ]
+  },
+  {
+    "bodyFont": "16px",
+    "books": 10,
+    "columns": "390.4px 390.4px",
+    "filtersWidth": 796.7999877929688,
+    "overflow": false,
+    "viewport": [
+      844,
+      390
+    ]
+  },
+  {
+    "bodyFont": "16px",
+    "books": 10,
+    "columns": "434.4px 434.4px",
+    "filtersWidth": 884.7999877929688,
+    "overflow": false,
+    "viewport": [
+      932,
+      430
+    ]
+  },
+  {
+    "bodyFont": "16px",
+    "books": 10,
+    "columns": "303.6px 303.6px",
+    "filtersWidth": 623.2000122070312,
+    "overflow": false,
+    "viewport": [
+      768,
+      1024
+    ]
+  },
+  {
+    "bodyFont": "16px",
+    "books": 10,
+    "columns": "431.6px 431.6px",
+    "filtersWidth": 879.2000122070312,
+    "overflow": false,
+    "viewport": [
+      1024,
+      768
+    ]
+  },
+  {
+    "bodyFont": "16px",
+    "books": 10,
+    "columns": "269.062px 269.062px 269.075px",
+    "filtersWidth": 184,
+    "overflow": false,
+    "viewport": [
+      1280,
+      720
+    ]
+  },
+  {
+    "bodyFont": "16px",
+    "books": 10,
+    "columns": "269.062px 269.062px 269.075px",
+    "filtersWidth": 184,
+    "overflow": false,
+    "viewport": [
+      1366,
+      768
+    ]
+  },
+  {
+    "bodyFont": "16px",
+    "books": 10,
+    "columns": "269.062px 269.062px 269.075px",
+    "filtersWidth": 184,
+    "overflow": false,
+    "viewport": [
+      1440,
+      900
+    ]
+  },
+  {
+    "bodyFont": "16px",
+    "books": 10,
+    "columns": "269.062px 269.062px 269.075px",
+    "filtersWidth": 184,
+    "overflow": false,
+    "viewport": [
+      1920,
+      1080
+    ]
+  }
+]

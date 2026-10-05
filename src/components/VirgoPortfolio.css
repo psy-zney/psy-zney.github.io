@@ -1693,6 +1693,7 @@
 .virgo-reduced-motion .virgo-space-rift { display: none; }
 .virgo-reduced-motion .virgo-narrative-line > span { clip-path: none; filter: none; opacity: 1; }
 
+
 @media (max-width: 700px) {
   .virgo-orbit-labels { display: none; }
   .virgo-header-controls { gap: 7px; }
@@ -1772,3 +1773,65 @@
   .virgo-map-star { width: 30px; height: 30px; }
 }
 @media print { .virgo-constellation-map,.virgo-utilities { display: none !important; } }
+
+/* Station reading is anchored to the measured sentence; opening remains intact. */
+.virgo-narrative-left,.virgo-narrative-right{top:22%;width:36%;max-width:520px;font-size:clamp(32px,2.8vw,44px);line-height:1.18;text-align:left;color:#f3f5fa}
+.virgo-narrative-left{left:8%;right:auto}.virgo-narrative-right{left:56%;right:auto}
+.virgo-narrative-left>span,.virgo-narrative-right>span{filter:none;text-shadow:0 2px 12px #050913;opacity:var(--text-reveal,0)}
+.virgo-overlay-panel:not(.virgo-cosmos):not(.virgo-prologue-hero){padding-top:var(--station-controls-top,44dvh)}
+.virgo-overlay-panel .virgo-bare{width:36vw;max-width:520px;max-height:calc(100dvh - var(--station-controls-top,44dvh) - 80px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#52657c transparent;padding:0 4px 12px}
+.virgo-panel-left .virgo-bare{margin-left:1vw}.virgo-panel-right .virgo-bare{margin-right:1vw}
+.virgo-bare-label{font-size:12px;letter-spacing:.1em;margin-bottom:16px!important;color:#b5c1d2}
+.virgo-station-caption,.virgo-skill-detail{font-size:16px;line-height:1.65;color:#b5c1d2}
+.virgo-station-caption{margin:0 0 24px}.virgo-bare-facts small{font-size:12px}.virgo-bare-facts strong{font-size:16px}
+.virgo-project-copy strong{font-size:18px}.virgo-project-copy>span{font-size:16px;line-height:1.5;color:#b5c1d2}.virgo-project-link{min-height:72px}
+.virgo-projects-more-list{gap:8px}.virgo-projects-more-list a{min-height:48px;font-size:16px}.virgo-projects-more-list strong{font-size:16px}
+.virgo-skill-list{display:grid;grid-template-columns:1fr 1fr;gap:8px}.virgo-skill-list button{min-height:44px;font-size:14px}
+.virgo-skill-tools span{font-size:12px}.virgo-skill-evidence{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}.virgo-skill-evidence a{display:flex;align-items:center;gap:8px;min-height:44px;padding:8px 12px;border:1px solid #33435c;border-radius:8px;font-size:14px}
+.virgo-bare a,.virgo-bare button{min-height:44px}.virgo-contact-links{gap:8px}.virgo-contact-links a{padding:8px}.virgo-workspace{min-height:48px}
+.virgo-step-label{display:block;min-width:200px;background:#050913e8;border:1px solid #33435c;border-radius:8px;padding:8px 12px;font:13px/1.5 Inter,system-ui,sans-serif;color:#f3f5fa;pointer-events:none}
+.virgo-chapters{display:none;position:absolute;z-index:35;right:16px;top:calc(16px + env(safe-area-inset-top))}.virgo-chapters>button{min-height:44px;padding:8px 16px;border:1px solid #52657c;border-radius:10px;background:#050913e8;color:#f3f5fa;font-size:14px}.virgo-chapters nav{display:flex;flex-direction:column;background:#101a2a;border:1px solid #33435c;border-radius:12px;padding:8px;margin-top:8px;min-width:190px;max-height:calc(100dvh - 100px);overflow:auto}.virgo-chapters a{min-height:44px;padding:10px 12px;color:#b5c1d2;font-size:16px}.virgo-chapters a[aria-current=page]{color:#f3f5fa;background:#223049;border-radius:6px}
+@media(max-width:767px) and (orientation:portrait){
+ .virgo-narrative-left,.virgo-narrative-right{left:16px;right:16px;top:var(--mobile-narrative-top,44%);width:auto;max-width:none;transform:none;font-size:clamp(24px,6.2vw,30px);line-height:1.22;text-align:left}
+ .virgo-overlay-panel:not(.virgo-cosmos):not(.virgo-prologue-hero){padding:var(--mobile-controls-top,61dvh) 16px 68px}
+ .virgo-overlay-panel .virgo-bare{width:100%;margin:0;max-height:calc(100dvh - var(--mobile-controls-top,61dvh) - 68px);padding:0 0 12px}
+ .virgo-bare-label{font-size:12px}.virgo-project-copy strong{font-size:17px}.virgo-project-copy>span{font-size:16px}.virgo-project-link{min-height:72px;padding-block:8px}
+ .virgo-projects-more-list{grid-template-columns:1fr}.virgo-projects-more-list a,.virgo-projects-more-list a:nth-child(even){font-size:16px;min-height:48px;gap:8px}.virgo-skill-list button{font-size:14px;min-height:44px}.virgo-skill-detail{font-size:16px}.virgo-skill-tools span{font-size:12px}
+ .virgo-page:has(.virgo-chapters) .virgo-constellation-map{display:none}.virgo-chapters{display:block}
+}
+@media(max-height:599px) and (orientation:landscape){
+ .virgo-narrative-left,.virgo-narrative-right{top:72px;left:48%;right:16px;width:auto;max-width:none;font-size:24px;line-height:1.22;transform:none;text-align:left}
+ .virgo-overlay-panel:not(.virgo-cosmos):not(.virgo-prologue-hero){padding:var(--station-controls-top,180px) 16px 12px 48%;justify-content:flex-start}
+ .virgo-overlay-panel .virgo-bare{width:100%;margin:0;max-height:calc(100dvh - var(--station-controls-top,180px) - 12px)}
+ .virgo-skill-detail,.virgo-project-copy>span{font-size:16px}.virgo-bare-label{font-size:12px}.virgo-skill-list button{min-height:44px}.virgo-projects-more-list{grid-template-columns:1fr}.virgo-projects-more-list a{min-height:48px}
+ .virgo-page:has(.virgo-chapters) .virgo-constellation-map{display:none}.virgo-chapters{display:block;top:8px}.virgo-header{padding-top:8px}.virgo-email{font-size:16px;word-break:break-word}
+}
+
+
+.virgo-overlay-panel .virgo-bare{pointer-events:auto}
+.virgo-reading-accent{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0}
+.virgo-project-link .virgo-project-copy>span{font-size:16px;line-height:1.5;max-width:none}
+.virgo-project-link strong{font-size:18px}
+.virgo-panel-left .virgo-bare{margin-left:2vw}
+@media(max-width:767px) and (orientation:portrait){
+ .virgo-narrative-line.virgo-narrative-left[class*="virgo-placement-"]:not(.virgo-placement-middle),.virgo-narrative-line.virgo-narrative-right[class*="virgo-placement-"]:not(.virgo-placement-middle){top:var(--mobile-narrative-top,44%);left:16px;right:16px;font-size:clamp(24px,6.2vw,30px);text-align:left}
+ .virgo-overlay-panel .virgo-bare{margin:0}.virgo-project-link strong{font-size:17px}.virgo-skill-tools span{font-size:12px}
+}
+@media(max-height:599px) and (orientation:landscape){
+ .virgo-narrative-line.virgo-narrative-left[class*="virgo-placement-"]:not(.virgo-placement-middle),.virgo-narrative-line.virgo-narrative-right[class*="virgo-placement-"]:not(.virgo-placement-middle){top:72px;left:48%;right:16px;font-size:24px;text-align:left}
+ .virgo-overlay-panel .virgo-bare{margin:0}
+}
+
+.virgo-project-link .virgo-project-copy>span{white-space:normal;overflow:visible;text-overflow:clip}
+.virgo-overlay-panel[inert] .virgo-bare,.virgo-overlay-panel[inert] a,.virgo-overlay-panel[inert] button{pointer-events:none!important}
+@media(max-width:767px) and (orientation:portrait){.virgo-project-link{min-height:90px}.virgo-page:not(.virgo-is-opening) .virgo-chapters{display:block}}
+.virgo-origin-steps{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}.virgo-origin-steps button{min-height:44px;padding:8px 12px;border:1px solid #52657c;border-radius:8px;background:#05091399;color:#b5c1d2;font-size:14px}.virgo-origin-steps [aria-pressed=true]{background:#d0e5ff;color:#101a2a}.virgo-origin-description{min-height:26px;font-size:16px;line-height:1.65;color:#b5c1d2;margin-top:12px}
+@media(min-width:768px) and (max-width:1099px) and (min-height:600px){.virgo-narrative-left,.virgo-narrative-right{width:calc(46vw - 24px)}.virgo-narrative-left{left:24px}.virgo-narrative-right{left:54%}.virgo-overlay-panel:not(.virgo-cosmos):not(.virgo-prologue-hero){padding-inline:24px}.virgo-overlay-panel .virgo-bare{width:calc(46vw - 24px);max-width:none;margin-inline:0}}
+
+/* Public projects use the same readable document typography as the workspace. */
+.virgo-dialog:has(.project-document){font:16px/1.65 Inter,system-ui,sans-serif;color-scheme:dark;scrollbar-color:#52657c transparent}
+.virgo-dialog .project-document h1{font-size:28px;line-height:1.2}
+.virgo-dialog .project-document h2{font-size:22px;line-height:1.3;letter-spacing:normal;margin:28px 0 12px}
+.virgo-dialog:has(.project-document) .virgo-close{width:44px;height:44px;margin:0 0 8px 12px;top:4px}
+@media(max-width:700px),(max-height:600px){.virgo-dialog .project-document h1{font-size:24px}.virgo-dialog:has(.project-document) .virgo-dialog-inner{padding:20px 16px calc(24px + env(safe-area-inset-bottom))}}
+.virgo-dialog:has(.project-document),.virgo-dialog:has(.resume-page){max-width:none}

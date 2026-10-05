@@ -1,0 +1,14 @@
+import { NodeIO } from '@gltf-transform/core';
+import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
+import { listTextureSlots } from '@gltf-transform/functions';
+import { MeshoptDecoder } from 'meshoptimizer';
+import { writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+await MeshoptDecoder.ready;
+const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.decoder': MeshoptDecoder });
+const doc = await io.read('public/model/main.glb');
+const textures = doc.getRoot().listTextures().map(texture => ({name:texture.getName(),size:texture.getSize(),format:texture.getMimeType(),bytes:texture.getImage().byteLength,sha256:createHash('sha256').update(texture.getImage()).digest('hex'),slots:listTextureSlots(texture),materials:texture.listParents().filter(parent=>parent.propertyType==='Material').map(parent=>parent.getName())}));
+const duplicates = textures.filter((texture,i)=>textures.findIndex(other=>other.sha256===texture.sha256)!==i).map(texture=>texture.name);
+const report = {source:'public/model/main.glb',textureBytes:textures.reduce((n,texture)=>n+texture.bytes,0),textures,duplicates,nodes:doc.getRoot().listNodes().length,meshes:doc.getRoot().listMeshes().length,materials:doc.getRoot().listMaterials().length};
+await writeFile('docs/qa/workspace-source-inventory.json',JSON.stringify(report,null,2)+'\n');
+console.log(`${textures.length} source textures, ${report.textureBytes} embedded bytes, ${duplicates.length} exact duplicates.`);

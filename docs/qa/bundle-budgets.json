@@ -1,0 +1,51 @@
+{
+  "baselineCommit": "1c04b49a9924f6b173985018eec86f46a432dc01",
+  "baseline": {
+    "entry": {
+      "file": "index-F11x47SL.js",
+      "bytes": 304030,
+      "gzipBytes": 104860
+    },
+    "threeShared": {
+      "file": "react-three-fiber.esm-DRnd1P9c.js",
+      "bytes": 869409,
+      "gzipBytes": 234157
+    },
+    "scene": {
+      "file": "VirgoScene-BCjvXug-.js",
+      "bytes": 52035,
+      "gzipBytes": 17777
+    }
+  },
+  "current": {
+    "playground": {
+      "file": "DesktopOverlay-ByHWmUBq.js",
+      "bytes": 15231,
+      "gzipBytes": 5687
+    },
+    "entry": {
+      "file": "index-DpbN5NVK.js",
+      "bytes": 316719,
+      "gzipBytes": 108524
+    },
+    "threeShared": {
+      "file": "useQualityTier-zS2BX1v4.js",
+      "bytes": 875104,
+      "gzipBytes": 236140
+    },
+    "scene": {
+      "file": "VirgoScene-DRBEH7F2.js",
+      "bytes": 54822,
+      "gzipBytes": 18996
+    },
+    "os": {
+      "file": "ZneyOS-C01l6oHl.js",
+      "bytes": 7681,
+      "gzipBytes": 3022
+    }
+  },
+  "portfolioGzipDelta": 6866,
+  "portfolioLimit": 30000,
+  "osAdditionalGzip": 8709,
+  "osLimit": 120000
+}

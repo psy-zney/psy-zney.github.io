@@ -1,5 +1,6 @@
 import { TRANSIT_LEGS, transitSample } from "./virgoTransit";
 import { ORBIT_PLANE, orbitRadii } from "./virgoSpace";
+import { celestialSlot } from './celestialRegistry';
 
 /** Scroll is measured in chapters, matching each real scroll step's offset. */
 export const FLIGHT_MOTION = {
@@ -99,11 +100,11 @@ export function focusedStarForPosition(position: number, reduced = false) {
 
 /** One shared orbit calculation keeps planets, beams and DOM labels aligned. */
 export function orbitPosition(index: number, count: number, position: number, skills = false, _assembly = 1, elapsed = 0, mobile = false) {
-  const ring = index % (skills ? 2 : 3);
+  const slot = celestialSlot(index, count, skills);
+  const ring = slot.orbit;
   const radius = orbitRadii(skills, mobile)[ring];
-  const direction = ring % 2 ? -1 : 1;
-  const angle = index / count * Math.PI * 2 + (position * (.44 + ring * .12) + elapsed * (.105 + ring * .034 + index % 3 * .009)) * direction;
-  // Scroll can change phase, but never displace the orbit's center. In the
-  // skills chapter the former assembly blend pulled planets off these rings.
+  const angle = -Math.PI / 2 + ring * .3 + slot.slot / slot.slots * Math.PI * 2 + elapsed * Math.PI * 2 / [100, 150, 220][ring];
+  // Ambient time owns phase; scroll owns appearance. Every consumer uses
+  // the same circular inclined orbit, including skill evidence connectors.
   return [Math.cos(angle) * radius, Math.sin(angle) * radius * ORBIT_PLANE.vertical, Math.sin(angle) * radius * ORBIT_PLANE.depth];
 }

@@ -1,0 +1,25 @@
+{
+  "browser": "Codex in-app browser on Windows; CSS viewports, not physical phones",
+  "desktop": {
+    "viewport": [
+      1440,
+      900
+    ],
+    "tier": "high",
+    "readerEnterMs": 320,
+    "returnedToOverview": true,
+    "assetRendered": true
+  },
+  "mobile": {
+    "viewport": [
+      390,
+      844
+    ],
+    "readerEnterMs": 240,
+    "osEnterMs": 300,
+    "oneDialog": true,
+    "horizontalOverflow": false,
+    "returnedToOverview": true
+  },
+  "timingEvidence": "Configured shared timeline and contract tests; browser CSS durations and settled state, not a frame-by-frame video capture"
+}

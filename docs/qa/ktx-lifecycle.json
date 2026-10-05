@@ -1,0 +1,14 @@
+{
+  "cycles": 20,
+  "beforeRepeat": {
+    "geometries": 65,
+    "textures": 63,
+    "tier": "low"
+  },
+  "afterRepeat": {
+    "geometries": 65,
+    "textures": 63,
+    "tier": "low"
+  },
+  "note": "Low KTX2, 1440x900 in-app browser; counts are allocated GPU resources, not measured GPU bytes. New resources appeared on first views of previously culled meshes."
+}

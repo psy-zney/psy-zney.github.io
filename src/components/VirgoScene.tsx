@@ -18,6 +18,8 @@ import { VirgoOpening } from "./VirgoOpening";
 import { createRockGeometry } from "../data/virgoCelestial";
 import { PlanetTextureLibrary, VirgoPlanet } from "./VirgoPlanet";
 import { CelestialVisitors } from "./VirgoVisitors";
+import { celestialSlot } from '../data/celestialRegistry';
+import { useQualityTier, type QualityTier } from './workspace/useQualityTier';
 
 export { VIRGO_STARS, VIRGO_SUPPORT_STARS } from "../data/virgoStations";
 
@@ -26,7 +28,7 @@ export const CAMERA_STOPS = [
   ...VIRGO_STARS.map(star => new THREE.Vector3(0, 0, star.position[2] + SPACE_LAYOUT.desktopCamera.distance)),
 ];
 
-type Flight = FlightSample & { speed: number; exit: number; time: number; reduced: boolean; mobile: boolean };
+type Flight = FlightSample & { speed: number; exit: number; time: number; reduced: boolean; mobile: boolean; tier: QualityTier };
 type FlightProps = { flight: Flight; glow: THREE.Texture };
 const random = (seed: number) => {
   const n = Math.sin(seed * 127.1 + 31.7) * 43758.5453;
@@ -211,7 +213,7 @@ function VirgoNode({ index, flight, glow, support = false }: FlightProps & { ind
   });
   return <group ref={group} position={star.position}>
     <sprite><spriteMaterial map={glow} color={star.color} transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} /></sprite>
-    <mesh><sphereGeometry args={[radius, support ? 16 : 48, support ? 12 : 32]} /><shaderMaterial uniforms={uniforms} vertexShader={STAR_VERTEX} fragmentShader={STAR_FRAGMENT} transparent toneMapped={false} /></mesh>
+    <mesh onClick={event => event.stopPropagation()} onPointerOver={event => event.stopPropagation()}><sphereGeometry args={[radius, support ? 16 : 48, support ? 12 : 32]} /><shaderMaterial uniforms={uniforms} vertexShader={STAR_VERTEX} fragmentShader={STAR_FRAGMENT} transparent toneMapped={false} /></mesh>
     {!support && [0, 1].map(i => <mesh key={i}><ringGeometry args={[radius * 1.06, radius * 1.06 + .025, 80]} /><meshBasicMaterial color={star.color} transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} /></mesh>)}
   </group>;
 }
@@ -278,7 +280,7 @@ function ForegroundDebris({ flight }: { flight: Flight }) {
   </mesh>)}</group>;
 }
 
-function OriginForge({ flight, glow }: FlightProps) {
+function OriginForge({ flight, glow, selected }: FlightProps & { selected: number | null }) {
   const group = useRef<THREE.Group>(null);
   useFrame(() => {
     if (!group.current) return;
@@ -287,7 +289,7 @@ function OriginForge({ flight, glow }: FlightProps) {
   });
   return <group ref={group} position={VIRGO_STARS[0].position}>
     {orbitRadii(false, flight.mobile).map((radius, index) => <OrbitRing key={radius} radius={radius} index={index} flight={flight} skills={false} origin />)}
-    {Array.from({ length: 4 }, (_, index) => <OrbitingPlanet key={index} index={index} count={4} flight={flight} glow={glow} skills={false} selected={null} origin />)}
+    {Array.from({ length: 4 }, (_, index) => <OrbitingPlanet key={index} index={index} count={4} flight={flight} glow={glow} skills={false} selected={selected} origin />)}
     <SystemDust flight={flight} glow={glow} kind="origin" />
   </group>;
 }
@@ -327,7 +329,7 @@ function SystemDust({ flight, glow, kind }: FlightProps & { kind: "origin" | "pr
   return <points ref={points} geometry={geometry} frustumCulled={false}><pointsMaterial map={glow} color={kind === "projects" ? "#ebcfa2" : "#a8c5ed"} size={.34} transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} /></points>;
 }
 
-function OrbitRing({ radius, index, flight, skills, origin = false }: { radius: number; index: number; flight: Flight; skills: boolean; origin?: boolean }) {
+function OrbitRing({ radius, index, flight, skills, origin = false, selected = false }: { radius: number; index: number; flight: Flight; skills: boolean; origin?: boolean; selected?: boolean }) {
   const ring = useRef<THREE.Mesh>(null);
   useFrame(() => {
     if (!ring.current) return;
@@ -338,25 +340,27 @@ function OrbitRing({ radius, index, flight, skills, origin = false }: { radius: 
     ring.current.scale.set(1, Math.hypot(ORBIT_PLANE.vertical, ORBIT_PLANE.depth), 1);
     ring.current.position.set(0, 0, 0);
     ring.current.rotation.set(Math.atan2(ORBIT_PLANE.depth, ORBIT_PLANE.vertical), 0, 0);
-    (ring.current.material as THREE.MeshBasicMaterial).opacity = visible * build * (.30 - index * .035);
+    (ring.current.material as THREE.MeshBasicMaterial).opacity = visible * build * (origin ? .30 - index * .035 : selected ? .35 : flight.mobile ? .16 : .12);
   });
   return <mesh ref={ring}><torusGeometry args={[radius, .03, 6, 160]} /><meshBasicMaterial color={skills ? "#a8baff" : "#e5c18d"} transparent opacity={0} depthWrite={false} toneMapped={false} /></mesh>;
 }
 
 function OrbitingPlanet({ index, count, flight, glow, skills, selected, origin = false }: FlightProps & { index: number; count: number; skills: boolean; selected: number | null; origin?: boolean }) {
   const group = useRef<THREE.Group>(null);
+  const visibility = useRef(0);
   const halo = useRef<THREE.Sprite>(null);
   const color = skills ? ["#9fcaff", "#b2a4e9", "#9fdbc6", "#e3c698", "#d5afd0"][index] : projects[index].color;
   const radius = planetRadius(index, skills);
   useFrame(() => {
     if (!group.current) return;
     const appearance = systemAppearance(flight, origin ? "origin" : skills ? "skills" : "projects") * (flight.reduced ? 1 : smooth((origin ? 1.25 : skills ? 4.25 : 2.25) + index * .027, (origin ? 1.83 : skills ? 4.83 : 2.83) + index * .008, flight.position));
+    visibility.current = appearance;
     group.current.visible = appearance > .005;
     if (!group.current.visible) return;
     const position = orbitPosition(index, count, flight.reduced ? (skills ? 5 : 3) : flight.position, skills, 1, flight.time, flight.mobile);
     group.current.position.set(position[0], position[1], position[2]);
     const highlighted = selected === index;
-    group.current.scale.setScalar(Math.max(.001, appearance) * (highlighted ? 1.28 : 1));
+    group.current.scale.setScalar(origin ? Math.max(.001, appearance) : .96 + appearance * .04);
     if (halo.current) {
       halo.current.scale.setScalar(radius * 4.2);
       (halo.current.material as THREE.SpriteMaterial).opacity = appearance * (highlighted ? .22 : .035);
@@ -364,47 +368,14 @@ function OrbitingPlanet({ index, count, flight, glow, skills, selected, origin =
   });
   return <group ref={group}>
     <sprite ref={halo}><spriteMaterial map={glow} color={color} transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} /></sprite>
-    <VirgoPlanet index={index} skills={skills} radius={radius} flight={flight} sunPosition={[...VIRGO_STARS[origin ? 0 : skills ? 2 : 1].position]} />
-  </group>;
-}
-
-function SkillConnections({ flight, selected }: { flight: Flight; selected: number | null }) {
-  const group = useRef<THREE.Group>(null);
-  const material = useRef<THREE.LineBasicMaterial>(null);
-  const geometry = useMemo(() => {
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(capabilities.length * 6), 3));
-    return geometry;
-  }, []);
-  useEffect(() => () => geometry.dispose(), [geometry]);
-  useFrame(() => {
-    if (!group.current || !material.current) return;
-    group.current.visible = flight.skills > .005;
-    if (!group.current.visible) return;
-    const positions = geometry.getAttribute("position") as THREE.BufferAttribute;
-    capabilities.forEach((_, i) => {
-      const point = orbitPosition(i, capabilities.length, flight.reduced ? 5 : flight.position, true, 1, flight.time, flight.mobile);
-      positions.setXYZ(i * 2, 0, 0, 0);
-      positions.setXYZ(i * 2 + 1, point[0], point[1], point[2]);
-      const dot = group.current!.children[i + 1] as THREE.Mesh;
-      const phase = flight.reduced ? .65 : (flight.position * 2 + flight.time * .5 + i * .17) % 1;
-      dot.position.set(point[0] * phase, point[1] * phase, point[2] * phase);
-      dot.scale.setScalar(selected === i ? 1.8 : 1);
-      (dot.material as THREE.MeshBasicMaterial).opacity = flight.skills * (selected === i ? .95 : .45) * (flight.reduced ? 1 : smooth(0, .12, phase) * (1 - smooth(.85, 1, phase)));
-    });
-    positions.needsUpdate = true;
-    material.current.opacity = flight.skills * .35;
-  });
-  return <group ref={group}>
-    <lineSegments geometry={geometry} frustumCulled={false}><lineBasicMaterial ref={material} color="#a5c4fa" transparent opacity={0} depthWrite={false} /></lineSegments>
-    {capabilities.map(item => <mesh key={item.id}><sphereGeometry args={[.24, 12, 8]} /><meshBasicMaterial color="#d2e4ff" transparent opacity={0} toneMapped={false} depthWrite={false} /></mesh>)}
+    <VirgoPlanet index={index} skills={skills} radius={radius} flight={flight} visibility={origin ? undefined : () => visibility.current} origin={origin} sunPosition={[...VIRGO_STARS[origin ? 0 : skills ? 2 : 1].position]} />
   </group>;
 }
 
 function AsteroidBelt({ flight, skills }: { flight: Flight; skills: boolean }) {
   const group = useRef<THREE.Group>(null);
   const mesh = useRef<THREE.InstancedMesh>(null);
-  const rocks = useMemo(() => asteroidLayout(flight.mobile ? 140 : 360), [flight.mobile]);
+  const rocks = useMemo(() => asteroidLayout(flight.tier === 'low' ? 64 : flight.tier === 'medium' || flight.mobile ? 140 : 360, flight.mobile), [flight.mobile,flight.tier]);
   const transform = useMemo(() => new THREE.Object3D(), []);
   const geometry = useMemo(() => createRockGeometry(1), []);
   useEffect(() => () => geometry.dispose(), [geometry]);
@@ -420,7 +391,7 @@ function AsteroidBelt({ flight, skills }: { flight: Flight; skills: boolean }) {
       mesh.current!.setColorAt(i, new THREE.Color().setHSL(.08 + random(i + 519) * .07, .06 + random(i + 32) * .1, .36 + random(i + 203) * .28));
     });
     mesh.current.instanceMatrix.needsUpdate = true;
-    mesh.current.boundingSphere = new THREE.Sphere(new THREE.Vector3(), SPACE_LAYOUT.asteroidOuter + 2);
+    mesh.current.boundingSphere = new THREE.Sphere(new THREE.Vector3(), (flight.mobile ? 67 : SPACE_LAYOUT.asteroidOuter) + 2);
   }, [rocks, transform]);
   useFrame(() => {
     if (!group.current) return;
@@ -457,19 +428,18 @@ function SatelliteCluster({ kind, flight, glow, selected }: FlightProps & { kind
     const appearance = systemAppearance(flight, kind);
     group.current.visible = appearance > .005;
     group.current.scale.setScalar(flight.mobile ? .72 : 1.06);
-    group.current.rotation.y = skills || flight.reduced ? 0 : flight.outer * .52;
+    group.current.rotation.y = 0;
     const pulse = flight.reduced ? 1 : 1 + Math.sin(flight.time * 1.5) * .055;
     core.current.scale.setScalar(22 * pulse);
     (core.current.material as THREE.SpriteMaterial).opacity = appearance * .22;
   });
   return <group ref={group} position={VIRGO_STARS[skills ? 2 : 1].position}>
     <sprite ref={core} scale={[2.4, 2.4, 1]}><spriteMaterial map={glow} color={skills ? "#b1b6ed" : "#f5cd85"} transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} /></sprite>
-    {orbitRadii(skills, flight.mobile).map((radius, i) => <OrbitRing key={radius} radius={radius} index={i} flight={flight} skills={skills} />)}
+    {orbitRadii(skills, flight.mobile).map((radius, i) => <OrbitRing key={radius} radius={radius} index={i} flight={flight} skills={skills} selected={selected !== null && celestialSlot(selected, entries.length, skills).orbit === i} />)}
     <AsteroidBelt flight={flight} skills={skills} />
     {entries.map((entry, index) => <OrbitingPlanet key={entry.id} index={index} count={entries.length} flight={flight} glow={glow} skills={skills} selected={selected} />)}
     <SystemDust flight={flight} glow={glow} kind={kind} />
     <CelestialVisitors flight={flight} glow={glow} skills={skills} />
-    {skills && <SkillConnections flight={flight} selected={selected} />}
   </group>;
 }
 
@@ -553,10 +523,14 @@ interface SceneProps {
   reducedMotion: boolean;
   selectedProject: number | null;
   selectedSkill: number | null;
+  selectedOrigin?: number | null;
   portalRef: RefObject<HTMLButtonElement>;
   labelsRef: RefObject<HTMLDivElement>;
   entering: boolean;
   paused: boolean;
+  readingFocus?: boolean;
+  onPlanetSelect?: (index: number, skills: boolean, section?: string) => void;
+  onPlanetHover?: (index: number | null, skills: boolean) => void;
 }
 
 export function createFlightPaths(mobile = false) {
@@ -570,10 +544,11 @@ export function createFlightPaths(mobile = false) {
   });
 }
 
-function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, selectedProject, selectedSkill, portalRef, labelsRef, entering, paused }: SceneProps) {
+function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, selectedProject, selectedSkill, selectedOrigin, portalRef, labelsRef, entering, paused, readingFocus, onPlanetSelect, onPlanetHover }: SceneProps) {
   const { camera, size, invalidate } = useThree();
   const mobile = size.width < 700;
-  const flight = useMemo<Flight>(() => ({ ...flightSample(0, reducedMotion), speed: 0, exit: 0, time: 0, reduced: reducedMotion, mobile }), [mobile, reducedMotion]);
+  const quality = useQualityTier();
+  const flight = useMemo<Flight>(() => ({ ...flightSample(0, reducedMotion), speed: 0, exit: 0, time: 0, reduced: reducedMotion, mobile, tier: quality.tier }), [mobile, reducedMotion, quality.tier]);
   const ambientTime = useRef(0);
   const scroll = useRef({ value: 0, target: 0, offsets: [0, 1] });
   const exit = useRef({ value: 0 });
@@ -606,7 +581,12 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     return () => { player.dispose(); renderer.dispose(); fractureAudio.current = null; fractureRift.current = null; };
   }, [fracture]);
   const narrativeRendered = useRef({ shown: -2, amount: -1 });
+  const skillSignal = useRef({ selected: -1 as number | null, at: -Infinity });
   const narrativeBounds = useRef({ shown: -2, width: 0, height: 0, lineHeight: 0, inkHeight: 0, lineWidth: 0, x: 0, y: 0, text: "" });
+  useEffect(() => {
+    const observer = new ResizeObserver(() => { narrativeBounds.current.shown = -2; invalidate(); });
+    narration.forEach(line => observer.observe(line)); return () => observer.disconnect();
+  }, [narration, invalidate]);
   const mobileReadingPlacement = useRef({ top: -1, controls: -1 });
   const narrativeStar = useMemo(() => new THREE.Vector3(), []);
   const narrativeEdge = useMemo(() => new THREE.Vector3(), []);
@@ -625,7 +605,6 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
   const paths = useMemo(() => createFlightPaths(mobile), [mobile]);
 
   useEffect(() => {
-    if (mobile && size.height > 680) return;
     const controls = panels.map(panel => panel.querySelector<HTMLElement>(".virgo-bare")).filter((node): node is HTMLElement => !!node);
     const update = () => controls.forEach(node => {
       // Keep native scrolling only for genuinely overflowing short-screen
@@ -677,10 +656,10 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     const dt = Math.min(delta, .05);
     // Choreography follows scroll; orbital motion keeps the scene alive at rest.
     // Freeze the ambient clock for dialogs/hidden tabs and reduced motion.
-    if (!reducedMotion && !paused && !entering) ambientTime.current += dt;
+    if (!reducedMotion && !paused && !entering && selectedProject === null) ambientTime.current += dt;
     flight.time = reducedMotion ? 0 : ambientTime.current;
     const target = scroll.current.target;
-    scroll.current.value = reducedMotion ? target : paused ? scroll.current.value : protectOpeningHandoff(scroll.current.value, advancePacedFlightPosition(scroll.current.value, target, dt));
+    scroll.current.value = reducedMotion ? target : (paused || readingFocus) ? scroll.current.value : protectOpeningHandoff(scroll.current.value, advancePacedFlightPosition(scroll.current.value, target, dt));
     const position = clamp(frozenPosition.current ?? scroll.current.value, 0, 6);
     Object.assign(flight, flightSample(position, reducedMotion, flight.time));
     flight.exit = exit.current.value;
@@ -707,7 +686,12 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     const leg = passage.index < 0 ? null : TRANSIT_LEGS[passage.index];
     const owner = leg ? (passage.progress < .5 ? leg.origin : leg.destination) : null;
     const compositionChapter = owner === null ? readingChapter : owner < 0 ? 0 : stationChapters[owner];
-    frameOffset.copy(framing[compositionChapter]).multiplyScalar((1 - flight.exit) * (1 - passage.envelope));
+    frameOffset.copy(framing[compositionChapter]);
+    if (size.height < 600 && size.width > size.height && compositionChapter >= 2) frameOffset.set(-.52, 0);
+    // Fit the stellar disk above the compact reader without changing the
+    // camera path, lens or the composition during a transit.
+    if (mobile && size.height < 640 && size.height > size.width && compositionChapter >= 2) frameOffset.y = .72;
+    frameOffset.multiplyScalar((1 - flight.exit) * (1 - passage.envelope));
     const offsetX = -frameOffset.x * size.width / 2;
     const offsetY = frameOffset.y * size.height / 2;
     if (perspective.fov !== fov || perspective.far !== SPACE_LAYOUT.far || perspective.view?.fullWidth !== size.width || perspective.view?.fullHeight !== size.height || perspective.view?.offsetX !== offsetX || perspective.view?.offsetY !== offsetY) {
@@ -722,11 +706,15 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     if (previousPresentation.position !== position || previousPresentation.exit !== flight.exit || previousPresentation.paused !== paused || previousPresentation.entering !== entering || previousPresentation.reducedMotion !== reducedMotion) {
       const transition = openingTransition(position, reducedMotion);
       panels.forEach((panel, i) => {
-        const opacity = panelVisibility(i, position, reducedMotion) * (1 - transition.cover) * (1 - smooth(0, .5, flight.exit));
+        const reading = narrativeSample(position, reducedMotion);
+        const opacity = panelVisibility(i, position, reducedMotion) * (i < 2 ? 1 : reading.controls) * (1 - transition.cover) * (1 - smooth(0, .5, flight.exit));
         panel.style.opacity = String(opacity);
         panel.style.visibility = opacity > .001 ? "visible" : "hidden";
         panel.style.transform = "none";
-        panel.inert = opacity < .5 || paused || entering;
+        const inert = opacity < .5 || (i >= 2 && !reading.interactive) || paused || entering;
+        panel.toggleAttribute('inert', inert);
+        panel.style.pointerEvents = 'none';
+        panel.setAttribute('aria-hidden', String(inert));
       });
       overlay.parentElement?.style.setProperty("--flight-progress", String(position / 6));
       overlay.parentElement?.style.setProperty("--flight-thrust", String(flight.thrust));
@@ -746,7 +734,7 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
         line.style.opacity = visible ? "1" : "0";
         line.style.visibility = visible ? "visible" : "hidden";
         line.style.setProperty("--rift-reveal", String(amount));
-        line.style.setProperty("--text-reveal", String(narrativeTextReveal(amount, reducedMotion)));
+        line.style.setProperty("--text-reveal", String(narrativeTextReveal(amount, reducedMotion, story.shown < 3)));
         line.setAttribute("aria-hidden", String(!visible));
       });
       const side = story.shown < 0 ? "none" : NARRATIVE_BEATS[story.shown].side;
@@ -776,7 +764,7 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
         narrativeEdge.set(...star.position).addScaledVector(narrativeUp, star.radius * 1.6).project(camera);
         starBottom = (-narrativeStar.y * .5 + .5) * size.height + Math.abs(narrativeStar.y - narrativeEdge.y) * size.height * .5;
       }
-      const preferredTop = NARRATIVE_BEATS[story.shown].placement.startsWith("lower") ? .54 : .50;
+      const preferredTop = size.height < 640 && size.height > size.width ? 150 / size.height : .44;
       const placement = mobileNarrativeTop(size.height, starBottom, bounds.lineHeight, preferredTop);
       if (placement.top !== mobileReadingPlacement.current.top || placement.controls !== mobileReadingPlacement.current.controls) {
         overlay.parentElement!.style.setProperty("--mobile-narrative-top", `${placement.top}px`);
@@ -790,6 +778,10 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
       mobileReadingPlacement.current = { top: -1, controls: -1 };
       measureRift = true;
     }
+    if (story.shown >= 3 && (!mobile || size.width > size.height) && measureRift) {
+      const rect = narration[story.shown].getBoundingClientRect();
+      overlay.parentElement!.style.setProperty("--station-controls-top", `${rect.bottom + 24}px`);
+    }
     if (measureRift && story.shown >= 0) {
       const range = document.createRange();
       range.selectNodeContents(narration[story.shown].querySelector("span")!);
@@ -800,7 +792,39 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     const riftReading = story.shown >= 0 && amount > .001 && !reducedMotion ? "active" : "idle";
     if (overlay.parentElement!.dataset.riftReading !== riftReading) overlay.parentElement!.dataset.riftReading = riftReading;
     fractureRift.current?.update(position, reducedMotion, paused || entering || document.hidden,
-      story.shown >= 0 ? { reveal: amount, width: bounds.lineWidth, height: bounds.inkHeight, x: bounds.x, y: bounds.y, seed: story.shown, effect: NARRATIVE_BEATS[story.shown].effect } : undefined);
+      story.shown >= 0 && story.shown < 3 ? { reveal: amount, width: bounds.lineWidth, height: bounds.inkHeight, x: bounds.x, y: bounds.y, seed: story.shown, effect: NARRATIVE_BEATS[story.shown].effect } : undefined);
+    const accent = overlay.querySelector<SVGSVGElement>('.virgo-reading-accent');
+    if (skillSignal.current.selected !== selectedSkill) skillSignal.current = { selected: selectedSkill, at: performance.now() };
+    if (accent) {
+      accent.setAttribute('viewBox', `0 0 ${size.width} ${size.height}`);
+      const path = accent.querySelector('path')!;
+      let d = '', alpha = 0;
+      if (story.shown >= 3 && !paused && !entering && bounds.lineWidth > 0) {
+        const x = bounds.x - bounds.lineWidth / 2, y = bounds.y + bounds.inkHeight / 2 + 16;
+        d = `M ${x} ${y} Q ${x + 72} ${y + 6} ${x + Math.min(180, bounds.lineWidth)} ${y}`;
+        alpha = reducedMotion ? .08 : amount * (.08 + (1 - amount) * .2);
+        if (selectedProject !== null && flight.projects > .9 && !mobile) {
+          const orbit = orbitPosition(selectedProject, projects.length, position, false, 1, flight.time);
+          const planet = new THREE.Vector3(...orbit).multiplyScalar(1.06).add(projectCenter);
+          const ray = new THREE.Ray(camera.position, planet.clone().sub(camera.position).normalize());
+          const obstruction = ray.intersectSphere(new THREE.Sphere(projectCenter, VIRGO_STARS[1].radius), new THREE.Vector3());
+          const entry = panels[flight.chapter]?.querySelector<HTMLElement>(`a[href="#/project/${projects[selectedProject].id}"]`);
+          if (entry && (!obstruction || obstruction.distanceTo(camera.position) > planet.distanceTo(camera.position))) {
+            const rect = entry.getBoundingClientRect(); planet.project(camera);
+            const px = (planet.x * .5 + .5) * size.width, py = (-planet.y * .5 + .5) * size.height;
+            const ex = rect.right + 16, ey = rect.top + rect.height / 2;
+            d = `M ${px} ${py} C ${px - 60} ${py}, ${ex + 50} ${ey}, ${ex} ${ey}`; alpha = .28;
+          }
+        }
+      }
+      const signalProgress = (performance.now()-skillSignal.current.at)/600;
+      if (flight.skills > .9 && signalProgress >= 0 && signalProgress < 1 && !reducedMotion && !paused && !entering) {
+        const source = panels[5]?.querySelector<HTMLElement>('.virgo-skill-list [aria-pressed=true]');
+        const evidence = panels[5]?.querySelectorAll<HTMLElement>('.virgo-skill-evidence a');
+        if (source && evidence) { const from = source.getBoundingClientRect(); d = Array.from(evidence).slice(0,3).map(item => { const to = item.getBoundingClientRect(); return `M ${from.left-16} ${from.top+from.height/2} C ${from.left-40} ${from.top+from.height/2}, ${to.left-40} ${to.top+to.height/2}, ${to.left-16} ${to.top+to.height/2}`; }).join(' '); alpha = .28*Math.sin(Math.PI*signalProgress); }
+      }
+      path.setAttribute('d', d); accent.style.opacity = String(alpha);
+    }
     projection.copy(gate).project(camera);
     if (portalRef.current) {
       portalRef.current.style.left = `${(projection.x * .5 + .5) * size.width}px`;
@@ -809,7 +833,11 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     labels.forEach((label, i) => {
       if (mobile || i !== selectedProject || flight.projects < .9 || paused || entering) { label.style.opacity = "0"; return; }
       const orbit = orbitPosition(i, projects.length, reducedMotion ? 3 : position, false, 1, flight.time);
-      projection.set(orbit[0], orbit[1], orbit[2]).multiplyScalar(1.06).applyAxisAngle(THREE.Object3D.DEFAULT_UP, reducedMotion ? 0 : flight.outer * .52).add(projectCenter).project(camera);
+      projection.set(orbit[0], orbit[1], orbit[2]).multiplyScalar(1.06).add(projectCenter);
+      const labelRay = new THREE.Ray(camera.position, projection.clone().sub(camera.position).normalize());
+      const obstruction = labelRay.intersectSphere(new THREE.Sphere(projectCenter, VIRGO_STARS[1].radius), new THREE.Vector3());
+      if (obstruction && obstruction.distanceTo(camera.position) < projection.distanceTo(camera.position)) { label.style.opacity = '0'; return; }
+      projection.project(camera);
       const x = (projection.x * .5 + .5) * size.width;
       const y = (-projection.y * .5 + .5) * size.height;
       const visible = x > size.width * .48 && x < size.width - 200 && y > 110 && y < size.height - 160;
@@ -818,7 +846,7 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     });
   }, -1);
 
-  return <PlanetTextureLibrary mobile={mobile}>
+  return <PlanetTextureLibrary mobile={mobile} select={onPlanetSelect} hover={onPlanetHover}>
     <VirgoOpening flight={flight} />
     <Starfield flight={flight} glow={glow} /><Nebula flight={flight} glow={glow} />
     <ambientLight intensity={.18} />
@@ -826,7 +854,7 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     <VirgoTransit flight={flight} glow={glow} />
     {VIRGO_STARS.map((star, index) => <FocusedSystem key={star.name} index={index} flight={flight}>
       <VirgoNode index={index} flight={flight} glow={glow} />
-      {index === 0 && <OriginForge flight={flight} glow={glow} />}
+      {index === 0 && <OriginForge flight={flight} glow={glow} selected={selectedOrigin ?? null} />}
       {index === 1 && <SatelliteCluster kind="projects" flight={flight} glow={glow} selected={selectedProject} />}
       {index === 2 && <SatelliteCluster kind="skills" flight={flight} glow={glow} selected={selectedSkill} />}
       {index === 3 && <PortalGate flight={flight} glow={glow} gate={gate} />}

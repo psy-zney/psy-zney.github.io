@@ -1,0 +1,1026 @@
+{
+  "source": "public/model/main.glb",
+  "textureBytes": 74103540,
+  "textures": [
+    {
+      "name": "",
+      "size": [
+        8192,
+        4096
+      ],
+      "format": "image/png",
+      "bytes": 53768552,
+      "sha256": "880052b95490e0346f8e82485491d4bac877f25bed8cddc4251c754bfe82a354",
+      "slots": [
+        "emissiveTexture"
+      ],
+      "materials": [
+        "material"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        4096,
+        2048
+      ],
+      "format": "image/png",
+      "bytes": 3539624,
+      "sha256": "82db892e52fe21e33d420aaa279a283fd461f8e6b2f533c5d58f69045da436e4",
+      "slots": [
+        "baseColorTexture",
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        1024,
+        1024
+      ],
+      "format": "image/png",
+      "bytes": 802876,
+      "sha256": "71982530b317afa285f9114e12a7d44f8b495eea570abcb6cfe5e2a1c1712937",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        128,
+        128
+      ],
+      "format": "image/png",
+      "bytes": 36828,
+      "sha256": "c94bf746c1f57f96b075a24b873214c0a7765a7505aee2d0ee39c8f8fa31024e",
+      "slots": [
+        "baseColorTexture",
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.074_0"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        512,
+        256
+      ],
+      "format": "image/jpeg",
+      "bytes": 37556,
+      "sha256": "7368d40ce3f0773825705c3c702d25e959395a13f0f3abc2610a5160111b5406",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_1"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        1024,
+        1024
+      ],
+      "format": "image/jpeg",
+      "bytes": 192680,
+      "sha256": "588ca49c80b7e2abbdac7687c1d124798bc76ca7d425ead308cf1947d2d83862",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_2"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        512,
+        128
+      ],
+      "format": "image/png",
+      "bytes": 125676,
+      "sha256": "b37f5250f5680369f9a4730e97c9febe6b35ad041ace7c7228f1a5318ec6dfd7",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_3"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        256,
+        64
+      ],
+      "format": "image/png",
+      "bytes": 21724,
+      "sha256": "5d8339ab82a80238ddd35e332f858c64bc8a48aa1694e787188a4979e8b506b9",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_4"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        256,
+        64
+      ],
+      "format": "image/png",
+      "bytes": 18644,
+      "sha256": "494646746386ba5e6039c208a3271c146e9bbcf18e20117b7cb5c6ed9a3dd9f9",
+      "slots": [
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.074_4"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        512,
+        1024
+      ],
+      "format": "image/jpeg",
+      "bytes": 14968,
+      "sha256": "e8927209a6aaad6f4928fb7abcb5584e9c1b06c32a7d6709424eb4f28c1ecdd8",
+      "slots": [
+        "baseColorTexture",
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.023",
+        "Material.074_37"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        512,
+        256
+      ],
+      "format": "image/jpeg",
+      "bytes": 8536,
+      "sha256": "ce6b604b29be818fc1d5bf2ff1733df2420c362efde73340692a6eb8c1b3d847",
+      "slots": [
+        "baseColorTexture",
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.024",
+        "Material.074_38"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        256,
+        256
+      ],
+      "format": "image/png",
+      "bytes": 201220,
+      "sha256": "449f33eecc1788dbb5e6338f771cdb560ebeed93498afca0294fad3138451fe4",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_5"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        16,
+        512
+      ],
+      "format": "image/png",
+      "bytes": 21320,
+      "sha256": "f732c5faeea91e9e2b920ba7369632e306678f7d2c20929018dbf8ec26bd8f22",
+      "slots": [
+        "baseColorTexture",
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.074_6"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        128,
+        512
+      ],
+      "format": "image/png",
+      "bytes": 118864,
+      "sha256": "4c64e61cb0f1ea9d1d2924a41eeb260ba2fcf5c9252a26312479933dc57a5987",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_7"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        512,
+        256
+      ],
+      "format": "image/png",
+      "bytes": 101116,
+      "sha256": "886d625b6c0388710e78ff7f5e4e6a73388dfaaab418ad70ea9f049a9b8a3b7d",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_8"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        128,
+        128
+      ],
+      "format": "image/png",
+      "bytes": 15956,
+      "sha256": "a2592e4d7cab6b171ff15fee5ca018750fd03e3b38e8c23c6ee4010332caab6c",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_9"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        128,
+        128
+      ],
+      "format": "image/png",
+      "bytes": 14284,
+      "sha256": "5c6552d4e8b1b96f70707d640c49e2cafe25f0c505f584b235e350f4b13373d7",
+      "slots": [
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.074_9"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        256,
+        256
+      ],
+      "format": "image/jpeg",
+      "bytes": 11648,
+      "sha256": "500d42f51e65f20bf4d13bb91f24cac79085f1130938eb13f83f848921c465be",
+      "slots": [
+        "baseColorTexture",
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.074_10"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        256,
+        256
+      ],
+      "format": "image/png",
+      "bytes": 11672,
+      "sha256": "078ac38cb0fd65c698c82c30b6d7426480f333ca0b317a0d9d8a73a4ce9ad0b0",
+      "slots": [
+        "baseColorTexture",
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.074_11"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        1024,
+        512
+      ],
+      "format": "image/jpeg",
+      "bytes": 34528,
+      "sha256": "4e7b69e91b0950fa5a9f45916db6a6c365eb0a0e7354e56a11e90e213b007bf6",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_12"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        512,
+        256
+      ],
+      "format": "image/png",
+      "bytes": 254576,
+      "sha256": "45a6981408875be6762ed083450d779d2d460a1d4dae6d5e1295fe4bcc3b7365",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_13"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        128,
+        32
+      ],
+      "format": "image/png",
+      "bytes": 2476,
+      "sha256": "30aafd27c992c3eeda4340ed5758e8b29fafc11cbe885af54b7994bc97077f3a",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_14"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        256,
+        512
+      ],
+      "format": "image/png",
+      "bytes": 136384,
+      "sha256": "a2bfe56e0056588a9330f3e302c386cbcfc0d9ab8330465f44a46a7957b21afc",
+      "slots": [
+        "baseColorTexture",
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.074_15"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        256,
+        512
+      ],
+      "format": "image/png",
+      "bytes": 251224,
+      "sha256": "fb913f89fde77ce8b5bbd320a99541d4468ca6729743681446998f3dff6c62fe",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_16"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        512,
+        512
+      ],
+      "format": "image/png",
+      "bytes": 402820,
+      "sha256": "09abe072853558705faea547c9b3c3809e2b7202ec6fc6fa58ac2ea3acc618b0",
+      "slots": [
+        "baseColorTexture",
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.074_17"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        1024,
+        1024
+      ],
+      "format": "image/png",
+      "bytes": 195964,
+      "sha256": "bc37182630a2bff6d53f65d6b7b162f39dbf4d5f90bfd1e2050acc25cb5748f2",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_18"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        1024,
+        1024
+      ],
+      "format": "image/png",
+      "bytes": 176196,
+      "sha256": "16f9d589d8bd39e2050ef82afde202e023b4cfa6f4a7156fcd692e25116b17d4",
+      "slots": [
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.074_18"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        128,
+        128
+      ],
+      "format": "image/png",
+      "bytes": 29836,
+      "sha256": "06a665db58d1219d53ea868b13527c51f5cda4fa9056427590036cf1ab71f961",
+      "slots": [
+        "baseColorTexture",
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.074_19"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        128,
+        128
+      ],
+      "format": "image/png",
+      "bytes": 31072,
+      "sha256": "ca93abc037398841fe769d3d34abec51fd989a1b8d7f7b9cd72a20f52fff47fd",
+      "slots": [
+        "baseColorTexture",
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.074_20"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        512,
+        512
+      ],
+      "format": "image/png",
+      "bytes": 277796,
+      "sha256": "7566916ef9efaa933cd4f6823c1c7dc805a35f2c421a545982d82d4b4e99a3b8",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_21"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        512,
+        64
+      ],
+      "format": "image/png",
+      "bytes": 66100,
+      "sha256": "f9f44f17c7dbfa680b9bcbe850d89a96f4256d6ffa21cb9a7c56f976d53996ee",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_22"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        512,
+        256
+      ],
+      "format": "image/png",
+      "bytes": 216384,
+      "sha256": "ae1a15371dd816519f833f5bc69a283b3e0640a6fa8df68664a1717c19941643",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_23"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        128,
+        16
+      ],
+      "format": "image/png",
+      "bytes": 3668,
+      "sha256": "bb320534247f184989c6cc7eb9a72c4e3a8b56668f380134dd635197813c395d",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_24"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        128,
+        16
+      ],
+      "format": "image/png",
+      "bytes": 2976,
+      "sha256": "43037fd46dcb260df64cd3f350bc5746303bb70d4c0da4574b2f07fe656f7be3",
+      "slots": [
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.074_24"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        2048,
+        2048
+      ],
+      "format": "image/jpeg",
+      "bytes": 924864,
+      "sha256": "a7d0cc0aa4b7d662e7e360db5e00f38f8225bdd3f5d89d5324d0fe258f3793b3",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_25"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        512,
+        256
+      ],
+      "format": "image/png",
+      "bytes": 176976,
+      "sha256": "8e7a19e73cb9f142c69d2fa2ce48825c5ae71f79f325a6485ad8541d41759c50",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_26"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        1024,
+        1024
+      ],
+      "format": "image/png",
+      "bytes": 177472,
+      "sha256": "5be6644b729107a67576fadc1d19fc21c38839c59d14afd40ca53999100b7b1b",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_27"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        1024,
+        1024
+      ],
+      "format": "image/png",
+      "bytes": 168884,
+      "sha256": "26188cf7d1636fd1a11bc70efcf2eca1885040ccdd0eca7f8d334b25f25e6e5e",
+      "slots": [
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.074_27"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        128,
+        256
+      ],
+      "format": "image/png",
+      "bytes": 18540,
+      "sha256": "1b319c148f3c8e7f3ad3d5d10f1465afb043d33b4f88498ee5d92c830ab6f6ec",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_28"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        128,
+        256
+      ],
+      "format": "image/png",
+      "bytes": 12508,
+      "sha256": "a519e10958cb6b5d3cf07b1853042bb0d61913cb11bf45b6ddd6ec7d6ad10fd4",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_29"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        1024,
+        512
+      ],
+      "format": "image/png",
+      "bytes": 814132,
+      "sha256": "888e91ceb982571b7ce917446e15f16f39f3112eb4d878e552752bdebd8b6b2a",
+      "slots": [
+        "baseColorTexture",
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.074_30"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        256,
+        64
+      ],
+      "format": "image/png",
+      "bytes": 12164,
+      "sha256": "f311661d1460f1192f0b9ec004bf273283d2b0ef3f1102758fb206e9c5014bed",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_31"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        2048,
+        512
+      ],
+      "format": "image/png",
+      "bytes": 5448,
+      "sha256": "0a3ff0761b3e73048cc7990a0a436e3e1c5945808b7d6a0cce5852e5856c90c9",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.002"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        512,
+        256
+      ],
+      "format": "image/jpeg",
+      "bytes": 4216,
+      "sha256": "ae094ebcbf88947cef3c35d2b1e572f84f0bf8421355dc3fb86fa18e87caecb7",
+      "slots": [
+        "baseColorTexture",
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.074_32"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        256,
+        512
+      ],
+      "format": "image/jpeg",
+      "bytes": 11004,
+      "sha256": "08cdcc2e9b9520debd067f67f8973d7a5ecf17e2ac70483c8de217d5f487f4d8",
+      "slots": [
+        "baseColorTexture",
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Tasten_2"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        256,
+        128
+      ],
+      "format": "image/png",
+      "bytes": 480,
+      "sha256": "7da65b2fbf9feecbd53a05f8da2a647b891c1eaf66f6c3c714b449d6784a3df9",
+      "slots": [
+        "baseColorTexture",
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.074_33"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        512,
+        512
+      ],
+      "format": "image/jpeg",
+      "bytes": 44800,
+      "sha256": "c57ed25e54ed6d382bf82d294ab86de3fecffc46514f73d36149f5d4f14a539d",
+      "slots": [
+        "baseColorTexture",
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.074_34"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        256,
+        128
+      ],
+      "format": "image/png",
+      "bytes": 480,
+      "sha256": "de563d6b7863ba042e5bf9464f0026c61626e004a80c7042bb4d385a78eb4021",
+      "slots": [
+        "baseColorTexture",
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.074_35"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        512,
+        512
+      ],
+      "format": "image/jpeg",
+      "bytes": 22444,
+      "sha256": "de8e68d4c0f2f48c744e58250242684889d4b8db78a82367d3f06b761738d4c6",
+      "slots": [
+        "baseColorTexture",
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.074_36"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        256,
+        512
+      ],
+      "format": "image/jpeg",
+      "bytes": 18284,
+      "sha256": "8325596fb39bc20021c92c0b2de701e9edd7d3879ebd14f592898ab649f152b3",
+      "slots": [
+        "baseColorTexture",
+        "emissiveTexture"
+      ],
+      "materials": [
+        "Material.074_39"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        256,
+        128
+      ],
+      "format": "image/png",
+      "bytes": 21268,
+      "sha256": "c2c8986acc29e9b8ffd571de857f9b19359b69eede08e6a03766a10a4b0fd51d",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Material.074_40"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        1024,
+        1024
+      ],
+      "format": "image/png",
+      "bytes": 1309760,
+      "sha256": "4cceb01ae1eebe775f3bd0a90fb88915fc38ab22e292137a7efb584dfde55982",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ],
+      "materials": [
+        "material_0"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        1024,
+        1024
+      ],
+      "format": "image/png",
+      "bytes": 1016556,
+      "sha256": "87b7c129d4354be048694160e6070aab3d394cb0d65e7ae2d20f711b85471ec6",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "material_0"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        1024,
+        1024
+      ],
+      "format": "image/png",
+      "bytes": 773264,
+      "sha256": "44231b7be65aaa3a1c89c399eed5c435a840332bc0bc725db818a9891847f666",
+      "slots": [
+        "normalTexture"
+      ],
+      "materials": [
+        "material_0"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        1024,
+        1024
+      ],
+      "format": "image/png",
+      "bytes": 1905584,
+      "sha256": "fcb6a95a40c639fdc7346b9319b2f9473ae517a5e7fd35dc5c4b4c26dedbd36a",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ],
+      "materials": [
+        "IDKey_Lanyard"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        1024,
+        1024
+      ],
+      "format": "image/png",
+      "bytes": 1149184,
+      "sha256": "156d3c05f72ba64716ee81dec27f293b54c1f427c737abca51b80d244011a650",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "IDKey_Lanyard"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        1024,
+        1024
+      ],
+      "format": "image/png",
+      "bytes": 2481560,
+      "sha256": "c23f2836356fe112b3acbeb118e300c40f8cb54e88d3be3237ab1290863967a8",
+      "slots": [
+        "normalTexture"
+      ],
+      "materials": [
+        "IDKey_Lanyard"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        1024,
+        1024
+      ],
+      "format": "image/jpeg",
+      "bytes": 148812,
+      "sha256": "769f45843b86383c6ed93665f1a88b229094c49e88857446633cd5fd0680bb9e",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Bookshelf"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        512,
+        512
+      ],
+      "format": "image/jpeg",
+      "bytes": 163556,
+      "sha256": "30054e198ef28b3feb2cff3a5c67b4ccc9addf2a610fe6379427a27e4c2af538",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "Book"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        1024,
+        1024
+      ],
+      "format": "image/png",
+      "bytes": 535780,
+      "sha256": "ec8c1978f46591b6079d74121becbe5c3ecc0fdd0c9bb41aa2eb7f2394f78864",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ],
+      "materials": [
+        "blinn2"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        1024,
+        1024
+      ],
+      "format": "image/png",
+      "bytes": 604204,
+      "sha256": "b7a40fd6224bfdd50faaf6e14fb5412a9d5b934bbf0e7c02bb55ab65c61067bd",
+      "slots": [
+        "baseColorTexture"
+      ],
+      "materials": [
+        "blinn2"
+      ]
+    },
+    {
+      "name": "",
+      "size": [
+        1024,
+        1024
+      ],
+      "format": "image/png",
+      "bytes": 435572,
+      "sha256": "ef60afe3c0fa9cae54e2bc35a9ad398df6e620a59beebfec7f364b8ab5e3717b",
+      "slots": [
+        "normalTexture"
+      ],
+      "materials": [
+        "blinn2"
+      ]
+    }
+  ],
+  "duplicates": [],
+  "nodes": 1556,
+  "meshes": 697,
+  "materials": 93
+}

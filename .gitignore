@@ -5,6 +5,7 @@ tmp_*.png
 .agents/
 skills-lock.json
 *.log
+scripts/.cache/
 
 # Environment variables
 .env

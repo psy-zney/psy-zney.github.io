@@ -29,7 +29,7 @@ Chemistry Lab 3D was also reviewed from the owner's existing local repository at
 
 ## Flow and maintenance
 
-The journey now has five separate pages: `#/home` (Virgo), `#/story` (Lyra), `#/projects` (Orion), `#/skills` (Cygnus), and `#/contact` (Cassiopeia). Constellations outside Virgo are stylized sketches, not astronomical charts. Previous/next links and a five-star navigation connect the pages. Each case study links back to projects, to its capabilities, to contact, and to another case study. Each capability links to the projects supporting it. The original 3D workspace is reachable from home and story.
+The current journey is one reversible Virgo flight with seven route anchors: `#/cosmos`, `#/home`, `#/story` (Spica), `#/projects` and `#/projects-more` (Porrima), `#/skills` (Vindemiatrix), and `#/contact` (Zavijava). These names identify the art direction; the local planetary systems do not claim astronomical accuracy. The four-star map and the mobile Chapters menu select the same anchors. Enter workspace is an explicit action at Contact; opening the site does not fetch the original 84 MB room.
 
 Project content and skill relationships live in `src/data/portfolio.ts`. Both languages use the same records. Project filters derive counts from the data. Hash routes work on GitHub Pages without server routing.
 
@@ -38,9 +38,24 @@ The three repositories the owner highlighted in the follow-up — Chemistry Lab 
 - `#/project/:id`: project story
 - `#/skills/:id`: specific capability
 - `#/cv/web` and `#/cv/mobile`: readable CV, source download, browser print/PDF
-- `#/workspace`: existing 3D experience
+- `#/workspace`: the original room appearance through an optimized asset tier
+- `#/workspace/resume/:track`: the same canonical Web/Mobile CVs
+- `#/workspace/library/:projectId/:section`: Overview, Architecture, Decisions, Notes & links
+- `#/workspace/contact`: the existing contact details
+- `#/workspace/os/:app`: Home, Projects, Documents, Contact, Playground, Settings
+- `#/workspace/os/documents/resume/:track` and `#/workspace/os/projects/:projectId/:section`: the same readers inside Zney OS
 
 The Web and Mobile CV files were updated for the corrections above. Preserve role scope and attribution when updating them again. Live demo links were retained from the existing site/README; their availability was not verified during this change.
+
+## Experience implementation — 2026-10-05
+
+The two files under `public/file` remain the only canonical CVs. This edit restructures the Web resume around four selected projects and short additional entries, keeps three bullets per Mobile project, and displays the actual editorial date. Education, dates, attribution, the simulated SentinelLAN actions, and disabled LuckyFood Google integration remain grounded in the sources above. No new employment, results, or proficiency claims were added.
+
+`src/data/projectDocuments.ts` supplies 40 stable section IDs from the ten reviewed portfolio records. Architecture paths are summaries of the recorded components, not invented infrastructure. This version contains editorial sections derived from `portfolio.ts`; it does not fetch external READMEs at runtime or claim to include a newer repository snapshot. Chemistry Lab's demo link is labelled Documentation viewer. A project without a recorded source URL has no fabricated GitHub link or project status.
+
+`src/data/celestialRegistry.ts` maps the same project/capability IDs, colors, ring slots and document satellites into the scene. Need / Build / Connect / Learn are conceptual steps, not additional technical capabilities. The room manifest preserves paper, bookshelf, lanyard and screen anchors through mesh optimization. `main.glb` remains unchanged as the source. New GLBs use Meshopt, KTX2/Basis and baked vertex AO; decoders are local. Asset hashes, texture inventory, viewports and inspection screenshots are in `docs/qa`.
+
+Implementation details, default adjustments, verification evidence and real-device checks still awaiting acceptance are recorded in `docs/experience-implementation.vi.md`. The earlier verification notes below describe their historical change only.
 
 ## Personal fragments — 2026-09-18
 
