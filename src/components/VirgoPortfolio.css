@@ -1835,3 +1835,29 @@
 .virgo-dialog:has(.project-document) .virgo-close{width:44px;height:44px;margin:0 0 8px 12px;top:4px}
 @media(max-width:700px),(max-height:600px){.virgo-dialog .project-document h1{font-size:24px}.virgo-dialog:has(.project-document) .virgo-dialog-inner{padding:20px 16px calc(24px + env(safe-area-inset-bottom))}}
 .virgo-dialog:has(.project-document),.virgo-dialog:has(.resume-page){max-width:none}
+
+/* Identity sits in its own lower reading zone, away from the constellation core. */
+.virgo-narrative-line.virgo-identity{
+  top:auto;bottom:12%;left:50%;right:auto;width:max-content;max-width:calc(100% - 48px);
+  margin:0;transform:translateX(-50%);text-align:center;
+  font-size:clamp(36px,4.2vw,60px);line-height:1.15;isolation:isolate;
+}
+.virgo-identity::before{
+  content:"";position:absolute;z-index:-1;inset:-56px -96px;
+  background:radial-gradient(ellipse,#020408e6 0%,#020408b3 38%,transparent 72%);
+  pointer-events:none;
+}
+.virgo-identity.is-visible>span{animation:virgo-identity-arrive 850ms cubic-bezier(.22,1,.36,1) both}
+@keyframes virgo-identity-arrive{
+  from{transform:translateY(18px);filter:blur(7px);opacity:0;letter-spacing:.025em}
+  to{transform:translateY(0);filter:blur(0);opacity:var(--text-reveal,1);letter-spacing:-.022em}
+}
+@media(max-width:767px){
+  .virgo-narrative-line.virgo-identity{bottom:calc(17% + env(safe-area-inset-bottom));font-size:clamp(32px,9vw,42px)}
+  .virgo-identity::before{inset:-40px -56px}
+}
+@media(max-height:599px) and (orientation:landscape){
+  .virgo-narrative-line.virgo-identity{bottom:12%;font-size:clamp(30px,4vw,42px)}
+}
+.virgo-reduced-motion .virgo-identity.is-visible>span{animation:none;transform:none;filter:none}
+@media(prefers-reduced-motion:reduce){.virgo-identity.is-visible>span{animation:none;transform:none;filter:none}}

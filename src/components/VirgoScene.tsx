@@ -731,6 +731,7 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     if (narrativeRendered.current.shown !== story.shown || narrativeRendered.current.amount !== amount) {
       narration.forEach((line, i) => {
         const visible = i === story.shown && amount > .001;
+        line.classList.toggle("is-visible", visible);
         line.style.opacity = visible ? "1" : "0";
         line.style.visibility = visible ? "visible" : "hidden";
         line.style.setProperty("--rift-reveal", String(amount));

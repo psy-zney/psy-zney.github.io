@@ -305,7 +305,7 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
     <main ref={overlayRef} className="virgo-overlay">
       <svg className="virgo-reading-accent" aria-hidden="true"><path fill="none" stroke="#b9cde6" strokeWidth="1"/></svg>
       <div className="virgo-narrative" aria-label={t("Dẫn truyện", "Story")}>
-        {NARRATIVE_BEATS.map((beat, index) => <p key={index} className={`virgo-narrative-line virgo-narrative-${beat.side} virgo-placement-${beat.placement}`} aria-hidden="true">
+        {NARRATIVE_BEATS.map((beat, index) => <p key={index} className={`virgo-narrative-line virgo-narrative-${beat.side} virgo-placement-${beat.placement}${index === 0 ? " virgo-identity" : ""}`} aria-hidden="true">
           <span>{beat[lang]}</span>
         </p>)}
       </div>
