@@ -724,10 +724,13 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
       overlay.parentElement!.dataset.introFracture = fractureActive ? "active" : "idle";
       Object.assign(previousPresentation, { position, exit: flight.exit, paused, entering, reducedMotion });
     }
-    fractureAudio.current?.update(position, paused || entering || document.hidden, reducedMotion, fracture.dataset.sound === "on");
     const narrative = narrativeSample(entering ? -1 : position, reducedMotion);
     const story = { shown: narrative.index };
     const amount = narrative.reveal;
+    const visibleFracture = narrative.index >= 0 && narrative.index < 3 && amount > .001
+      && NARRATIVE_BEATS[narrative.index].effect === "rift";
+    fractureAudio.current?.update(position, paused || entering || document.hidden || !visibleFracture,
+      reducedMotion, fracture.dataset.sound === "on");
     if (narrativeRendered.current.shown !== story.shown || narrativeRendered.current.amount !== amount) {
       narration.forEach((line, i) => {
         const visible = i === story.shown && amount > .001;

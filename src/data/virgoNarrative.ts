@@ -4,7 +4,7 @@ import { smooth } from "./virgoFlight";
 // The identical position renders the identical tear in either direction.
 export type CosmicEffect = "rift" | "nebula" | "meteor" | "orbit" | "aurora";
 export const NARRATIVE_BEATS = [
-  { from: .68, to: 1.12, side: "middle", placement: "middle", effect: "nebula", vie: "Mình là zney.", eng: "I'm zney." },
+  { from: .68, to: 1.12, side: "middle", placement: "middle", effect: "rift", vie: "Mình là zney.", eng: "I'm zney." },
   { from: 1.12, to: 1.40, side: "middle", placement: "upper-left", effect: "rift", vie: "Mình học bằng cách làm.", eng: "I learn by building." },
   { from: 1.40, to: 1.82, side: "middle", placement: "lower-right", effect: "aurora", vie: "Mình biến ý tưởng thành sản phẩm.", eng: "I turn ideas into useful tools." },
   { from: 1.92, to: 2.32, side: "right", placement: "upper-right", effect: "orbit", vie: "Mình tìm hiểu người dùng cần gì.", eng: "I start with what people need." },

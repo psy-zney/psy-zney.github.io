@@ -45,7 +45,7 @@ export class VirgoSpaceRiftRenderer {
     const amount = reading.reveal;
     const pulse = Math.sin(Math.PI * amount);
     const spread = smooth(0, .78, amount);
-    const energy = smooth(0, .15, amount) * (reading.effect === "rift" ? pulse * .90 : .05 + pulse * .80);
+    const energy = smooth(0, .15, amount) * (reading.effect === "rift" ? smooth(0, .82, amount) * .48 + pulse * .52 : .05 + pulse * .80);
     const radius = span / 2 * spread;
     const gap = halfGap + 8;
 
