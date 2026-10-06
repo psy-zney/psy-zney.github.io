@@ -9,6 +9,8 @@ import { WorkspaceControls } from './WorkspaceControls';
 import { workspaceAssets, workspaceItems, type WorkspaceItemId } from '../../data/workspaceManifest';
 import { workspaceProxies } from './workspacePicking';
 import { QUALITY, type QualityTier } from './useQualityTier';
+import { ScreenGifFrames } from './screenGif';
+import { WorkspaceLighting } from './WorkspaceLighting';
 
 type Props = { onMonitorSurface: (surface: { x: number; y: number; width: number; height: number } | null) => void; pose: MutableRefObject<THREE.Quaternion | null>; onReturnComplete: () => void; target: WorkspaceItemId | null; tier: QualityTier; paused: boolean; reduced: boolean; locked: boolean; focusItem: WorkspaceItemId | null;
   showLabels: boolean;
@@ -23,11 +25,6 @@ function disposeRoom(room: THREE.Object3D) {
       resources.add(material); for (const value of Object.values(material)) if (value instanceof THREE.Texture) resources.add(value);
     }
   }); resources.forEach(resource => resource.dispose());
-}
-function SelectionOutline({ id }: { id: WorkspaceItemId | null }) {
-  const helper = useMemo(() => id ? new THREE.Box3Helper(workspaceProxies.find(proxy => proxy.id === id)!.bounds, '#b9e0ff') : null, [id]);
-  useEffect(() => () => { if (helper) { helper.geometry.dispose(); (helper.material as THREE.Material).dispose(); } }, [helper]);
-  return helper ? <primitive object={helper}/> : null;
 }
 function AnchorLabel({ id, onSelect, color, title }: { id: WorkspaceItemId; onSelect: Props['onSelect']; color: string; title: string }) {
   const { camera } = useThree();
@@ -51,6 +48,8 @@ function Room(props: Props) {
   const frames = useRef<number[]>([]), windowAt = useRef(0), slowWindows = useRef(0), warmAt = useRef(performance.now());
   const goodAt = useRef(0), idleAt = useRef(performance.now()), previousPose = useRef(camera.quaternion.clone());
   const resourceAt = useRef(0);
+  const gif = useRef<{ frames: ScreenGifFrames; texture: THREE.DataTexture; elapsed: number } | null>(null);
+  const screenFrustum = useMemo(() => new THREE.Frustum(), []), screenProjection = useMemo(() => new THREE.Matrix4(), []);
   useEffect(() => {
     const reset = () => { frames.current = []; goodAt.current = 0; slowWindows.current = 0; warmAt.current = idleAt.current = windowAt.current = performance.now(); };
     document.addEventListener('visibilitychange', reset); return () => document.removeEventListener('visibilitychange', reset);
@@ -71,7 +70,19 @@ function Room(props: Props) {
         const gltf = await loader.parseAsync(buffer.buffer, new URL('./model/', window.location.href).href);
         if (cancelled) { disposeRoom(gltf.scene); return; }
         owned = gltf.scene;
-        const poster = await new Promise<THREE.Texture | null>(resolve => new THREE.TextureLoader().load('./img/zney-screen.svg', resolve, undefined, () => resolve(null)));
+        let poster: THREE.Texture | null = null;
+        try {
+          const response = await fetch('./img/screenDesktop.gif', { signal: controller.signal });
+          if (!response.ok) throw new Error('Screen animation unavailable');
+          const frames = new ScreenGifFrames(new Uint8Array(await response.arrayBuffer())); frames.sample(0);
+          const texture = new THREE.DataTexture(frames.pixels, frames.reader.width, frames.reader.height, THREE.RGBAFormat);
+          texture.flipY = true; texture.colorSpace = THREE.SRGBColorSpace;
+          texture.minFilter = texture.magFilter = THREE.LinearFilter; texture.generateMipmaps = false; texture.needsUpdate = true;
+          poster = texture; gif.current = { frames, texture, elapsed: 0 };
+        } catch (error) {
+          if (cancelled) return;
+          poster = await new Promise<THREE.Texture | null>(resolve => new THREE.TextureLoader().load('./img/zney-screen.svg', resolve, undefined, () => resolve(null)));
+        }
         if (cancelled) { poster?.dispose(); disposeRoom(owned); owned = null; return; }
         if (poster) { poster.flipY = true; poster.colorSpace = THREE.SRGBColorSpace; }
         owned.traverse(node => { if (!(node instanceof THREE.Mesh)) return; node.castShadow = props.tier === 'high'; node.receiveShadow = true;
@@ -84,13 +95,19 @@ function Room(props: Props) {
         setRoom(owned); callbacks.current.onProgress(1); callbacks.current.onReady(); invalidate();
       } catch (error) { if (!cancelled && !(error instanceof DOMException && error.name === 'AbortError')) callbacks.current.onError(); }
     }; void load();
-    return () => { cancelled = true; controller.abort(); ktx.dispose(); if (owned) {
+    return () => { cancelled = true; controller.abort(); gif.current = null; ktx.dispose(); if (owned) {
       owned.traverse(node => { if (node instanceof THREE.Mesh && node.userData.replacedMaterials) { const current = node.material; node.material = node.userData.replacedMaterials; delete node.userData.replacedMaterials; for (const material of Array.isArray(current) ? current : [current]) { if (material instanceof THREE.MeshStandardMaterial) material.map?.dispose(); material.dispose(); } } });
       disposeRoom(owned);
     } };
   }, [props.tier, invalidate]);
   useFrame((_, delta) => {
     const now = performance.now();
+    const animation = gif.current;
+    if (animation && !props.paused && !props.reduced && !document.hidden) {
+      animation.elapsed += Math.min(delta, .1) * 1000;
+      screenFrustum.setFromProjectionMatrix(screenProjection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+      if (screenFrustum.intersectsBox(workspaceProxies.find(proxy => proxy.id === 'screen')!.bounds) && animation.frames.sample(animation.elapsed)) animation.texture.needsUpdate = true;
+    }
     if (now-resourceAt.current > 1000) { resourceAt.current = now; gl.domElement.dataset.renderResources = JSON.stringify({ geometries: gl.info.memory.geometries, textures: gl.info.memory.textures, tier: props.tier }); }
     if (previousPose.current.angleTo(camera.quaternion) > .0001 || props.locked || props.focusItem || props.paused) idleAt.current = now;
     previousPose.current.copy(camera.quaternion);
@@ -98,6 +115,8 @@ function Room(props: Props) {
     frames.current.push(delta * 1000);
     if (performance.now() - windowAt.current > 3000) {
       const samples = frames.current.sort((a, b) => a - b); const p95 = samples[Math.floor(samples.length * .95)] ?? 0;
+      // Background or throttled previews cannot reliably determine GPU capability.
+      if (samples.length < 60) { windowAt.current = now; frames.current = []; slowWindows.current = 0; goodAt.current = 0; return; }
       slowWindows.current = p95 > QUALITY[props.tier].frameBudget ? slowWindows.current + 1 : 0;
       if (slowWindows.current >= 2) { callbacks.current.onSlow(); slowWindows.current = 0; }
       if (p95 <= QUALITY[props.tier].frameBudget * .75) {
@@ -109,7 +128,7 @@ function Room(props: Props) {
     }
   });
   if (!room) return null;
-  return <><primitive object={room}/><SelectionOutline id={!props.paused ? props.focusItem ?? props.target : null}/><WorkspaceControls onMonitorSurface={props.onMonitorSurface} pose={props.pose} onReturnComplete={props.onReturnComplete} room={room} disabled={props.paused} focusItem={props.focusItem} locked={props.locked} tilt={props.tilt} onTarget={props.onTarget} onSelect={props.onSelect} onLock={props.onLock} onFocusComplete={props.onFocusComplete} recenter={props.recenter}/>
+  return <><primitive object={room}/><WorkspaceControls onMonitorSurface={props.onMonitorSurface} pose={props.pose} onReturnComplete={props.onReturnComplete} room={room} disabled={props.paused} focusItem={props.focusItem} locked={props.locked} tilt={props.tilt} onTarget={props.onTarget} onSelect={props.onSelect} onLock={props.onLock} onFocusComplete={props.onFocusComplete} recenter={props.recenter}/>
     {!props.paused && !props.locked && !props.focusItem && workspaceItems.filter(item => props.showLabels || props.target === item.id).map(item => <AnchorLabel key={item.id} {...item} onSelect={props.onSelect}/>)}</>;
 }
 function RendererLifecycle({ onError }: { onError: () => void }) {
@@ -121,13 +140,13 @@ function RendererLifecycle({ onError }: { onError: () => void }) {
 export function WorkspaceScene(props: Props) {
   const [visible, setVisible] = useState(!document.hidden);
   useEffect(() => { const change = () => setVisible(!document.hidden); document.addEventListener('visibilitychange', change); return () => document.removeEventListener('visibilitychange', change); }, []);
-  return <Canvas className={`room-canvas${props.locked ? ' is-locked' : ''}`} shadows={QUALITY[props.tier].shadows} dpr={[1, QUALITY[props.tier].dpr]}
+  return <Canvas className={`room-canvas${props.locked ? ' is-locked' : ''}`} shadows={QUALITY[props.tier].shadows ? { type: THREE.PCFShadowMap } : false} dpr={[1, QUALITY[props.tier].dpr]}
     frameloop={!visible ? 'never' : props.paused || props.reduced ? 'demand' : 'always'} camera={{ position: [5, 10, .5], fov: 50, near: .1, far: 200 }}
     gl={{ antialias: false, powerPreference: props.tier === 'low' ? 'low-power' : 'high-performance' }} onCreated={({ gl }) => {
       gl.setClearColor('#050913'); gl.shadowMap.type = THREE.PCFShadowMap;
     }}>
-    <ambientLight intensity={.8}/><directionalLight position={[15,25,15]} intensity={1.25} castShadow={QUALITY[props.tier].shadows} shadow-mapSize={[1024,1024]} shadow-bias={-.0001}/>
+    <ambientLight intensity={.45}/><directionalLight position={[15,25,15]} intensity={1.25} castShadow={QUALITY[props.tier].shadows} shadow-mapSize={[1024,1024]} shadow-bias={-.0001}/>
     <pointLight position={[-10,10,-10]} intensity={.55} color="#60a5fa"/><pointLight position={[10,5,-10]} intensity={.45} color="#8b5cf6"/>
-    <RendererLifecycle onError={props.onError}/><Room {...props}/>
+    <WorkspaceLighting/><RendererLifecycle onError={props.onError}/><Room {...props}/>
   </Canvas>;
 }

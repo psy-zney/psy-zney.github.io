@@ -55,7 +55,7 @@ Inventory có 62 texture, 74.103.540 bytes nhúng, không có duplicate byte-ide
 | Medium | 6.024.316 | 148.275 | 18,36 MiB | 75,13 MiB / limit 96 |
 | High | 9.262.912 | 168.727 | 37,44 MiB | 155,46 MiB / limit 192 |
 
-KTX2 color dùng ETC1S, normal/linear dùng UASTC, có mipmaps. GPU format được KTX2Loader detect; có RGBA fallback. Tính RGBA bảo thủ để không tuyên bố mọi GPU đều có compression. AO/contact shadow tĩnh được bake vào vertex colors bằng BVH, không tạo thêm texture atlas. High có shadow map 1024; Low/Medium không có shadow runtime. Poster phòng dưới 150 KB; screen preview SVG 768×432, không decode GIF.
+KTX2 color dùng ETC1S, normal/linear dùng UASTC, có mipmaps. GPU format được KTX2Loader detect; có RGBA fallback. Tính RGBA bảo thủ để không tuyên bố mọi GPU đều có compression. AO/contact shadow tĩnh được bake vào vertex colors bằng BVH, không tạo thêm texture atlas. High có shadow map 1024; Low/Medium không có shadow runtime. Poster phòng dưới 150 KB; Từ 6 October 2026, màn hình dùng lại GIF gốc 480×270, 39 frame, giữ một RGBA buffer 506 KiB và chỉ upload khi đổi frame; SVG chỉ là fallback lỗi tải GIF.
 
 `public/model/workspace-manifest.json` ghi source, optimizer, encoder version và hash từng tier. `public/vendor/basis` có decoder, nguồn và license Apache-2.0. Encoder offline được pin commit/checksum và cache ở `scripts/.cache`; không tải encoder khi chạy website.
 

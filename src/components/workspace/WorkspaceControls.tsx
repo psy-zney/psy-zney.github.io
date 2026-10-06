@@ -40,7 +40,9 @@ export function WorkspaceControls({ room, disabled, focusItem, locked, tilt, onT
     return hit && itemFromObject(hit.object) || proxyHit(raycaster.current.ray, hit?.distance);
   };
   useEffect(() => {
-    camera.position.set(5, 10, .5); camera.lookAt(1.5, 9.5, 0);
+    const portrait = size.width < size.height;
+    camera.position.set(portrait ? 8.5 : 5, portrait ? 10.5 : 10, .5);
+    camera.lookAt(portrait ? -3.86 : 1.5, portrait ? 8.5 : 9.5, portrait ? .85 : 0);
     if (pose.current) camera.quaternion.copy(pose.current); else pose.current = camera.quaternion.clone();
     const euler = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
     base.current = { yaw: euler.y, pitch: euler.x }; look.current = { ...base.current };

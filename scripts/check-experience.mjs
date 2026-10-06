@@ -12,6 +12,24 @@ import { renderToStaticMarkup } from 'react-dom/server';
 const server = await createServer({ server: { middlewareMode: true }, appType: 'custom' });
 globalThis.window = { location: { hash: '#/workspace' }, matchMedia: () => ({ matches: false }) };
 try {
+  {
+    const { ScreenGifFrames } = await server.ssrLoadModule('/src/components/workspace/screenGif.ts');
+    const { GifReader } = await import('omggif');
+    const gifBytes = new Uint8Array(await readFile('public/img/screenDesktop.gif'));
+    const gifPlayer = new ScreenGifFrames(gifBytes), original = new GifReader(gifBytes);
+    const reference = new Uint8Array(original.width * original.height * 4);
+    let at = 0;
+    for (let frame = 0; frame < original.numFrames(); frame++) {
+      original.decodeAndBlitFrameRGBA(frame, reference);
+      gifPlayer.sample(at);
+      assert.deepEqual(gifPlayer.pixels, reference, `Screen GIF frame ${frame} preserves the original image`);
+      at += Math.max(20, original.frameInfo(frame).delay * 10);
+    }
+    assert(gifPlayer.pixels.byteLength <= 512 * 1024, 'GIF keeps one bounded RGBA frame');
+    const last = gifPlayer.pixels.slice(); gifPlayer.sample(gifPlayer.duration);
+    assert.notDeepEqual(gifPlayer.pixels, last, 'GIF loops back to its first frame');
+    assert.equal(gifPlayer.sample(gifPlayer.duration + 1), false, 'Same GIF frame does not upload again');
+  }
   const { projects, capabilities } = await server.ssrLoadModule('/src/data/portfolio.ts');
   const { parseWorkspaceRoute, parsePublicDocumentRoute, isWorkspaceHash, DOCUMENT_SECTIONS, OS_APPS } = await server.ssrLoadModule('/src/utils/appRoutes.ts');
   for (const project of projects) { assert.equal(parsePublicDocumentRoute(`#/project/${project.id}`).projectId, project.id); for (const section of DOCUMENT_SECTIONS) assert.equal(parsePublicDocumentRoute(`#/project/${project.id}/${section}`).section, section); }
