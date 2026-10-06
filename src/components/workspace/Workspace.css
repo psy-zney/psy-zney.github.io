@@ -40,6 +40,13 @@
 .room-help h1{font:clamp(30px,4vw,44px)/1.15 Georgia,serif;text-wrap:balance;margin:12px 0 24px}
 .room-help h2{font-size:19px;margin:28px 0 10px}
 .room-help p{font-size:16px;line-height:1.75;max-width:640px}
+.room-contents h2{font-size:16px;margin:28px 0 12px;color:#d0e5ff}
+.room-contents-views,.room-contents-tools{display:flex;flex-wrap:wrap;gap:8px}
+.room-contents-views button,.room-contents-tools button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 14px;border:1px solid #33435c;border-radius:10px;background:#050913;color:#f3f5fa;font-size:13px;transition:background-color 140ms,border-color 140ms}
+.room-contents-views button[aria-pressed=true]{background:#19324a;border-color:#91b9de}
+.room-contents-tools{margin-top:24px;padding-top:20px;border-top:1px solid #33435c}
+@media(hover:hover){.room-contents-views button:hover,.room-contents-tools button:hover{background:#142032;border-color:#adc9e8}}
+@media(prefers-reduced-motion:reduce){.room-contents-views button,.room-contents-tools button{transition:none}}
 .workspace-experience[data-mode=focusing] .room-hud footer,.workspace-experience[data-mode=returning] .room-hud footer{opacity:.35}
 @media(max-width:700px){
   .room-views{top:calc(68px + env(safe-area-inset-top));max-width:calc(100% - 24px);width:max-content}
