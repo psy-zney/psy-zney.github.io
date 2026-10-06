@@ -11,7 +11,11 @@ import { compressWorkspaceTextures, basisEncoderVersion } from './workspace-ktx.
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder });
 await Promise.all([MeshoptEncoder.ready, MeshoptDecoder.ready, MeshoptSimplifier.ready]);
 const original = await readFile('public/model/main.glb');
-const originalDoc = await io.readBinary(original);
+const sourcePath = process.argv[2] ?? 'public/model/main.glb';
+const source = sourcePath === 'public/model/main.glb' ? original : await readFile(sourcePath);
+const originalDoc = await io.readBinary(source);
+const sourceInfo = { path: sourcePath, bytes: source.length, sha256: createHash('sha256').update(source).digest('hex') };
+const retainedDoc = await io.readBinary(original);
 const definitions = { paper: ['StackOfPaper', 'Paper'], lanyard: ['id_key_lanyard_x-lab.glb'], bookshelf: ['bookshelf_cc0.glb'], screen: ['MY_SCREEN'] };
 const anchors = {};
 for (const [id, names] of Object.entries(definitions)) {
@@ -24,6 +28,18 @@ for (const [id, names] of Object.entries(definitions)) {
     node.traverse(child => child.setExtras({ ...child.getExtras(), workspaceItem: id }));
   }
   anchors[id] = { names, min, max, center: min.map((v, axis) => (v + max[axis]) / 2) };
+  const retainedNodes = retainedDoc.getRoot().listNodes().filter(node => names.includes(node.getName()));
+  const retainedMin = [Infinity, Infinity, Infinity], retainedMax = [-Infinity, -Infinity, -Infinity];
+  for (const node of retainedNodes) {
+    const bounds = getBounds(node);
+    for (let axis = 0; axis < 3; axis++) {
+      retainedMin[axis] = Math.min(retainedMin[axis], bounds.min[axis]);
+      retainedMax[axis] = Math.max(retainedMax[axis], bounds.max[axis]);
+    }
+  }
+  if (min.some((v, axis) => Math.abs(v-retainedMin[axis]) > .001) || max.some((v, axis) => Math.abs(v-retainedMax[axis]) > .001)) {
+    throw new Error(`Refined source moved the ${id} interaction anchor`);
+  }
 }
 await mkdir('public/model', { recursive: true });
 const configs = { low: { size: 512, ratio: .20, error: .005, quality: 66 }, medium: { size: 768, ratio: .55, error: .001, quality: 78 }, high: { size: 2048, ratio: .65, error: .001, quality: 86 } };
@@ -43,6 +59,6 @@ for (const [tier, config] of Object.entries(configs)) {
   assets[tier] = { path: `./model/workspace-${tier}.glb`, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'), meshes: doc.getRoot().listMeshes().length, materials: doc.getRoot().listMaterials().length, triangles: Math.round(triangleCount), textureGPUBytesEstimate: textures.rgbaBytes, compressedTextureGPUBytesEstimate: textures.compressedGPUBytes, textureLimit: config.size, textureFormat: 'ktx2', compression: 'EXT_meshopt_compression', lighting: 'baked vertex AO and key-light contact shadow' };
   console.log(`${tier}: ${(bytes.length / 1e6).toFixed(2)} MB, ${assets[tier].meshes} meshes, ${Math.round(triangleCount)} triangles`);
 }
-await writeFile('src/data/workspaceAssets.json', JSON.stringify({ version: 1, original: { bytes: original.length, sha256: createHash('sha256').update(original).digest('hex') }, anchors, assets }, null, 2) + '\n');
-await writeFile('public/model/workspace-manifest.json', JSON.stringify({ source: 'main.glb, existing owner-provided asset; original retained', optimizer: '@gltf-transform 4.5.1 / meshoptimizer / sharp / static BVH AO', textures: 'KTX2 ETC1S color / UASTC linear, mipmaps; local decoder selects GPU format with RGBA fallback', basisEncoderVersion, anchors, assets }, null, 2) + '\n');
+await writeFile('src/data/workspaceAssets.json', JSON.stringify({ version: 1, original: { bytes: original.length, sha256: createHash('sha256').update(original).digest('hex') }, refinement: sourceInfo, anchors, assets }, null, 2) + '\n');
+await writeFile('public/model/workspace-manifest.json', JSON.stringify({ source: 'main.glb, existing owner-provided asset; original retained', refinement: sourceInfo, optimizer: '@gltf-transform 4.5.1 / meshoptimizer / sharp / static BVH AO', textures: 'KTX2 ETC1S color / UASTC linear, mipmaps; local decoder selects GPU format with RGBA fallback', basisEncoderVersion, anchors, assets }, null, 2) + '\n');
 if (await stat('docs/qa/room-poster-source.png').catch(() => null)) await sharp('docs/qa/room-poster-source.png').resize({ width: 1280, withoutEnlargement: true }).webp({ quality: 70 }).toFile('public/img/workspace-poster.webp');
