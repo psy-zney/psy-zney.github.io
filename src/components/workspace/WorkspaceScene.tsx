@@ -11,8 +11,10 @@ import { workspaceProxies } from './workspacePicking';
 import { QUALITY, type QualityTier } from './useQualityTier';
 import { ScreenGifFrames } from './screenGif';
 import { WorkspaceLighting } from './WorkspaceLighting';
+import type { MoveInput, RoomView, WorkspaceInput } from './workspaceNavigation';
 
 type Props = { onMonitorSurface: (surface: { x: number; y: number; width: number; height: number } | null) => void; pose: MutableRefObject<THREE.Quaternion | null>; onReturnComplete: () => void; target: WorkspaceItemId | null; tier: QualityTier; paused: boolean; reduced: boolean; locked: boolean; focusItem: WorkspaceItemId | null;
+  position: MutableRefObject<THREE.Vector3 | null>; navigation: { view: RoomView; serial: number }; activeView: RoomView | 'free'; drive: MutableRefObject<MoveInput>; input: WorkspaceInput; moving: boolean; onViewChange: (view: RoomView | 'free') => void;
   showLabels: boolean;
   tilt: MutableRefObject<{ yaw: number; pitch: number }>; onSelect: (id: WorkspaceItemId) => void; onTarget: (id: WorkspaceItemId | null) => void;
   onLock: (locked: boolean) => void; onReady: () => void; onProgress: (progress: number | null) => void;
@@ -108,7 +110,7 @@ function Room(props: Props) {
       screenFrustum.setFromProjectionMatrix(screenProjection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
       if (screenFrustum.intersectsBox(workspaceProxies.find(proxy => proxy.id === 'screen')!.bounds) && animation.frames.sample(animation.elapsed)) animation.texture.needsUpdate = true;
     }
-    if (now-resourceAt.current > 1000) { resourceAt.current = now; gl.domElement.dataset.renderResources = JSON.stringify({ geometries: gl.info.memory.geometries, textures: gl.info.memory.textures, tier: props.tier }); }
+    if (now-resourceAt.current > 500) { resourceAt.current = now; gl.domElement.dataset.renderResources = JSON.stringify({ geometries: gl.info.memory.geometries, textures: gl.info.memory.textures, tier: props.tier }); gl.domElement.dataset.viewPosition = JSON.stringify(camera.position.toArray()); gl.domElement.dataset.viewRotation = JSON.stringify(camera.quaternion.toArray()); }
     if (previousPose.current.angleTo(camera.quaternion) > .0001 || props.locked || props.focusItem || props.paused) idleAt.current = now;
     previousPose.current.copy(camera.quaternion);
     if (props.paused || document.hidden || !room || now - warmAt.current < 3000) { goodAt.current = 0; frames.current = []; windowAt.current = now; return; }
@@ -128,20 +130,20 @@ function Room(props: Props) {
     }
   });
   if (!room) return null;
-  return <><primitive object={room}/><WorkspaceControls onMonitorSurface={props.onMonitorSurface} pose={props.pose} onReturnComplete={props.onReturnComplete} room={room} disabled={props.paused} focusItem={props.focusItem} locked={props.locked} tilt={props.tilt} onTarget={props.onTarget} onSelect={props.onSelect} onLock={props.onLock} onFocusComplete={props.onFocusComplete} recenter={props.recenter}/>
-    {!props.paused && !props.locked && !props.focusItem && workspaceItems.filter(item => props.showLabels || props.target === item.id).map(item => <AnchorLabel key={item.id} {...item} onSelect={props.onSelect}/>)}</>;
+  return <><primitive object={room}/><WorkspaceControls onMonitorSurface={props.onMonitorSurface} pose={props.pose} position={props.position} navigation={props.navigation} activeView={props.activeView} drive={props.drive} input={props.input} reduced={props.reduced} onViewChange={props.onViewChange} onReturnComplete={props.onReturnComplete} room={room} disabled={props.paused} focusItem={props.focusItem} locked={props.locked} tilt={props.tilt} onTarget={props.onTarget} onSelect={props.onSelect} onLock={props.onLock} onFocusComplete={props.onFocusComplete} recenter={props.recenter}/>
+    {!props.paused && !props.locked && !props.focusItem && workspaceItems.filter(item => props.showLabels || props.input === 'mouse' && props.target === item.id).map(item => <AnchorLabel key={item.id} {...item} onSelect={props.onSelect}/>)}</>;
 }
 function RendererLifecycle({ onError }: { onError: () => void }) {
   const { gl, camera, size } = useThree();
   useEffect(() => { const canvas = gl.domElement; canvas.addEventListener('webglcontextlost', onError); return () => canvas.removeEventListener('webglcontextlost', onError); }, [gl, onError]);
-  useEffect(() => { const lens = camera as THREE.PerspectiveCamera; lens.fov = size.width < size.height ? 65 : 50; lens.updateProjectionMatrix(); }, [camera, size.width, size.height]);
+  useEffect(() => { const lens = camera as THREE.PerspectiveCamera; lens.fov = size.width < size.height ? 65 : 54; lens.updateProjectionMatrix(); }, [camera, size.width, size.height]);
   return null;
 }
 export function WorkspaceScene(props: Props) {
   const [visible, setVisible] = useState(!document.hidden);
   useEffect(() => { const change = () => setVisible(!document.hidden); document.addEventListener('visibilitychange', change); return () => document.removeEventListener('visibilitychange', change); }, []);
   return <Canvas className={`room-canvas${props.locked ? ' is-locked' : ''}`} shadows={QUALITY[props.tier].shadows ? { type: THREE.PCFShadowMap } : false} dpr={[1, QUALITY[props.tier].dpr]}
-    frameloop={!visible ? 'never' : props.paused || props.reduced ? 'demand' : 'always'} camera={{ position: [5, 10, .5], fov: 50, near: .1, far: 200 }}
+    frameloop={!visible ? 'never' : props.paused || props.reduced && !props.moving ? 'demand' : 'always'} camera={{ position: [7.5, 10.5, .85], fov: 54, near: .1, far: 200 }}
     gl={{ antialias: false, powerPreference: props.tier === 'low' ? 'low-power' : 'high-performance' }} onCreated={({ gl }) => {
       gl.setClearColor('#050913'); gl.shadowMap.type = THREE.PCFShadowMap;
     }}>

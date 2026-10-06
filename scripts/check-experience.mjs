@@ -90,15 +90,32 @@ try {
   assert.equal(workspaceReducer('overview',{type:'error'}),'errorFallback');
   const { workspaceAssets, workspaceItems } = await server.ssrLoadModule('/src/data/workspaceManifest.ts');
   const { proxyHit, isWorkspaceTap } = await server.ssrLoadModule('/src/components/workspace/workspacePicking.ts');
-  const tapStart = { startX: 10, startY: 20, at: 0, id: 1, moved: false };
-  assert(isWorkspaceTap(tapStart,{pointerId:1,clientX:18,clientY:20},250));
-  assert(!isWorkspaceTap(tapStart,{pointerId:1,clientX:18.1,clientY:20},250),'A release displacement over 8px cancels a tap even if move events were missed');
-  assert(!isWorkspaceTap(tapStart,{pointerId:1,clientX:10,clientY:20},251));
+  const tapStart = { startX: 10, startY: 20, at: 0, id: 1, moved: false, pointerType:'mouse' };
+  assert(isWorkspaceTap(tapStart,{pointerId:1,clientX:16,clientY:20},500));
+  assert(!isWorkspaceTap(tapStart,{pointerId:1,clientX:16.1,clientY:20},250),'Mouse dragging cancels a click even if move events were missed');
+  assert(!isWorkspaceTap(tapStart,{pointerId:1,clientX:10,clientY:20},501));
+  assert(isWorkspaceTap({...tapStart,pointerType:'touch'},{pointerId:1,clientX:22,clientY:20},450),'Touch tolerates finger jitter and a deliberate tap');
+  assert(!isWorkspaceTap({...tapStart,pointerType:'touch'},{pointerId:1,clientX:22.1,clientY:20},200));
+  assert(!isWorkspaceTap({...tapStart,pointerType:'touch'},{pointerId:1,clientX:10,clientY:20},451),'A long press never opens a document');
   assert(!isWorkspaceTap(tapStart,{pointerId:2,clientX:10,clientY:20},10));
   assert(!isWorkspaceTap({...tapStart,moved:true},{pointerId:1,clientX:10,clientY:20},10));
   assert(!isWorkspaceTap(null,{pointerId:1,clientX:10,clientY:20},10));
   const screen=new Vector3(...workspaceAssets.anchors.screen.center), origin=new Vector3(5,10,.5), ray=new Ray(origin,screen.clone().sub(origin).normalize());
   assert.equal(proxyHit(ray),'screen'); assert.equal(proxyHit(ray,.1),null,'An occluding surface must block a proxy');
+  const { walkPosition,roomViewPose,roomViews,WALK_AREA } = await server.ssrLoadModule('/src/components/workspace/workspaceNavigation.ts');
+  for (const portrait of [false,true]) for (const view of roomViews) {
+    const preset = roomViewPose(view.id,portrait);
+    assert(preset.position[0]>=WALK_AREA.minX && preset.position[0]<=WALK_AREA.maxX);
+    assert(preset.position[2]>=WALK_AREA.minZ && preset.position[2]<=WALK_AREA.maxZ);
+    assert(preset.position.every(Number.isFinite) && preset.target.every(Number.isFinite));
+  }
+  const from = new Vector3(11,10,0);
+  const straight=walkPosition(from,0,{x:0,y:1},.04),diagonal=walkPosition(from,0,{x:1,y:1},.04);
+  assert(Math.abs(from.distanceTo(straight)-from.distanceTo(diagonal))<1e-10,'Diagonal movement must not be faster');
+  const resumed=walkPosition(from,0,{x:0,y:1},30); assert(from.distanceTo(resumed)<=.161,'Returning to a suspended tab cannot jump across the room');
+  let walker=from.clone(); for(let i=0;i<10000;i++) walker=walkPosition(walker,Math.PI/2,{x:0,y:1},.05);
+  assert.equal(walker.x,WALK_AREA.minX); assert.equal(walker.y,from.y,'Walking stays at eye height, outside source furniture');
+  assert.deepEqual(walkPosition(from,.8,{x:0,y:0},1).toArray(),from.toArray(),'Releasing controls stops translation');
   await MeshoptDecoder.ready;
   const io=new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({'meshopt.decoder':MeshoptDecoder});
   const original=await readFile('public/model/main.glb');assert.equal(createHash('sha256').update(original).digest('hex'),workspaceAssets.original.sha256);

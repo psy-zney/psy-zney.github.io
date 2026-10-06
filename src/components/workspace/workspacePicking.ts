@@ -16,7 +16,9 @@ export function proxyHit(ray: Ray, firstSurfaceDistance = Infinity): WorkspaceIt
   }
   return selected;
 }
-/** A tap survives only one pointer, <=8 px displacement and <=250 ms. */
-export function isWorkspaceTap(start: { startX: number; startY: number; at: number; id: number; moved: boolean } | null, end: { pointerId: number; clientX: number; clientY: number }, now: number) {
-  return !!start && start.id === end.pointerId && !start.moved && now-start.at <= 250 && Math.hypot(end.clientX-start.startX,end.clientY-start.startY) <= 8;
+export const pointerThreshold = (type = 'mouse') => type === 'touch' || type === 'pen' ? { distance: 12, duration: 450 } : { distance: 6, duration: 500 };
+/** A gesture belongs to one pointer; dragging and long holds never open content. */
+export function isWorkspaceTap(start: { startX: number; startY: number; at: number; id: number; moved: boolean; pointerType?: string } | null, end: { pointerId: number; clientX: number; clientY: number }, now: number) {
+  const threshold = pointerThreshold(start?.pointerType);
+  return !!start && start.id === end.pointerId && !start.moved && now-start.at >= 0 && now-start.at <= threshold.duration && Math.hypot(end.clientX-start.startX,end.clientY-start.startY) <= threshold.distance;
 }
