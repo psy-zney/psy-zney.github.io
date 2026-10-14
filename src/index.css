@@ -1024,6 +1024,13 @@ html, body, #root {
   .wave-loader {
     animation: none;
   }
+  [data-page-loader] {
+    transition: none;
+    --loader-star-animation: none !important;
+  }
+  [data-page-loader] > span {
+    --loader-star-animation: none !important;
+  }
 }
 
 /* Mechanical key depth, per-key LED and on-screen controls */

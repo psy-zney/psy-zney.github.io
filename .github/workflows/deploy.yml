@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
+      - name: Check preserved features
+        run: pnpm run check:portfolio && pnpm run check:experience
+
       - name: Build
         env:
           VITE_MONGO_API_ENDPOINT: ${{ secrets.VITE_MONGO_API_ENDPOINT }}

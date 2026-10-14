@@ -1,8 +1,8 @@
 import React, { lazy, Suspense, useState, useEffect } from "react";
 import { VirgoPortfolio as IntroPage } from "./components/VirgoPortfolio";
-import { startIntroAudioFromGesture } from "./utils/audioPreloader";
 import { trackPageView } from "./utils/visitorTracker";
 import { isWorkspaceHash } from "./utils/appRoutes";
+import { WavePageLoader } from "./components/WavePageLoader";
 
 type ViewMode = "intro" | "workspace" | "admin";
 const ModelAnalyzer = lazy(() =>
@@ -23,6 +23,7 @@ function readViewMode(): ViewMode {
 
 export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>(readViewMode);
+  const [isIntroLoading, setIsIntroLoading] = useState(true);
   const lang = "eng" as const;
 
   const navigateTo = (mode: ViewMode) => {
@@ -101,26 +102,24 @@ export default function App() {
       className="app-shell w-screen overflow-hidden bg-[#0f141d] font-sans text-slate-100 select-none"
       style={{ height: "100dvh" }}
     >
+      {isIntroLoading && (
+        <WavePageLoader
+          onFinish={() => setIsIntroLoading(false)}
+          label="Initializing"
+        />
+      )}
       {viewMode === "intro" ? (
         <IntroPage
-          onPrepareWorkspace={() => {
-            startIntroAudioFromGesture(0);
-          }}
+          onPrepareWorkspace={() => {}}
           onEnterWorkspace={() => navigateTo("workspace")}
           lang={lang}
         />
       ) : (
         <Suspense
           fallback={
-            <div role="status" className="p-8 text-slate-200">
-              Opening the 3D workspace…
-              <button
-                className="block mt-5 underline"
-                onClick={() => navigateTo("intro")}
-              >
-                Back to portfolio
-              </button>
-            </div>
+            <WavePageLoader
+              label="Opening workspace"
+            />
           }
         >
           <ModelAnalyzer

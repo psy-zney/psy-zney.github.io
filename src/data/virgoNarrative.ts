@@ -8,12 +8,11 @@ export const NARRATIVE_BEATS = [
   { from: 1.12, to: 1.40, side: "middle", placement: "upper-left", effect: "rift", vie: "Mình học bằng cách làm.", eng: "I learn by building." },
   { from: 1.40, to: 1.82, side: "middle", placement: "lower-right", effect: "aurora", vie: "Mình biến ý tưởng thành sản phẩm.", eng: "I turn ideas into useful tools." },
   { from: 1.92, to: 2.32, side: "right", placement: "upper-right", effect: "orbit", vie: "Mình tìm hiểu người dùng cần gì.", eng: "I start with what people need." },
-  { from: 2.94, to: 3.52, side: "left", placement: "upper-left", effect: "meteor", vie: "Đây là cách mình biến nhu cầu thành dự án.", eng: "Here is how I turn those needs into projects." },
-  { from: 3.65, to: 4.25, side: "left", placement: "upper-left", effect: "nebula", vie: "Mỗi dự án cho mình thêm điều để học.", eng: "Each project gives me something new to learn." },
+  { from: 2.94, to: 3.52, side: "right", placement: "upper-right", effect: "nebula", vie: "Mỗi dự án cho mình thêm điều để học.", eng: "Each project gives me something new to learn." },
+  { from: 3.65, to: 4.25, side: "left", placement: "lower-left", effect: "meteor", vie: "Đây là cách mình biến nhu cầu thành dự án.", eng: "Here is how I turn those needs into projects." },
   { from: 4.80, to: 5.04, side: "right", placement: "upper-right", effect: "aurora", vie: "Những dự án ấy định hình cách mình xây dựng.", eng: "Those projects shape the way I build." },
-  { from: 5.04, to: 5.30, side: "right", placement: "upper-right", effect: "orbit", vie: "Giao diện, ứng dụng và hệ thống được kết nối cẩn thận.", eng: "Interfaces, apps and systems—connected with care." },
-  { from: 5.82, to: 5.94, side: "right", placement: "upper-right", effect: "rift", vie: "Bạn có ý tưởng?", eng: "Have an idea?" },
-  { from: 5.94, to: 6.20, side: "right", placement: "upper-right", effect: "aurora", vie: "Cùng trao đổi, hoặc ghé không gian làm việc của mình.", eng: "Let's talk—or explore my workspace." },
+  { from: 5.04, to: 5.30, side: "left", placement: "lower-left", effect: "orbit", vie: "Giao diện, ứng dụng và hệ thống được kết nối cẩn thận.", eng: "Interfaces, apps and systems—connected with care." },
+  { from: 5.82, to: 5.94, side: "right", placement: "upper-right", effect: "aurora", vie: "Cùng trao đổi, hoặc ghé không gian làm việc của mình.", eng: "Let's talk—or explore my workspace." },
 ] as const;
 
 export function narrativeEdges(index: number) {
@@ -42,12 +41,29 @@ export function mobileNarrativeTop(height: number, starBottom: number, lineHeigh
 }
 
 /** Reading anchors for wheel gestures; continuous touch scrolling uses the same timeline. */
-export const NARRATIVE_STOPS = [0, ...NARRATIVE_BEATS.map(beat => Math.min(6, (beat.from + beat.to) / 2))];
+export const NARRATIVE_STOPS = [0, ...NARRATIVE_BEATS.map(beat => Math.min(6, (beat.from + beat.to) / 2)), 6];
+/** Public chapter links land on a complete sentence and its matching view. */
+export function chapterReadingPosition(chapter: number) {
+  const entries = [0, 1, ...[3, 4, 5, 6, 8].map(index => (NARRATIVE_BEATS[index].from + NARRATIVE_BEATS[index].to) / 2)];
+  return entries[chapter] ?? 0;
+}
 export function nextNarrativeStop(position: number, direction: number) {
-  const current = NARRATIVE_BEATS.findIndex(beat => position >= beat.from && position < beat.to);
-  if (current >= 0) return NARRATIVE_STOPS[Math.max(0, Math.min(NARRATIVE_STOPS.length - 1, current + 1 + Math.sign(direction)))];
-  if (direction > 0) return NARRATIVE_STOPS.find(stop => stop > position + .045) ?? 6;
-  return [...NARRATIVE_STOPS].reverse().find(stop => stop < position - .045) ?? 0;
+  if (direction > 0 && position >= 6) return 6;
+  if (direction < 0 && position <= 0) return 0;
+
+  // A project deep link (at position 3) advances to a different sentence on its first gesture
+  if (direction > 0 && Math.abs(position - 3) < 0.05) return NARRATIVE_STOPS[6];
+
+  // If at or very close to an established narrative reading stop
+  const stopIndex = NARRATIVE_STOPS.findIndex(stop => Math.abs(position - stop) <= 0.045);
+  if (stopIndex >= 0) {
+    const nextIndex = Math.max(0, Math.min(NARRATIVE_STOPS.length - 1, stopIndex + Math.sign(direction)));
+    return NARRATIVE_STOPS[nextIndex];
+  }
+
+  // If in transit between stops, smoothly select the next anchor in the gesture direction
+  if (direction > 0) return NARRATIVE_STOPS.find(stop => stop > position + 0.045) ?? 6;
+  return [...NARRATIVE_STOPS].reverse().find(stop => stop < position - 0.045) ?? 0;
 }
 
 export type StoryGesture = { direction: number; at: number; destination: number };

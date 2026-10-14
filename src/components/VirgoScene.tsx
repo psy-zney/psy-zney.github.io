@@ -20,6 +20,10 @@ import { PlanetTextureLibrary, VirgoPlanet } from "./VirgoPlanet";
 import { CelestialVisitors } from "./VirgoVisitors";
 import { celestialSlot } from '../data/celestialRegistry';
 import { useQualityTier, type QualityTier } from './workspace/useQualityTier';
+import { BlackHoleVortex } from "./BlackHoleVortex";
+import type { BlackHoleOrbitState } from "./BlackHoleOrbitControls";
+import { spatialGaze, narrativeOrbitPose } from '../data/virgoExperienceMotion';
+import { solarPassageSample } from '../data/solarShowcaseMotion';
 
 export { VIRGO_STARS, VIRGO_SUPPORT_STARS } from "../data/virgoStations";
 
@@ -191,7 +195,8 @@ function VirgoNode({ index, flight, glow, support = false }: FlightProps & { ind
     uniforms.stellarTime.value = flight.time;
     const presence = support ? 1 : starPresence(flight, index);
     uniforms.presence.value = presence;
-    const appearance = openingStarAppearance(support ? index + 4 : index, flight.reveal);
+    const fadeOutForBlackHole = index === 3 ? (1 - smooth(5.92, 5.97, flight.position)) : 1;
+    const appearance = openingStarAppearance(support ? index + 4 : index, flight.reveal) * fadeOutForBlackHole;
     const focus = support ? 0 : starFocus(flight, index);
     const scatter = flight.reduced ? 0 : 1 - appearance;
     group.current.position.set(star.position[0] * (1 + scatter * .3), star.position[1] * (1 + scatter * .3), star.position[2] - scatter * (3 + index % 3) * SPACE_LAYOUT.interstellar);
@@ -444,30 +449,22 @@ function SatelliteCluster({ kind, flight, glow, selected }: FlightProps & { kind
 }
 
 
-function PortalGate({ flight, glow, gate }: FlightProps & { gate: THREE.Vector3 }) {
+function PortalGate({ flight, glow, gate, orbit }: FlightProps & { gate: THREE.Vector3; orbit: RefObject<BlackHoleOrbitState> }) {
   const anchor = useRef<THREE.Group>(null);
-  const group = useRef<THREE.Group>(null);
-  const halo = useRef<THREE.Sprite>(null);
-  const { camera } = useThree();
+  const { camera, size } = useThree();
   useFrame(() => {
-    if (!anchor.current || !group.current || !halo.current) return;
+    if (!anchor.current) return;
     anchor.current.position.copy(gate);
     anchor.current.quaternion.copy(camera.quaternion);
-    group.current.visible = flight.contact > .005 || flight.exit > 0;
-    group.current.scale.setScalar((flight.mobile ? .68 : 1) * (.7 + flight.contact * .3 + flight.exit * .5));
-    group.current.children.forEach((child, i) => {
-      const mesh = child as THREE.Mesh;
-      mesh.rotation.z = (flight.reduced ? 0 : flight.position * (i % 2 ? -.5 : .5) + flight.time * (i % 2 ? -.35 : .35) + flight.exit * 2) + i;
-      (mesh.material as THREE.MeshBasicMaterial).opacity = flight.contact * (.50 - i * .06) * (1 - flight.exit * .5);
-    });
-    halo.current.scale.setScalar(40 + flight.exit * 120);
-    (halo.current.material as THREE.SpriteMaterial).opacity = flight.contact * (.16 + flight.exit * .55);
+    const blackHolePresence = flight.exit > 0 ? 1 : smooth(5.30, 5.40, flight.position);
+    anchor.current.visible = blackHolePresence > .005 || flight.exit > 0;
+    // Keep its world size fixed: perspective alone grows it during the approach.
+    const underside = smooth(.18, .55, -(orbit.current?.elevation ?? .13));
+    const fit = 1 - underside * (size.height < 600 ? .28 : .08);
+    anchor.current.scale.setScalar((flight.mobile ? .78 : 1) * fit);
   });
   return <group ref={anchor}>
-    <sprite ref={halo}><spriteMaterial map={glow} color="#adcfff" transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} /></sprite>
-    <group ref={group}>{[0, 1, 2].map(i => <mesh key={i} position-z={i * 1.8}>
-      <torusGeometry args={[6.6 + i * 2.8, .065 + i * .02, 8, 120, i === 1 ? Math.PI * 1.55 : Math.PI * 2]} /><meshBasicMaterial color={i === 1 ? "#f1d6c6" : "#98c9f6"} transparent opacity={0} depthWrite={false} toneMapped={false} />
-    </mesh>)}</group>
+    <BlackHoleVortex flight={flight} glow={glow} orbit={orbit} />
   </group>;
 }
 
@@ -478,6 +475,7 @@ function FocusedSystem({ index, flight, children }: { index: number | null; flig
     materials.current = [];
     const seen = new Set<THREE.Material>();
     group.current?.traverse(node => {
+      if (node.userData.preserveOpacity) return;
       if (!(node instanceof THREE.Mesh || node instanceof THREE.Sprite || node instanceof THREE.Points || node instanceof THREE.Line)) return;
       const list = Array.isArray(node.material) ? node.material : [node.material];
       list.forEach(material => {
@@ -525,10 +523,13 @@ interface SceneProps {
   selectedSkill: number | null;
   selectedOrigin?: number | null;
   portalRef: RefObject<HTMLButtonElement>;
+  blackHoleControlRef: RefObject<HTMLDivElement>;
+  blackHoleOrbit: RefObject<BlackHoleOrbitState>;
   labelsRef: RefObject<HTMLDivElement>;
   entering: boolean;
   paused: boolean;
   readingFocus?: boolean;
+  showcaseApproach?: boolean;
   onPlanetSelect?: (index: number, skills: boolean, section?: string) => void;
   onPlanetHover?: (index: number | null, skills: boolean) => void;
 }
@@ -544,7 +545,7 @@ export function createFlightPaths(mobile = false) {
   });
 }
 
-function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, selectedProject, selectedSkill, selectedOrigin, portalRef, labelsRef, entering, paused, readingFocus, onPlanetSelect, onPlanetHover }: SceneProps) {
+function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, selectedProject, selectedSkill, selectedOrigin, portalRef, blackHoleControlRef, blackHoleOrbit, labelsRef, entering, paused, readingFocus, showcaseApproach, onPlanetSelect, onPlanetHover }: SceneProps) {
   const { camera, size, invalidate } = useThree();
   const mobile = size.width < 700;
   const quality = useQualityTier();
@@ -558,6 +559,7 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
   const frozenPosition = useRef<number | null>(null);
   const point = useMemo(() => new THREE.Vector3(), []);
   const look = useMemo(() => new THREE.Vector3(), []);
+  const orbitHeading = useMemo(() => new THREE.Vector3(), []);
   const projection = useMemo(() => new THREE.Vector3(), []);
   const gate = useMemo(() => new THREE.Vector3(...VIRGO_STARS[3].position).setZ(VIRGO_STARS[3].position[2] + VIRGO_STARS[3].radius + 2), []);
   const exitPoint = useMemo(() => gate.clone().add(new THREE.Vector3(0, 0, .28)), [gate]);
@@ -645,7 +647,7 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     const animation = gsap.to(exit.current, { value: 1, duration: FLIGHT_MOTION.exitDuration, ease: "power2.inOut", onUpdate: invalidate });
     return () => { animation.kill(); exit.current.value = 0; };
   }, [entering, reducedMotion, invalidate]);
-  useEffect(() => { invalidate(); }, [selectedProject, selectedSkill, paused, invalidate]);
+  useEffect(() => { invalidate(); }, [selectedProject, selectedSkill, paused, showcaseApproach, invalidate]);
   useLayoutEffect(() => {
     frozenPosition.current = entering ? flight.position : null;
   }, [entering, flight]);
@@ -656,14 +658,45 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     const dt = Math.min(delta, .05);
     // Choreography follows scroll; orbital motion keeps the scene alive at rest.
     // Freeze the ambient clock for dialogs/hidden tabs and reduced motion.
-    if (!reducedMotion && !paused && !entering && selectedProject === null) ambientTime.current += dt;
+    const passageSeconds = showcaseApproach ? Number(overlay.parentElement?.style.getPropertyValue('--showcase-approach') || 0) : 0;
+    const solar = solarPassageSample(passageSeconds);
+    if (!reducedMotion && (!paused || showcaseApproach) && !entering && (selectedProject === null || showcaseApproach)) ambientTime.current += dt * (showcaseApproach ? solar.orbitSpeed : 1);
     flight.time = reducedMotion ? 0 : ambientTime.current;
     const target = scroll.current.target;
+    const introArrival = overlay.parentElement!.dataset.introArrival;
+    if (introArrival !== undefined) {
+      scroll.current.value = Number(introArrival);
+      delete overlay.parentElement!.dataset.introArrival;
+    }
+    overlay.parentElement!.dataset.flightPaused = String(paused || readingFocus);
+    overlay.parentElement!.dataset.flightTarget = String(target);
     scroll.current.value = reducedMotion ? target : (paused || readingFocus) ? scroll.current.value : protectOpeningHandoff(scroll.current.value, advancePacedFlightPosition(scroll.current.value, target, dt));
     const position = clamp(frozenPosition.current ?? scroll.current.value, 0, 6);
     Object.assign(flight, flightSample(position, reducedMotion, flight.time));
     flight.exit = exit.current.value;
     paths[flight.leg].getPointAt(flight.travel, point);
+    const gaze = spatialGaze(position, reducedMotion);
+    const orbitAmount = 1 - flight.exit;
+    orbitHeading.copy(direction);
+    // Rotate the viewer around the station and rotate the heading with it.
+    // A yaw alone would pan the star out of the frame rather than orbit it.
+    const orbit = narrativeOrbitPose(position, mobile ? SPACE_LAYOUT.mobileCamera.distance : SPACE_LAYOUT.desktopCamera.distance, -VIRGO_STARS[1].position[2], reducedMotion);
+    if (orbit) {
+      point.set(orbit.x, 0, orbit.z);
+      orbitHeading.set(-Math.sin(orbit.angle) * 200, 0, -Math.cos(orbit.angle) * 200);
+    }
+    const approach = showcaseApproach ? solar.center : 0;
+    if (showcaseApproach) {
+      const star = VIRGO_STARS[focusedStarForPosition(position) ?? 1];
+      look.set(...star.position);
+      // Keep the current semicircle endpoint, arc left, then pass THROUGH the
+      // core. Continue the heading beyond the star so it never flips at zero.
+      point.sub(look).applyAxisAngle(camera.up, solar.arc);
+      orbitHeading.copy(point).normalize().multiplyScalar(-200);
+      point.multiplyScalar(1 - solar.dive * 1.30).add(look);
+      overlay.parentElement!.dataset.solarPassage = [passageSeconds, solar.orbitSpeed, solar.roll, point.distanceTo(look)].join(',');
+      invalidate();
+    }
     const worldSpeed = Number.isFinite(previousZ.current) ? Math.abs(point.z - previousZ.current) / Math.max(delta, .016) : 0;
     previousZ.current = point.z;
     flight.speed = reducedMotion || paused ? 0 : THREE.MathUtils.damp(flight.speed, Math.min(1, worldSpeed / 160), 7, dt);
@@ -673,9 +706,14 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     exitPoint.copy(gate).addScaledVector(gateDirection, .28);
     // The look point travels with the camera. Interpolating station targets
     // can put the target behind the camera halfway through a long passage.
-    look.copy(point).add(direction);
+    look.copy(point).add(orbitHeading);
     if (entering) { camera.position.lerp(exitPoint, flight.exit); look.lerp(gate, flight.exit); }
     camera.lookAt(look);
+    if (showcaseApproach) camera.rotateZ(solar.roll);
+    else if (gaze.station >= 0) {
+      camera.rotateX(gaze.pitch * orbitAmount);
+      camera.rotateZ(gaze.roll * orbitAmount);
+    }
     const perspective = camera as THREE.PerspectiveCamera;
     const fov = flightFieldOfView(position, mobile, reducedMotion, flight.exit);
     const passage = transitSample(position);
@@ -687,10 +725,15 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     const owner = leg ? (passage.progress < .5 ? leg.origin : leg.destination) : null;
     const compositionChapter = owner === null ? readingChapter : owner < 0 ? 0 : stationChapters[owner];
     frameOffset.copy(framing[compositionChapter]);
+    if (!mobile && position >= 2.94 && position <= 4.25) frameOffset.x = -.38 + .76 * smooth(3.52, 3.65, position);
+    if (!mobile && position >= 4.80 && position <= 5.30) frameOffset.x = -.38 + .76 * smooth(5.015, 5.065, position);
     if (size.height < 600 && size.width > size.height && compositionChapter >= 2) frameOffset.set(-.52, 0);
     // Fit the stellar disk above the compact reader without changing the
     // camera path, lens or the composition during a transit.
     if (mobile && size.height < 640 && size.height > size.width && compositionChapter >= 2) frameOffset.y = .72;
+    if (!mobile) frameOffset.multiplyScalar(1 - smooth(5.94, 5.98, position));
+    if (position >= 5.30) frameOffset.set(0, 0);
+    frameOffset.multiplyScalar(1 - approach);
     frameOffset.multiplyScalar((1 - flight.exit) * (1 - passage.envelope));
     const offsetX = -frameOffset.x * size.width / 2;
     const offsetY = frameOffset.y * size.height / 2;
@@ -703,7 +746,7 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     if (lastChapter.current !== flight.chapter) { lastChapter.current = flight.chapter; onChapter(flight.chapter); }
     const previousPresentation = presentation.current;
     const fractureActive = openingTransition(position, reducedMotion).active || spaceRiftFrame(position, reducedMotion).active;
-    if (previousPresentation.position !== position || previousPresentation.exit !== flight.exit || previousPresentation.paused !== paused || previousPresentation.entering !== entering || previousPresentation.reducedMotion !== reducedMotion) {
+    if (showcaseApproach || previousPresentation.position !== position || previousPresentation.exit !== flight.exit || previousPresentation.paused !== paused || previousPresentation.entering !== entering || previousPresentation.reducedMotion !== reducedMotion) {
       const transition = openingTransition(position, reducedMotion);
       panels.forEach((panel, i) => {
         const reading = narrativeSample(position, reducedMotion);
@@ -717,6 +760,10 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
         panel.setAttribute('aria-hidden', String(inert));
       });
       overlay.parentElement?.style.setProperty("--flight-progress", String(position / 6));
+      overlay.parentElement?.style.setProperty('--black-hole-view', String(smooth(5.30, 5.40, position)));
+      overlay.parentElement?.style.setProperty('--story-orbit-x', `${gaze.station >= 0 ? Math.sin(gaze.yaw) * 8 * orbitAmount : 0}px`);
+      overlay.parentElement?.style.setProperty('--story-orbit-y', `${gaze.station >= 0 ? gaze.pitch * 45 * orbitAmount : 0}px`);
+      overlay.parentElement!.dataset.cameraPose = [...camera.position.toArray(), ...camera.quaternion.toArray()].map(value => value.toFixed(5)).join(',');
       overlay.parentElement?.style.setProperty("--flight-thrust", String(flight.thrust));
       overlay.parentElement?.style.setProperty("--intro-cover", String(transition.cover));
       overlay.parentElement?.style.setProperty("--intro-caption-lift", String(transition.lift));
@@ -768,19 +815,18 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
         narrativeEdge.set(...star.position).addScaledVector(narrativeUp, star.radius * 1.6).project(camera);
         starBottom = (-narrativeStar.y * .5 + .5) * size.height + Math.abs(narrativeStar.y - narrativeEdge.y) * size.height * .5;
       }
-      const preferredTop = size.height < 640 && size.height > size.width ? 150 / size.height : .44;
+      const lower = story.shown >= 0 && NARRATIVE_BEATS[story.shown].placement.startsWith('lower');
+      const preferredTop = size.height < 640 && size.height > size.width ? 150 / size.height : lower ? Math.min(.60, (size.height - bounds.lineHeight - 110) / size.height) : .44;
       const placement = mobileNarrativeTop(size.height, starBottom, bounds.lineHeight, preferredTop);
       if (placement.top !== mobileReadingPlacement.current.top || placement.controls !== mobileReadingPlacement.current.controls) {
         overlay.parentElement!.style.setProperty("--mobile-narrative-top", `${placement.top}px`);
         overlay.parentElement!.style.setProperty("--mobile-controls-top", `${placement.controls}px`);
         Object.assign(mobileReadingPlacement.current, placement);
-        measureRift = true;
       }
     } else if (mobileReadingPlacement.current.top !== -1) {
       overlay.parentElement!.style.removeProperty("--mobile-narrative-top");
       overlay.parentElement!.style.removeProperty("--mobile-controls-top");
       mobileReadingPlacement.current = { top: -1, controls: -1 };
-      measureRift = true;
     }
     if (story.shown >= 3 && (!mobile || size.width > size.height) && measureRift) {
       const rect = narration[story.shown].getBoundingClientRect();
@@ -833,6 +879,29 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     if (portalRef.current) {
       portalRef.current.style.left = `${(projection.x * .5 + .5) * size.width}px`;
       portalRef.current.style.top = `${(-projection.y * .5 + .5) * size.height}px`;
+      const gateY = projection.y;
+      // Fit the label below the lensed lower disk at its actual projected size.
+      const belowView = smooth(.18, .55, -(blackHoleOrbit.current?.elevation ?? .13));
+      const diskZoom = mobile ? 1 : .78 / .62;
+      projection.set(0, (23.6 + belowView * 5.8) * diskZoom * (mobile ? .78 : 1), 0).applyQuaternion(camera.quaternion).add(gate).project(camera);
+      const labelOffset = Math.min(Math.abs(projection.y - gateY) * size.height / 2 + 30,
+        size.height - (-gateY * .5 + .5) * size.height - 50);
+      portalRef.current.style.setProperty('--portal-label-offset', `${labelOffset}px`);
+      if (blackHoleControlRef.current) {
+        const control = blackHoleControlRef.current;
+        control.style.left = portalRef.current.style.left;
+        control.style.top = portalRef.current.style.top;
+        control.style.width = `${Math.min(size.width * .92, (labelOffset - 30) * 3.9)}px`;
+        control.style.height = `${Math.min(size.height * .74, (labelOffset - 30) * 2)}px`;
+        const enabled = position >= 5.98 && !paused && !entering;
+        control.style.visibility = enabled ? 'visible' : 'hidden';
+        control.style.pointerEvents = enabled && !mobile ? 'auto' : 'none';
+      }
+      const portalOpacity = flight.exit > 0 ? 0 : (flight.reduced ? (flight.position >= 5.95 ? 1 : 0) : smooth(5.94, 5.98, flight.position));
+      portalRef.current.style.opacity = String(portalOpacity);
+      // Only the visible label handles entry; the core belongs to orbit dragging.
+      portalRef.current.style.pointerEvents = 'none';
+      portalRef.current.style.visibility = portalOpacity > 0.01 ? 'visible' : 'hidden';
     }
     labels.forEach((label, i) => {
       if (mobile || i !== selectedProject || flight.projects < .9 || paused || entering) { label.style.opacity = "0"; return; }
@@ -857,12 +926,13 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     {VIRGO_STARS.map(star => <pointLight key={star.name} position={star.position} intensity={2000} distance={120} color={star.color} />)}
     <VirgoTransit flight={flight} glow={glow} />
     {VIRGO_STARS.map((star, index) => <FocusedSystem key={star.name} index={index} flight={flight}>
-      <VirgoNode index={index} flight={flight} glow={glow} />
+      {index !== 3 && <VirgoNode index={index} flight={flight} glow={glow} />}
       {index === 0 && <OriginForge flight={flight} glow={glow} selected={selectedOrigin ?? null} />}
       {index === 1 && <SatelliteCluster kind="projects" flight={flight} glow={glow} selected={selectedProject} />}
       {index === 2 && <SatelliteCluster kind="skills" flight={flight} glow={glow} selected={selectedSkill} />}
-      {index === 3 && <PortalGate flight={flight} glow={glow} gate={gate} />}
     </FocusedSystem>)}
+    {/* Visible from the departure, before the destination's reading reveal. */}
+    <PortalGate flight={flight} glow={glow} gate={gate} orbit={blackHoleOrbit} />
     <FlightTrails flight={flight} /><ForegroundDebris flight={flight} />
   </PlanetTextureLibrary>;
 }

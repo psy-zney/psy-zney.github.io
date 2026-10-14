@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 600" preserveAspectRatio="none">
+  <defs>
+    <linearGradient id="back" x1="0" y1="0" x2=".15" y2="1"><stop stop-color="#55554e"/><stop offset=".22" stop-color="#343936"/><stop offset=".7" stop-color="#131719"/><stop offset="1" stop-color="#090b0d"/></linearGradient>
+    <linearGradient id="front" x1=".2" y1="0" x2=".5" y2="1"><stop stop-color="#3b3e3a"/><stop offset=".18" stop-color="#222927"/><stop offset=".65" stop-color="#101517"/><stop offset="1" stop-color="#090b0d"/></linearGradient>
+    <linearGradient id="fade" x2="0" y2="1"><stop stop-color="#090b0d" stop-opacity="0"/><stop offset="1" stop-color="#090b0d"/></linearGradient>
+    <filter id="grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".62" numOctaves="3" seed="9"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope=".14"/></feComponentTransfer><feBlend in="SourceGraphic" mode="soft-light"/></filter>
+    <pattern id="ripples" width="1800" height="16" patternUnits="userSpaceOnUse"><path d="M-100 10C360-18 640 34 1050 10S1460 20 1900 0" fill="none" stroke="#bbc0ae" stroke-opacity=".075" stroke-width="1"/></pattern>
+  </defs>
+  <g filter="url(#grain)">
+    <path d="M0 82C260-55 430 0 750 94S1260 100 1800 24V600H0Z" fill="url(#back)"/>
+    <path d="M0 214C410 255 730 10 1110 54S1560 160 1800 91V600H0Z" fill="url(#front)"/>
+    <path d="M0 214C410 255 730 10 1110 54S1560 160 1800 91V600H0Z" fill="url(#ripples)"/>
+  </g>
+  <rect y="280" width="1800" height="320" fill="url(#fade)"/>
+</svg>

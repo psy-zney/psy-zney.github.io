@@ -4,7 +4,8 @@ export const OS_APPS = ['home', 'projects', 'documents', 'contact', 'playground'
 export type OSApp = typeof OS_APPS[number];
 export const DOCUMENT_SECTIONS = ['overview', 'architecture', 'decisions', 'notes'] as const;
 export type DocumentSection = typeof DOCUMENT_SECTIONS[number];
-export type ResumeTrack = 'web' | 'mobile';
+export const RESUME_TRACKS = ['backend', 'fullstack', 'game', 'software', 'mobile', 'web'] as const;
+export type ResumeTrack = typeof RESUME_TRACKS[number];
 export type PublicDocumentRoute =
   | { kind: 'project'; projectId: string; section?: DocumentSection }
   | { kind: 'resume'; track: ResumeTrack }
@@ -16,7 +17,10 @@ export function parsePublicDocumentRoute(hash: string): PublicDocumentRoute {
     if (parts.length < 2 || parts.length > 3 || !projects.some(project => project.id === parts[1]) || (parts.length === 3 && !DOCUMENT_SECTIONS.includes(parts[2] as DocumentSection))) return { kind: 'missing' };
     return { kind: 'project', projectId: parts[1], section: parts[2] as DocumentSection | undefined };
   }
-  if (parts[0] === 'cv') return parts.length === 2 && (parts[1] === 'web' || parts[1] === 'mobile') ? { kind: 'resume', track: parts[1] } : { kind: 'missing' };
+  if (parts[0] === 'cv') {
+    const track = parts[1];
+    return parts.length === 2 && RESUME_TRACKS.includes(track as ResumeTrack) ? { kind: 'resume', track: track as ResumeTrack } : { kind: 'missing' };
+  }
   if (parts[0] === 'skills' && parts.length > 1) { const index = capabilities.findIndex(item => item.id === parts[1]); return parts.length === 2 && index >= 0 ? { kind: 'capability', index } : { kind: 'missing' }; }
   if (hash === '#/projects/all') return { kind: 'archive' };
   return null;
@@ -37,7 +41,7 @@ export function parseWorkspaceRoute(hash: string): WorkspaceRoute {
   const [root, page, id, section, extra, trailing] = parts;
   const validProject = (value?: string) => projects.some(project => project.id === value);
   const validSection = (value?: string): value is DocumentSection => DOCUMENT_SECTIONS.includes(value as DocumentSection);
-  const validTrack = (value?: string): value is ResumeTrack => value === 'web' || value === 'mobile';
+  const validTrack = (value?: string): value is ResumeTrack => typeof value === 'string' && RESUME_TRACKS.includes(value as ResumeTrack);
   if (root !== 'workspace') return { kind: 'missing' };
   if (!page && parts.length <= 2) return { kind: 'room' };
   if (page === 'resume' && validTrack(id) && parts.length === 3) return { kind: 'resume', track: id };

@@ -7,7 +7,7 @@ export const STAR_ROUTE_GAP = 480;
 const station = (index: number) => [0, 0, -index * STAR_ROUTE_GAP] as const;
 export const VIRGO_STARS = [
   { name: "Spica", position: station(0), color: "#acd6ff", radius: 11.8 },
-  { name: "Porrima", position: station(1), color: "#f8e1ba", radius: 10.4 },
+  { name: "Porrima", position: station(1), color: "#F4A261", radius: 10.4 },
   { name: "Vindemiatrix", position: station(2), color: "#c4c6ff", radius: 10.8 },
   { name: "Zavijava", position: station(3), color: "#ffd6c3", radius: 11.2 },
 ];

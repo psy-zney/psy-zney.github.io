@@ -65,8 +65,11 @@ export function storyPositionAt(time: number) {
 export function advancePacedFlightPosition(current: number, target: number, delta: number) {
   const next = advanceFlightPosition(current, target, delta);
   const start = storyTimeAt(current), end = storyTimeAt(next);
-  const step = clamp(end - start, -clamp(delta, 0, .05), clamp(delta, 0, .05));
-  return Math.abs(end - start) <= Math.abs(step) ? next : storyPositionAt(start + step);
+  const maxStep = clamp(delta, 0, .045);
+  const step = clamp(end - start, -maxStep, maxStep);
+  const candidate = Math.abs(end - start) <= Math.abs(step) ? next : storyPositionAt(start + step);
+  const maxDelta = 1.45 * clamp(delta, 0, .05);
+  return clamp(candidate, current - maxDelta, current + maxDelta);
 }
 
 /** Bound burst input to a small lead; ordinary wheel speed remains unchanged. */

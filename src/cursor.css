@@ -1,0 +1,29 @@
+/* Default system cursors */
+@media (any-hover: hover) and (any-pointer: fine) {
+  html, body, #root, #root * {
+    cursor: default;
+  }
+  #root :is(a[href], button:not(:disabled), [role="button"], summary, label[for], select, input[type="checkbox"], input[type="radio"], .screening-rail),
+  #root :is(a[href], button:not(:disabled), [role="button"], summary, label[for], select) * {
+    cursor: pointer;
+  }
+  #root :is(textarea, input:not([type]), input[type="text"], input[type="search"], input[type="email"], input[type="password"], input[type="tel"], input[type="url"], input[type="number"], [contenteditable="true"]),
+  #root [contenteditable="true"] * { cursor: text; }
+  #root :is(button:disabled, input:disabled, select:disabled),
+  #root :is(button:disabled, input:disabled, select:disabled) * { cursor: not-allowed; }
+
+  /* Preserve pointer lock and the keyboard-driven desktop mouse simulation. */
+  #root .room-canvas.is-locked canvas,
+  #root .desktop-workspace:has(> .virtual-pointer),
+  #root .desktop-workspace:has(> .virtual-pointer) * { cursor: none !important; }
+  #root .desktop-workspace:has(> .virtual-pointer) [data-native-cursor],
+  #root .desktop-workspace:has(> .virtual-pointer) [data-native-cursor] * {
+    cursor: pointer;
+  }
+  #root .virtual-pointer {
+    top: -1px; left: -1px; width: 32px; height: 32px;
+  }
+  #root .virtual-pointer::before, #root .virtual-pointer::after,
+  #root .virtual-pointer span { display: none; }
+  #root .virtual-pointer.is-clicking { filter: brightness(1.25); }
+}

@@ -7,8 +7,8 @@ let gainNode: GainNode | null = null;
 let sourceNode: MediaElementAudioSourceNode | null = null;
 
 /**
- * Sử dụng Web Audio API (GainNode) để khuếch đại âm lượng Intro.mp3 to và rõ ràng hơn,
- * vượt qua giới hạn volume 1.0 cơ bản của HTMLAudioElement.
+ * Sử dụng Web Audio API (GainNode) để điều chỉnh âm lượng Intro.mp3 ở mức nhỏ,
+ * dịu nhẹ (khoảng 0.2), làm nhạc nền nhẹ nhàng trong khi tải trang.
  */
 function setupAudioGainBoost(audio: HTMLAudioElement): void {
   try {
@@ -21,7 +21,7 @@ function setupAudioGainBoost(audio: HTMLAudioElement): void {
     if (!sourceNode && audioCtx) {
       sourceNode = audioCtx.createMediaElementSource(audio);
       gainNode = audioCtx.createGain();
-      gainNode.gain.value = 3.2; // Khuếch đại âm lượng lên ~3.2 lần (+10 dB)
+      gainNode.gain.value = 0.12; // Âm lượng nhỏ dịu nhẹ cho màn loading
       sourceNode.connect(gainNode);
       gainNode.connect(audioCtx.destination);
     }
@@ -39,7 +39,7 @@ export function resumeAudioContextIfNeeded(): void {
   }
 }
 
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
   const handleGesture = () => {
     resumeAudioContextIfNeeded();
   };
@@ -55,6 +55,9 @@ if (typeof window !== 'undefined') {
  * giúp khi người dùng nhấn vào workspace/intro là phát lập tức không độ trễ (0ms).
  */
 export function preloadIntroAudio(): Promise<string> {
+  if (typeof window === 'undefined' || typeof Audio === 'undefined') {
+    return Promise.resolve('./sound/Intro.mp3');
+  }
   if (cachedBlobUrl) {
     return Promise.resolve(cachedBlobUrl);
   }
@@ -80,7 +83,7 @@ export function preloadIntroAudio(): Promise<string> {
       sharedAudioInstance.preload = 'auto';
       sharedAudioInstance.loop = false;
       if (sharedAudioInstance.paused) {
-        sharedAudioInstance.volume = 1;
+        sharedAudioInstance.volume = 0.2;
         sharedAudioInstance.load();
       }
 
@@ -98,6 +101,9 @@ export function preloadIntroAudio(): Promise<string> {
  * Trả về instance HTMLAudioElement đã được preload và cấu hình sẵn từ RAM.
  */
 export function getPreloadedIntroAudio(): HTMLAudioElement {
+  if (typeof Audio === 'undefined') {
+    return {} as HTMLAudioElement;
+  }
   if (!sharedAudioInstance) {
     sharedAudioInstance = new Audio(cachedBlobUrl || './sound/Intro.mp3');
   } else if (cachedBlobUrl && sharedAudioInstance.src !== cachedBlobUrl) {
@@ -110,7 +116,7 @@ export function getPreloadedIntroAudio(): HTMLAudioElement {
   sharedAudioInstance.preload = 'auto';
   sharedAudioInstance.loop = false;
   if (sharedAudioInstance.paused) {
-    sharedAudioInstance.volume = 1;
+    sharedAudioInstance.volume = 0.12;
   }
 
   if (sharedAudioInstance.paused) {
@@ -141,14 +147,40 @@ export function getPreloadedIntroAudio(): HTMLAudioElement {
   return sharedAudioInstance;
 }
 
-// Tự động kích hoạt tải vào RAM ngay khi module được import
-void preloadIntroAudio();
+// Tự động kích hoạt tải vào RAM ngay khi module được import trên browser
+if (typeof window !== 'undefined' && typeof Audio !== 'undefined') {
+  void preloadIntroAudio();
+}
 
-export function startIntroAudioFromGesture(targetVolume = 1): void {
-  const audio = getPreloadedIntroAudio();
-  resumeAudioContextIfNeeded();
-  audio.loop = false;
-  audio.muted = false;
-  audio.volume = Math.max(0, Math.min(1, targetVolume));
-  void audio.play().catch(() => undefined);
+export function startIntroAudioFromGesture(targetVolume = 0.12): void {
+  if (typeof window === 'undefined' || typeof Audio !== 'undefined' && typeof Audio === 'function') {
+    const audio = getPreloadedIntroAudio();
+    if (!audio || typeof audio.play !== 'function') return;
+    resumeAudioContextIfNeeded();
+    const vol = Math.max(0, Math.min(1, targetVolume));
+    if (gainNode) {
+      gainNode.gain.value = vol;
+    }
+    audio.loop = false;
+    audio.muted = false;
+    audio.volume = vol;
+    void audio.play().catch(() => undefined);
+  }
+}
+
+export function stopIntroAudio(): void {
+  if (typeof window === 'undefined') return;
+  if (sharedAudioInstance) {
+    try {
+      sharedAudioInstance.pause();
+      sharedAudioInstance.currentTime = 0;
+    } catch {
+      // Bỏ qua nếu pause thất bại
+    }
+  }
+}
+
+export function isIntroAudioPlaying(): boolean {
+  if (typeof window === 'undefined') return false;
+  return !!sharedAudioInstance && !sharedAudioInstance.paused;
 }

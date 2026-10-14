@@ -8,10 +8,12 @@ import { MeshoptDecoder } from 'meshoptimizer';
 import { Vector3, Ray } from 'three';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { checkCurrentFeatures } from './check-current-features.mjs';
 
-const server = await createServer({ server: { middlewareMode: true }, appType: 'custom' });
+const server = await createServer({ cacheDir: 'node_modules/.vite-check-experience', server: { middlewareMode: true, hmr: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' });
 globalThis.window = { location: { hash: '#/workspace' }, matchMedia: () => ({ matches: false }) };
 try {
+  await checkCurrentFeatures(server);
   {
     const { ScreenGifFrames } = await server.ssrLoadModule('/src/components/workspace/screenGif.ts');
     const { GifReader } = await import('omggif');
@@ -68,7 +70,7 @@ try {
     CELESTIAL_PROJECTS.forEach((entry,i)=> { const r=radii[entry.orbit], e=extent(entry,i); assert(r+e+2 < belt[0]-1 || r-e-2 > belt[1]+1); });
   }
   const { narrativeSample } = await server.ssrLoadModule('/src/data/virgoNarrative.ts');
-  assert.equal(narrativeSample(6).reveal,1); assert(narrativeSample(6).interactive); assert(!narrativeSample(2.94).interactive);
+  assert.equal(narrativeSample(5.91).reveal, 1); assert(narrativeSample(5.91).interactive); assert(!narrativeSample(2.94).interactive); assert.equal(narrativeSample(6).reveal, 0, 'Black hole has no text overlay');
   const { workspaceMotion } = await server.ssrLoadModule('/src/data/motionTokens.ts');
   const desktopMotion = workspaceMotion(false), phoneMotion = workspaceMotion(true), reducedMotion = workspaceMotion(true,true);
   assert.equal(desktopMotion.readerAt + desktopMotion.readerEnter,770);
@@ -148,6 +150,39 @@ try {
   const beforeMute=stops.length; await audio.enable(false); assert(stops.slice(beforeMute).every(at=>at<=.1),'Mute must stop within 100ms'); audio.play('confirm'); assert.equal(starts,6);
   audio.dispose(); assert.equal(closes,1);
   const hiddenAudio = new WorkspaceAudio(); await hiddenAudio.enable(true); document.hidden=true; hiddenAudio.play('select'); assert.equal(starts,6,'Hidden cues are dropped'); document.hidden=false; assert.equal(starts,6,'No cue replay on foreground'); hiddenAudio.dispose();
+
+  const { VirgoJourneyAudio } = await server.ssrLoadModule('/src/utils/virgoJourneyAudio.ts');
+  const priorWindow = globalThis.window;
+  globalThis.window = new EventTarget();
+  globalThis.document = Object.assign(new EventTarget(), { hidden:false, documentElement:{dataset:{}} });
+  const gains = []; let journeyContexts=0, journeyStarts=0, journeyStops=0, journeyCloses=0;
+  const journeyParameter = () => ({value:0, setTargetAtTime(value){this.value=value;}});
+  const connection = { connect(destination){return destination;}, disconnect(){} };
+  globalThis.AudioContext = class {
+    state='suspended'; sampleRate=256; currentTime=0; destination={};
+    constructor(){journeyContexts++;}
+    createGain(){const gain={...connection,gain:journeyParameter()};gains.push(gain);return gain;}
+    createBuffer(channels,length){return {getChannelData(){return new Float32Array(length);}};}
+    createBufferSource(){return {...connection,start(){journeyStarts++;},stop(){journeyStops++;}};}
+    createBiquadFilter(){return {...connection,frequency:journeyParameter(),Q:journeyParameter()};}
+    createOscillator(){return {...connection,frequency:journeyParameter(),start(){journeyStarts++;},stop(){journeyStops++;}};}
+    async resume(){this.state='running';}
+    async close(){this.state='closed';journeyCloses++;}
+  };
+  const journey = new VirgoJourneyAudio(); journey.update(2,.02,false,false,0);
+  assert.equal(journeyContexts,0,'Journey audio must wait for a user gesture');
+  document.dispatchEvent(new Event('pointerdown'));
+  assert.equal(journeyContexts,1); assert.equal(journeyStarts,3,'Movement sound uses a fixed pool rather than overlapping cues');
+  journey.update(2.03,.02,false,false,0);
+  assert(gains[1].gain.value>0 && gains[1].gain.value<=.035,'Air follows rendered movement with bounded headroom');
+  journey.update(2.03,.02,false,false,0); assert.equal(gains[1].gain.value,0,'Stopped movement must decay to silence');
+  journey.update(6,.02,false,true,1); assert.equal(gains[1].gain.value,0);assert.equal(gains[2].gain.value,0,'Reduced motion mutes spatial audio');
+  document.hidden=true;document.dispatchEvent(new Event('visibilitychange'));assert.equal(gains[2].gain.value,0);
+  document.hidden=false;window.dispatchEvent(new CustomEvent('journey-audio-muted',{detail:true}));
+  journey.update(2.1,.02,false,false,0);assert.equal(gains[1].gain.value,0,'Mute applies to movement and doorway layers');
+  journey.dispose();assert.equal(journeyStops,3);assert.equal(journeyCloses,1);
+  document.dispatchEvent(new Event('pointerdown'));assert.equal(journeyContexts,1,'Unmount removes unlock listeners');
+  globalThis.window=priorWindow;
   delete globalThis.document; delete globalThis.AudioContext;
-  console.log('PASS: public/workspace routes, state transitions, overlapping desktop/mobile/reduced timelines, 1000 orbit phases, collision envelopes, proxy occlusion, tap/drag cancellation, all asset hashes/anchors/budgets, 40 documents, invalid sensor samples/quaternion normalization, and opt-in/mute/hidden/six-voice audio lifecycle.');
+  console.log('PASS: public/workspace routes, state transitions, overlapping desktop/mobile/reduced timelines, 1000 orbit phases, collision envelopes, proxy occlusion, tap/drag cancellation, all asset hashes/anchors/budgets, 40 documents, invalid sensor samples/quaternion normalization, and workspace/journey gesture, motion, mute, hidden and audio cleanup lifecycle.');
 } finally { await server.close(); delete globalThis.window; }

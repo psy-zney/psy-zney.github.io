@@ -1,12 +1,17 @@
 # Zney's Portfolio — A Universe of Connected Projects
 
-The portfolio opens with five separate bilingual chapters: Virgo / introduction, Lyra / story, Orion / projects, Cygnus / capabilities, and Cassiopeia / contact. Each chapter has its own hash URL, constellation sketch, scroll-driven starlight, and onward links. The original interactive 3D workspace remains available from the departure page and story. Both CVs have readable pages with browser print/PDF support.
+The portfolio opens with a scroll-driven journey across the Virgo constellation. Its curved product gallery contains nine real products in two continuous chapters, Web experiences and Apps & tools; scrolling moves between them without clicking a category. Ten project case studies, both printable CVs and the original interactive 3D workspace remain available through public hash routes.
 
-Motion uses CSS, SVG and animation frames without a new runtime dependency. Pointer tilt is desktop-only; touch users can use all navigation and discovery controls. The motion toggle follows the initial reduced-motion preference, and background animations pause when the tab is hidden. Small personal field notes are loaded separately after a hidden signal interaction; they are not part of the main recruiting narrative.
+Three.js, Lenis, GSAP, CSS and SVG drive the journey, wave page loader, curved screens and black-hole workspace entry. The gallery supports pointer/touch dragging, wheel input and keyboard navigation, with flat screens under reduced motion. Product destinations, authentic previews, recovery states, live preview and case-study return routes are documented in [the current feature baseline](docs/feature-preservation.vi.md).
 
 Project stories live in `src/data/portfolio.ts`. See [content sources](docs/portfolio-content-sources.md) for repository snapshots, attribution, and scope notes. The 3D workspace and admin screen are loaded on demand.
 
-Verification: `npm run check:portfolio` checks bilingual route rendering, project/skill relationships, workspace links, and CV rendering. `npm run build` runs TypeScript and the production build. Browser layout and interaction checks should be run separately on desktop and mobile.
+Verification: `pnpm run check` checks the portfolio and experience, then runs TypeScript and the production build. `pnpm run check:ui` verifies desktop, portrait, landscape and reduced-motion layouts in Chrome, including continuous chapter scrolling, Manager's fallback, keyboard/touch input and workspace entry. Browser setup and test limitations are recorded in the feature baseline.
+
+<p align="center">
+  Regression checks: <code>pnpm run check</code> · Browser checks: <code>pnpm run check:ui</code>.
+  Read <a href="docs/feature-preservation.vi.md">the current feature baseline</a> before switching coding models.
+</p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/React-18.3-61DAFB?style=for-the-badge&logo=react&logoColor=black" />

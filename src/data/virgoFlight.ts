@@ -80,7 +80,7 @@ export function flightFieldOfView(_position: number, mobile = false, _reduced = 
 export function panelVisibility(index: number, position: number, reduced = false) {
   if (reduced) return flightSample(position, true).chapter === index ? 1 : 0;
   if (index >= 2) {
-    const arrival = index === 2 ? [1.92, 1.98] : index === 3 ? [2.94, 2.99] : index === 4 ? [3.54, 3.94] : index === 5 ? [4.80, 4.96] : [5.82, 5.98];
+    const arrival = index === 2 ? [1.92, 1.98] : index === 3 ? [2.94, 2.99] : index === 4 ? [3.54, 3.94] : index === 5 ? [4.80, 4.96] : [5.82, 5.88];
     const departure = index === 2 ? [2.16, 2.32] : index === 3 ? [3.12, 3.54] : index === 4 ? [4.09, 4.25] : [5.14, 5.30];
     return smooth(arrival[0], arrival[1], position) * (index === 6 ? 1 : 1 - smooth(departure[0], departure[1], position));
   }

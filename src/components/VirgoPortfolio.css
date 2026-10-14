@@ -27,6 +27,34 @@
   box-sizing: border-box;
 }
 
+.virgo-scene-recovery {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  padding: 32px;
+  text-align: center;
+  background: radial-gradient(ellipse at 50% 35%, #18263b, #020408 70%);
+}
+.virgo-scene-recovery h2 { font: 400 clamp(28px, 4vw, 44px)/1.15 'Newsreader', Georgia, serif; text-wrap: balance; }
+.virgo-scene-recovery p { max-width: 48ch; color: var(--virgo-muted); line-height: 1.65; }
+.virgo-scene-recovery > div { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.virgo-scene-recovery a, .virgo-scene-recovery button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid var(--virgo-line);
+  border-radius: 8px;
+  color: var(--virgo-white);
+  background: #ffffff08;
+}
+
 .virgo-page a {
   color: inherit;
   text-decoration: none;
@@ -36,6 +64,27 @@
   font: inherit;
   cursor: pointer;
 }
+
+.virgo-sound-toggle {
+  position: absolute;
+  z-index: 6;
+  right: max(24px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--virgo-line);
+  border-radius: 50%;
+  background: #060c16c9;
+  color: var(--virgo-white);
+  backdrop-filter: blur(8px);
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+.virgo-sound-toggle:hover { background: #152032; border-color: #a4b1cb80; }
+.virgo-sound-toggle:active { background: #1d2b42; }
+@media (prefers-reduced-motion: reduce) { .virgo-sound-toggle { transition: none; } }
 
 .virgo-page :focus-visible {
   outline: 2px solid #bbd7ff;
@@ -109,6 +158,7 @@
   inset: 0;
   z-index: 2;
   pointer-events: none;
+  opacity: calc(1 - var(--black-hole-view, 0));
   background:
     linear-gradient(90deg, rgba(0, 0, 0, .48) 0%, rgba(0, 0, 0, .18) 35%, transparent 72%),
     radial-gradient(ellipse at 50% 50%, transparent 42%, rgba(0, 0, 0, .3) 100%);
@@ -827,14 +877,13 @@
   z-index: 4;
   display: none;
   place-items: center;
-  width: 86px;
-  height: 86px;
+  width: auto;
+  height: auto;
   padding: 0;
   color: #e8f3ff;
   border: 0;
-  border-radius: 50%;
   background: transparent;
-  transform: translate(-50%, -50%) scale(.8);
+  transform: translate(-50%, -50%);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -842,42 +891,74 @@
 }
 
 .virgo-star-portal.is-active {
-  display: grid;
+  display: flex;
   opacity: 1;
   visibility: visible;
-  transform: translate(-50%, -50%) scale(1);
-  pointer-events: auto;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.virgo-black-hole-orbit {
+  position: absolute;
+  z-index: 3;
+  transform: translate(-50%, -50%);
+  visibility: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+.virgo-black-hole-orbit[aria-hidden="true"] { display: none; }
+#root .virgo-black-hole-orbit { cursor: grab !important; }
+#root .virgo-black-hole-orbit[data-dragging="true"] { cursor: grabbing !important; }
+.virgo-black-hole-orbit:focus-visible { outline: 1px solid #ffcf7633; border-radius: 50%; }
+.virgo-portal-hint {
+  position: absolute;
+  top: calc(var(--portal-label-offset, 135px) + 52px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  color: #bda786;
+  font: 11px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  pointer-events: none;
+}
+@media (pointer: coarse) {
+  .virgo-black-hole-orbit { pointer-events: none !important; }
+  .virgo-portal-hint { display: none; }
 }
 
 .virgo-portal-ring {
-  width: 76px;
-  height: 76px;
-  border: 1px solid #c8dbff88;
-  border-radius: 50%;
-  box-shadow: 0 0 25px #a7cfff44, inset 0 0 18px #b9d8ff22;
-  animation: none;
+  display: none;
 }
 
 .virgo-portal-label {
-  position: absolute;
-  top: calc(100% + 4px);
+  position: relative;
+  top: 70px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
+  gap: 7px;
+  padding: 10px 22px;
+  min-height: 44px;
   white-space: nowrap;
-  font-size: 11px;
-  letter-spacing: .06em;
-  border: 1px solid #d3e4ff66;
-  border-radius: 25px;
-  background: #0e1b30bb;
-  backdrop-filter: blur(15px);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: .03em;
+  color: #f6ead8;
+  border: 1px solid rgba(255, 210, 165, 0.28);
+  border-radius: 999px;
+  background: rgba(12, 10, 8, 0.70);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all .25s ease;
+  cursor: pointer;
+  pointer-events: auto;
 }
 
-.virgo-star-portal:hover .virgo-portal-ring,
-.virgo-star-portal:focus-visible .virgo-portal-ring {
-  border-color: #fff;
-  box-shadow: 0 0 38px #b8daff88, inset 0 0 20px #d9e8ff33;
+.virgo-star-portal:hover .virgo-portal-label,
+.virgo-star-portal:focus-visible .virgo-portal-label {
+  color: #ffffff;
+  border-color: rgba(251, 191, 36, 0.65);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 28px rgba(251, 191, 36, 0.35), 0 6px 24px rgba(0, 0, 0, 0.7);
+  transform: translateY(-2px);
 }
 
 @keyframes virgo-portal-pulse {
@@ -1559,7 +1640,13 @@
   white-space: nowrap !important;
   border: 0 !important;
 }
-.virgo-narrative { position: absolute; inset: 0; pointer-events: none; }
+.virgo-narrative {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  perspective: 1000px;
+  perspective-origin: center center;
+}
 .virgo-narrative-line {
   position: absolute;
   top: 26%;
@@ -1575,22 +1662,50 @@
   text-wrap: balance;
   opacity: 0;
   visibility: hidden;
-  will-change: opacity;
+  will-change: opacity, transform;
+  transform-style: preserve-3d;
 }
 .virgo-narrative-left { left: 7%; }
 .virgo-narrative-right { right: 7%; }
 .virgo-narrative-center { top: 84%; bottom: auto; left: 50%; width: 76%; max-width: 700px; transform: translate(-50%, -50%); text-align: center; }
 .virgo-narrative-middle { top: 50%; left: 50%; width: 76%; max-width: 700px; transform: translate(-50%, -50%); text-align: center; }
+.virgo-narrative-middle.virgo-placement-middle {
+  transform: translate(-50%, -50%) rotateX(8deg);
+  text-shadow: 0 0 16px rgba(0, 240, 255, 0.75), 0 0 32px rgba(0, 150, 255, 0.45);
+}
+.virgo-narrative-middle.virgo-placement-upper-left {
+  top: 24%;
+  left: 7%;
+  right: auto;
+  transform: perspective(850px) rotateY(24deg) rotateX(10deg) rotateZ(-3deg);
+  text-shadow: 0 0 16px rgba(0, 240, 255, 0.75), 0 0 32px rgba(0, 150, 255, 0.45);
+  border-left: 2px solid rgba(0, 240, 255, 0.65);
+  padding-left: 18px;
+  background: linear-gradient(90deg, rgba(0, 240, 255, 0.08), transparent 85%);
+  border-radius: 6px;
+}
+.virgo-narrative-middle.virgo-placement-lower-right {
+  top: 68%;
+  left: auto;
+  right: 7%;
+  text-align: right;
+  transform: perspective(850px) rotateY(-24deg) rotateX(-8deg) rotateZ(3deg);
+  text-shadow: 0 0 16px rgba(0, 240, 255, 0.75), 0 0 32px rgba(0, 150, 255, 0.45);
+  border-right: 2px solid rgba(0, 240, 255, 0.65);
+  padding-right: 18px;
+  background: linear-gradient(-90deg, rgba(0, 240, 255, 0.08), transparent 85%);
+  border-radius: 6px;
+}
 .virgo-placement-upper-left,
 .virgo-placement-lower-left,
 .virgo-placement-upper-right,
 .virgo-placement-lower-right {
   width: 34%; max-width: 490px; transform: none; text-align: left;
 }
-.virgo-placement-upper-left { top: 20%; left: 7%; right: auto; }
-.virgo-placement-lower-left { top: 72%; left: 7%; right: auto; }
-.virgo-placement-upper-right { top: 18%; left: auto; right: 7%; }
-.virgo-placement-lower-right { top: 75%; left: auto; right: 7%; text-align: right; }
+.virgo-placement-upper-left:not(.virgo-narrative-middle) { top: 20%; left: 7%; right: auto; }
+.virgo-placement-lower-left:not(.virgo-narrative-middle) { top: 72%; left: 7%; right: auto; }
+.virgo-placement-upper-right:not(.virgo-narrative-middle) { top: 18%; left: auto; right: 7%; }
+.virgo-placement-lower-right:not(.virgo-narrative-middle) { top: 75%; left: auto; right: 7%; text-align: right; }
 .virgo-placement-top { top: 17%; left: 50%; right: auto; width: 52%; max-width: 650px; transform: translateX(-50%); text-align: center; }
 .virgo-narrative-line > span {
   position: relative;
@@ -1610,7 +1725,7 @@
 }
 .virgo-overlay-panel .virgo-bare { width: 34vw; max-width: 490px; text-align: left; }
 @media (min-width: 701px) {
-  .virgo-projects-more-panel.virgo-overlay-panel:not(.virgo-cosmos):not(.virgo-prologue-hero) { padding-top: 20dvh; }
+  .virgo-projects-more-panel.virgo-overlay-panel:not(.virgo-cosmos):not(.virgo-prologue-hero) { padding-top: 48dvh; }
   .virgo-skills-panel.virgo-overlay-panel:not(.virgo-cosmos):not(.virgo-prologue-hero) { padding-top: 35dvh; }
   .virgo-skills-panel .virgo-bare { max-height: calc(40dvh - 28px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: #52657c transparent; }
   .virgo-skills-panel .virgo-skill-tools { margin-top: 8px; }
@@ -1856,3 +1971,82 @@
 }
 .virgo-reduced-motion .virgo-identity.is-visible>span{animation:none;transform:none;filter:none}
 @media(prefers-reduced-motion:reduce){.virgo-identity.is-visible>span{animation:none;transform:none;filter:none}}
+
+/* Spatial reading: one reversible sentence per angle; details open separately. */
+.virgo-bare-chapter > .virgo-bare { display: none; }
+.virgo-narrative-line > span {
+  clip-path: none;
+  filter: none;
+  transform: translate3d(var(--story-orbit-x, 0px), calc(var(--story-orbit-y, 0px) + (1 - var(--text-reveal, 0)) * 8px), 0);
+}
+.virgo-identity.is-visible > span { animation: none; }
+
+/* A full-bleed stellar flash bridges WebGL and CSS3D, without an aperture. */
+.virgo-showcase-passage {
+  position: absolute; inset: 0; z-index: 80; overflow: hidden;
+  pointer-events: auto;
+}
+.virgo-solar-flash {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, #FFF8E7 25%, #F4A261 72%, #E76F51);
+  opacity: var(--solar-flash, 0);
+}
+.virgo-page:has(.virgo-showcase-passage) .virgo-narrative,
+.virgo-page:has(.virgo-showcase-passage) .virgo-single-link {
+  opacity: var(--solar-narration, 1);
+  pointer-events: none;
+}
+.virgo-single-link { position: absolute; top: var(--station-controls-top, 46%); left: 8%; pointer-events: auto; }
+.virgo-panel-right .virgo-single-link { left: 54%; }
+.virgo-single-link a { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; color: var(--virgo-muted); font: 13px/1.5 'Outfit', sans-serif; }
+.virgo-single-link a:hover { color: var(--virgo-white); }
+.virgo-placement-lower-right { top: 58%; }
+.virgo-placement-lower-left { top: 60%; }
+.virgo-page[data-story="right"] .virgo-single-link { left: 59%; }
+.virgo-page[data-story="left"] .virgo-single-link { left: 8%; }
+.virgo-star-portal .virgo-portal-label { top: var(--portal-label-offset, clamp(76px, 15vh, 135px)); bottom: auto; }
+
+/* Contact reads in the empty sky and below the disk, including its arrival. */
+.virgo-page .virgo-narrative .virgo-narrative-line.virgo-narrative-right.virgo-contact-narrative {
+  top: 28px; left: 24px; right: auto; width: min(540px, calc(100% - 250px));
+  max-width: none; transform: none; font-size: clamp(24px, 2.5vw, 34px); line-height: 1.2;
+}
+.virgo-page .virgo-overlay-panel[aria-labelledby="virgo-contact-title"] {
+  inset: auto 0 28px; padding: 0 24px; justify-content: center; align-items: center;
+}
+.virgo-page .virgo-overlay-panel[aria-labelledby="virgo-contact-title"] .virgo-bare {
+  width: auto; max-width: none; display: flex; flex-wrap: wrap;
+  justify-content: center; align-items: center; gap: 4px 24px; margin: 0;
+}
+.virgo-page .virgo-overlay-panel[aria-labelledby="virgo-contact-title"] .virgo-bare-label { display: none; }
+.virgo-page .virgo-overlay-panel[aria-labelledby="virgo-contact-title"] .virgo-email {
+  font: 500 15px/1.4 'Outfit', sans-serif; margin: 0; padding: 8px 0;
+}
+.virgo-page .virgo-overlay-panel[aria-labelledby="virgo-contact-title"] .virgo-contact-links {
+  margin: 0; gap: 4px; flex-wrap: wrap; justify-content: center;
+}
+@media (max-width: 700px) {
+  .virgo-page .virgo-narrative .virgo-narrative-line.virgo-narrative-right.virgo-contact-narrative {
+    top: 146px; left: 24px; right: 24px; width: auto; font-size: 25px;
+  }
+  .virgo-page .virgo-overlay-panel[aria-labelledby="virgo-contact-title"] { bottom: 36px; }
+}
+@media (max-height: 580px) and (orientation: landscape) {
+  .virgo-page .virgo-narrative .virgo-narrative-line.virgo-narrative-right.virgo-contact-narrative {
+    top: 16px; left: 24px; right: auto; width: min(480px, calc(100% - 220px)); font-size: 22px;
+  }
+  .virgo-page .virgo-overlay-panel[aria-labelledby="virgo-contact-title"] { bottom: 8px; }
+}
+@media(max-width:767px) and (orientation:portrait) {
+  .virgo-single-link, .virgo-panel-right .virgo-single-link { left: 24px; top: var(--mobile-controls-top, 64%); }
+  .virgo-star-portal .virgo-portal-label { top: var(--portal-label-offset, 85px); }
+  .virgo-page .virgo-narrative-line.virgo-narrative-left.virgo-placement-upper-left { left: 24px; right: 56px; }
+  .virgo-page .virgo-narrative-line.virgo-narrative-right.virgo-placement-lower-right { left: 56px; right: 24px; text-align: right; }
+  .virgo-page .virgo-narrative-line.virgo-narrative-left.virgo-placement-lower-left { left: 24px; right: 56px; }
+  .virgo-page[data-story] .virgo-single-link { left: 24px; }
+}
+@media(max-height:599px) and (orientation:landscape) {
+  .virgo-single-link, .virgo-panel-right .virgo-single-link { left: 48%; }
+  .virgo-page[data-story] .virgo-single-link { left: 48%; }
+  .virgo-page .virgo-narrative-line.virgo-narrative-right.virgo-placement-lower-right, .virgo-page .virgo-narrative-line.virgo-narrative-left.virgo-placement-lower-left { top: 40%; font-size: 22px; }
+}

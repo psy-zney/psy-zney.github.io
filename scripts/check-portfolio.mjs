@@ -7,7 +7,9 @@ import { createServer } from "vite";
 
 // Render smoke checks, not a replacement for real-browser layout/interaction QA.
 const server = await createServer({
-  server: { middlewareMode: true },
+  cacheDir: 'node_modules/.vite-check-portfolio',
+  server: { middlewareMode: true, hmr: false },
+  optimizeDeps: { noDiscovery: true, include: [] },
   appType: "custom",
 });
 globalThis.window = {
@@ -706,10 +708,16 @@ try {
     (await stat(new URL("../public/img/chemistry-lab-3d.png", import.meta.url)))
       .size > 100_000,
   );
-  for (const file of [
-    "Le_Quang_Khanh_CV_Web_FullStack.md",
-    "Le_Quang_Khanh_CV_Mobile.md",
-  ]) {
+  const cvHtmlFiles = [
+    "Le_Quang_Khanh_CV_Backend.html",
+    "Le_Quang_Khanh_CV_FullStack.html",
+    "Le_Quang_Khanh_CV_Game.html",
+    "Le_Quang_Khanh_CV_Software.html",
+    "Le_Quang_Khanh_CV_Mobile.html",
+  ];
+  for (const file of cvHtmlFiles) {
+    const fileStat = await stat(new URL(`../public/file/${file}`, import.meta.url));
+    assert(fileStat.size > 2000, `CV file ${file} must have valid content size`);
     const content = await readFile(
       new URL(`../public/file/${file}`, import.meta.url),
       "utf8",
@@ -717,11 +725,13 @@ try {
     const html = renderToStaticMarkup(
       React.createElement(ResumeContent, { content }),
     );
-    assert.equal((html.match(/<h1>/g) || []).length, 1);
+    assert.equal((html.match(/<h1>/g) || []).length, 1, `CV ${file} must have exactly one <h1>`);
     assert(
-      html.includes("<table>") &&
-        html.includes("<ul>") &&
-        html.includes("mailto:lequangkhanh295@gmail.com"),
+      html.includes("<ul>") &&
+        html.includes("mailto:lequangkhanh295@gmail.com") &&
+        html.includes("github.com/psy-zney") &&
+        html.includes("zney295.id.vn"),
+      `CV ${file} must contain structured lists and authentic contact links`,
     );
   }
   const unsafe = renderToStaticMarkup(
@@ -731,7 +741,7 @@ try {
   );
   assert(!unsafe.includes('href="javascript:') && !unsafe.includes("<script>"));
   console.log(
-    `PASS: 20 Virgo scrollytelling renders, 26 scroll portfolio renders, ${rendered} legacy bilingual route renders, ${projects.length} projects, both CVs, preserved source GLB, and safe Markdown rendering.`,
+    `PASS: 20 Virgo scrollytelling renders, 26 scroll portfolio renders, ${rendered} legacy bilingual route renders, ${projects.length} projects, five HTML CVs, preserved source GLB, and safe Markdown rendering.`,
   );
 } finally {
   await server.close();

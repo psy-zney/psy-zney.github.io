@@ -6,7 +6,7 @@ tmp_*.png
 skills-lock.json
 *.log
 scripts/.cache/
-artifacts/blender/
+artifacts/
 
 # Environment variables
 .env

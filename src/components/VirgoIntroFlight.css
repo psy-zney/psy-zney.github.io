@@ -1,0 +1,133 @@
+.virgo-intro-flight {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  overflow: hidden;
+  pointer-events: auto;
+  cursor: pointer;
+  background: #030308;
+}
+.virgo-intro-flight[data-running="true"] {
+  pointer-events: none;
+  cursor: default;
+}
+.virgo-intro-flight > canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+.virgo-intro-captions {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  perspective: 900px;
+  perspective-origin: center center;
+}
+.virgo-page .virgo-intro-captions p {
+  grid-area: 1/1;
+  margin: 0;
+  width: min(34vw, 460px);
+  color: #E0FBFC;
+  font: 400 clamp(20px, 2.2vw, 34px)/1.4 'Outfit', sans-serif;
+  letter-spacing: -.015em;
+  text-wrap: balance;
+  opacity: 0;
+  text-shadow: 0 0 12px rgba(0, 240, 255, 0.85), 0 0 26px rgba(0, 160, 255, 0.5), 0 0 42px rgba(120, 80, 255, 0.35);
+  will-change: transform, opacity, filter;
+  pointer-events: none;
+  transform-style: preserve-3d;
+  padding: 14px 22px;
+  border-radius: 8px;
+  backdrop-filter: blur(4px);
+}
+.virgo-intro-captions p[data-side="right"] {
+  text-align: left;
+  border-left: 2px solid rgba(0, 240, 255, 0.75);
+  background: linear-gradient(90deg, rgba(0, 240, 255, 0.08), transparent 85%);
+  box-shadow: inset 8px 0 16px -8px rgba(0, 240, 255, 0.4);
+}
+.virgo-intro-captions p[data-side="left"] {
+  text-align: right;
+  border-right: 2px solid rgba(0, 240, 255, 0.75);
+  background: linear-gradient(-90deg, rgba(0, 240, 255, 0.08), transparent 85%);
+  box-shadow: inset -8px 0 16px -8px rgba(0, 240, 255, 0.4);
+}
+
+.virgo-intro-arrow {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: max(32px, calc(20px + env(safe-area-inset-bottom)));
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 50px;
+  padding: 8px 18px;
+  border: 1px solid rgba(199, 184, 234, 0.45);
+  border-radius: 999px;
+  color: #e0fbfc;
+  background: rgba(199, 184, 234, 0.08);
+  backdrop-filter: blur(8px);
+  pointer-events: auto;
+  cursor: pointer;
+  transition: opacity .25s, transform .25s, background .2s, border-color .2s;
+  animation: introCuePulse 2.4s ease-in-out infinite;
+}
+.virgo-intro-arrow:hover {
+  background: rgba(199, 184, 234, 0.18);
+  border-color: rgba(255, 209, 102, 0.7);
+  transform: translateX(-50%) translateY(-2px);
+}
+.virgo-intro-arrow:focus-visible {
+  outline: 2px solid #ffd166;
+  outline-offset: 4px;
+}
+.virgo-intro-cue-text {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #d1c5ee;
+  opacity: 0.9;
+  white-space: nowrap;
+  pointer-events: none;
+}
+@keyframes introCuePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(199, 184, 234, 0.3);
+    border-color: rgba(199, 184, 234, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 18px 3px rgba(199, 184, 234, 0.22);
+    border-color: rgba(255, 209, 102, 0.65);
+  }
+}
+.virgo-intro-flight[data-running="true"] .virgo-intro-arrow {
+  opacity: 0;
+  transform: translateX(-50%) translateY(20px);
+  pointer-events: none;
+}
+.virgo-page:has(.virgo-intro-flight) > .virgo-opening-cue,
+.virgo-page:has(.virgo-intro-flight) > .virgo-constellation-map {
+  visibility: hidden;
+  pointer-events: none;
+}
+.virgo-page:has(.virgo-intro-flight) > .virgo-scroll {
+  overflow: hidden;
+}
+@media (max-width: 600px) {
+  .virgo-page .virgo-intro-captions p { width: 62vw; font-size: 22px; }
+  .virgo-intro-cue-text { font-size: 10px; }
+}
+@media (max-height: 450px) {
+  .virgo-page .virgo-intro-captions p { font-size: 20px; }
+  .virgo-intro-arrow { bottom: 16px; padding: 5px 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .virgo-intro-arrow { transition: none; animation: none; }
+}
