@@ -20,6 +20,7 @@ import { useQualityTier, type QualityTier } from './workspace/useQualityTier';
 import { BlackHoleVortex } from "./BlackHoleVortex";
 import type { BlackHoleOrbitState } from "./BlackHoleOrbitControls";
 import { solarPassageSample } from '../data/solarShowcaseMotion';
+import { readingOrbitAngle, readingOrbitPoint } from '../data/virgoExperienceMotion';
 
 export { VIRGO_STARS, VIRGO_SUPPORT_STARS } from "../data/virgoStations";
 
@@ -207,6 +208,7 @@ function VirgoNode({ index, flight, glow, support = false }: FlightProps & { ind
     for (let i = 2; i < group.current.children.length; i++) {
       const ring = group.current.children[i] as THREE.Mesh;
       ring.quaternion.copy(camera.quaternion);
+      if (!support) ring.rotateY(readingOrbitAngle(index, flight.position, flight.reduced));
       const phase = ((flight.position * 1.8 + flight.time * .42 + (i - 2) * .5) % 1 + 1) % 1;
       ring.scale.setScalar(1.05 + phase * .4);
       (ring.material as THREE.MeshBasicMaterial).opacity = flight.reduced ? 0 : focus * appearance * (1 - phase) * .07;
@@ -466,6 +468,9 @@ function PortalGate({ flight, glow, gate, orbit }: FlightProps & { gate: THREE.V
 
 function FocusedSystem({ index, flight, children }: { index: number | null; flight: Flight; children: ReactNode }) {
   const group = useRef<THREE.Group>(null);
+  const { gl } = useThree();
+  const page = useMemo(() => gl.domElement.closest<HTMLElement>('.virgo-page'), [gl]);
+  const center = index === null ? [0, 0, 0] as const : VIRGO_STARS[index].position;
   const materials = useRef<{ material: THREE.Material; opacity: number }[]>([]);
   useLayoutEffect(() => {
     materials.current = [];
@@ -489,7 +494,11 @@ function FocusedSystem({ index, flight, children }: { index: number | null; flig
   }, -.2);
   useFrame(() => {
     const presence = index === null ? 0 : starPresence(flight, index);
-    if (group.current) group.current.visible = openingPresentation(flight.position).journey && presence > .001;
+    if (group.current) {
+      group.current.visible = openingPresentation(flight.position).journey && presence > .001;
+      group.current.rotation.y = index === null ? 0 : -readingOrbitAngle(index, flight.position, flight.reduced);
+      if (page && group.current.visible && index !== 3) page.dataset.readingOrbit = [index, group.current.rotation.y].join(',');
+    }
     if (presence <= .001) return;
     materials.current.forEach(entry => {
       const { material } = entry;
@@ -498,7 +507,9 @@ function FocusedSystem({ index, flight, children }: { index: number | null; flig
       if (material instanceof THREE.ShaderMaterial && material.uniforms.appearance) material.uniforms.appearance.value = presence;
     });
   });
-  return <group ref={group}>{children}</group>;
+  // Rotating the station about its centre is the inverse of orbiting the viewer.
+  // The view at departure stays baked into that station, without a camera reset.
+  return <group ref={group} position={center}><group position={[-center[0], -center[1], -center[2]]}>{children}</group></group>;
 }
 
 export function createCameraComposition(mobile = false) {
@@ -886,7 +897,7 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     labels.forEach((label, i) => {
       if (mobile || i !== selectedProject || flight.projects < .9 || paused || entering) { label.style.opacity = "0"; return; }
       const orbit = orbitPosition(i, projects.length, reducedMotion ? 3 : position, false, 1, flight.time);
-      projection.set(orbit[0], orbit[1], orbit[2]).multiplyScalar(1.06).add(projectCenter);
+      projection.set(...readingOrbitPoint(orbit, 1, position, reducedMotion)).multiplyScalar(1.06).add(projectCenter);
       const labelRay = new THREE.Ray(camera.position, projection.clone().sub(camera.position).normalize());
       const obstruction = labelRay.intersectSphere(new THREE.Sphere(projectCenter, VIRGO_STARS[1].radius), new THREE.Vector3());
       if (obstruction && obstruction.distanceTo(camera.position) < projection.distanceTo(camera.position)) { label.style.opacity = '0'; return; }

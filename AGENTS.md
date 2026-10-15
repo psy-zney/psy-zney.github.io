@@ -12,11 +12,13 @@ Read `docs/feature-preservation.vi.md` before changing this portfolio. The
 current working tree is the user's baseline, including unfinished and
 uncommitted features. Preserve it when refining appearance or refactoring.
 Read `docs/straight-flight-contract.vi.md` before changing any journey or
-transition. The owner's 15/10/2026 video locks straight forward flight with
-no automatic camera rotation; it supersedes earlier orbit/fly-by requirements.
+transition. The owner's 15/10/2026 video locks straight forward transit with
+no camera turn. Reading retains a scroll-driven local orbit, confirmed by the
+owner afterward; do not remove it or unwind it during transit.
 
 - Keep the Virgo journey, wave page loader, black-hole workspace entry,
-  one scroll-driven sentence at a time, straight flight and reversible depth,
+  one scroll-driven sentence at a time, local reading orbits, straight transit
+  and reversible depth,
   varied sentence positions and automatic scroll entry/exit for the showcase,
   curved product gallery, continuous Web experiences → Apps & tools chapters,
   optional chapter shortcuts, live preview, case-study

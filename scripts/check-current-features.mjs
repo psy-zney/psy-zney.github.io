@@ -68,14 +68,19 @@ export async function checkCurrentFeatures(server) {
     assert(Math.abs(playback.seconds - 3.6) < .002, 'The intro follows its scroll destination at every refresh rate');
     assert.equal(advanceIntroScroll(4, 0, 4, 1 / fps).seconds, 4, 'No scroll means no automatic flight');
     assert(advanceIntroScroll(4, 0, 4.4, 30).seconds <= 4.015, 'A background stall cannot skip the flight');
+    assert(advanceIntroScroll(4, 1.5, 3.8, 1 / fps).seconds < 4, 'Reverse input cancels residual forward momentum on the first frame');
+    assert(advanceIntroScroll(4, -1.5, 4.2, 1 / fps).seconds > 4, 'Forward reversal has the same immediate response');
   }
+  for (const p of [3.9, 4.7, 5.8, 6.9, 7.1]) assert.equal(introFrame(p).exitReveal, 0, 'Home stays behind an opaque dark exit while wall text passes');
+  assert(introFrame(7.5).exitReveal > 0 && introFrame(7.5).exitReveal < 1, 'Only the near exit reveals the destination');
+  assert.equal(introFrame(INTRO_DURATION).exitReveal, 1);
   const { showcaseProducts, showcaseIndexForHash } = await server.ssrLoadModule('/src/data/productShowcase.ts');
   const { projects } = await server.ssrLoadModule('/src/data/portfolio.ts');
   const { ProductShowcase } = await server.ssrLoadModule('/src/components/ProductShowcase.tsx');
   const { VirgoPortfolio } = await server.ssrLoadModule('/src/components/VirgoPortfolio.tsx');
   const { WavePageLoader } = await server.ssrLoadModule('/src/components/WavePageLoader.tsx');
   const { VirgoSceneBoundary } = await server.ssrLoadModule('/src/components/VirgoSceneFallback.tsx');
-  const { advanceShowcaseMotion, showcaseChapterTransition } = await server.ssrLoadModule('/src/data/virgoExperienceMotion.ts');
+  const { advanceShowcaseMotion, showcaseChapterTransition, readingOrbitAngle, readingOrbitPoint } = await server.ssrLoadModule('/src/data/virgoExperienceMotion.ts');
   const { straightFlightPose, TRANSIT_LEGS, TRANSIT_SCENARIOS, createTransitScenarios } = await server.ssrLoadModule('/src/data/virgoTransit.ts');
   const { solarPassageSample } = await server.ssrLoadModule('/src/data/solarShowcaseMotion.ts');
   const { chapterReadingPosition, narrativeSample, NARRATIVE_BEATS } = await server.ssrLoadModule('/src/data/virgoNarrative.ts');
@@ -180,7 +185,23 @@ export async function checkCurrentFeatures(server) {
   assert.equal(narrativeSample(secondView).index, 5);
   assert.equal(narrativeSample(firstView).reveal, 1);
   assert.equal(narrativeSample(secondView).reveal, 1);
-  // Owner's 15/10 video supersedes the previous 180-degree orbit/fly-by checks.
+  // Reading orbits are local; the interstellar camera never turns or resets.
+  for (const [index, from, to] of [[0, 1.92, 2.32], [1, 2.94, 4.25], [2, 4.8, 5.3]]) {
+    assert.equal(readingOrbitAngle(index, from), 0);
+    assert.equal(readingOrbitAngle(index, to), Math.PI, 'The reading view completes a semicircle');
+    assert.equal(readingOrbitAngle(index, to + .1), Math.PI, 'Departure keeps the outgoing view instead of unwinding it');
+    assert.equal(readingOrbitAngle(index, from, true), 0);
+    for (const edge of [from, to]) assert(Math.abs(readingOrbitAngle(index, edge + 1e-6) - readingOrbitAngle(index, edge - 1e-6)) / 2e-6 < .001, 'The reading orbit meets the straight departure with zero angular velocity');
+    let previous = 0;
+    for (let step = 1; step <= 100; step++) {
+      const p = from + (to - from) * step / 100, angle = readingOrbitAngle(index, p);
+      assert(angle > previous && angle - previous < .06, 'Every reading scroll increment rotates smoothly');
+      const point = readingOrbitPoint([32, 4, 17], index, p);
+      assert(Math.abs(Math.hypot(point[0], point[2]) - Math.hypot(32, 17)) < 1e-9, 'A local orbit retains its physical radius');
+      assert.equal(point[1], 4);
+      previous = angle;
+    }
+  }
   for (const mobile of [false, true]) {
     let previous = straightFlightPose(1.92, mobile);
     const forward = [];
@@ -234,6 +255,7 @@ export async function checkCurrentFeatures(server) {
     const { names, calls, attributes } = await jsxNames(path);
     for (const component of components) assert(names.has(component), `${path} must still render ${component}`);
     if (path.endsWith('VirgoScene.tsx')) assert(calls.has('straightFlightPose'), 'The straight path must remain connected to the rendered camera');
+    if (path.endsWith('VirgoScene.tsx')) assert(calls.has('readingOrbitAngle') && calls.has('readingOrbitPoint'), 'Both station meshes and labels use the local reading orbit');
     if (path.endsWith('VirgoPortfolio.tsx')) {
       assert((calls.get('openFlowShowcase') ?? 0) >= 3, 'Wheel and native-scroll paths must still enter the showcase automatically');
       assert(attributes.get('ProductShowcase')?.has('onExit'), 'The gallery must still continue to the neighboring story chapter');

@@ -2,6 +2,24 @@ import { clamp, smooth } from './virgoFlight';
 
 export type ShowcaseMotionMode = 'target' | 'inertia';
 
+const READING_WINDOWS = [[1.92, 2.32], [2.94, 4.25], [4.80, 5.30]] as const;
+
+/** Orbit the local view while the interstellar flight keeps its forward axis.
+ * The outgoing system retains its final angle; it never unwinds during transit.
+ */
+export function readingOrbitAngle(index: number, position: number, reduced = false) {
+  const window = READING_WINDOWS[index];
+  if (!window || reduced) return 0;
+  const t = clamp((position - window[0]) / (window[1] - window[0]));
+  return Math.PI * smooth(0, 1, t);
+}
+
+/** Inverse view rotation about the star, shared by meshes and projected labels. */
+export function readingOrbitPoint(point: readonly number[], index: number, position: number, reduced = false) {
+  const angle = readingOrbitAngle(index, position, reduced), c = Math.cos(angle), s = Math.sin(angle);
+  return [point[0] * c - point[2] * s, point[1], point[0] * s + point[2] * c] as const;
+}
+
 /** A reversible light passage separates the web screens from installed apps. */
 export function showcaseChapterTransition(position: number, reduced = false) {
   if (reduced || position <= 5.12 || position >= 5.88) return 0;

@@ -52,7 +52,9 @@ export function flightSample(position: number, reduced = false, elapsed = 0) {
   // Follow the first wheel increment, even on the expanded interstellar track.
   // Lenis and camera damping smooth input; long stationary departure/arrival
   // ranges and a second full ease made ordinary wheel input feel unresponsive.
-  const travel = reduced ? (local < .64 ? 0 : 1) : local;
+  // Reduced motion skips animation, not input: each gesture still sets its
+  // exact depth instead of holding a chapter and jumping at the 64% threshold.
+  const travel = local;
   return {
     position: p,
     leg,

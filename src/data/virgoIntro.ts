@@ -14,6 +14,7 @@ export const INTRO_DURATION = 7.8;
 export const INTRO_ARRIVAL = 3.2;
 export const INTRO_ENTRANCE_Z = 500;
 export const INTRO_EXIT_Z = -4400;
+export const INTRO_EXIT_REVEAL_DEPTH = 650;
 export const INTRO_TUNNEL_GRID = { rings: 18, rails: 20, spacing: 550, visible: false } as const;
 export const INTRO_PALETTE = { sky: '#030308', gold: '#FFD166', violet: '#C7B8EA', rim: '#E0FBFC' } as const;
 // Ease into translation, then keep travelling through the exit instead of stopping to fade.
@@ -30,14 +31,17 @@ export const INTRO_CAPTIONS = [
 /** The camera keeps a fixed heading on the tunnel axis, including reverse travel. */
 export function introFrame(seconds: number) {
   const t = clamp(seconds, 0, INTRO_DURATION);
+  const exitDepth = cameraZ(t) - INTRO_EXIT_Z;
   return { t, charge: 0, tear: smooth(0, 2.75, t), z: cameraZ(t), x: 0, y: 0,
-    streak: 0, opacity: 1, exitDepth: cameraZ(t) - INTRO_EXIT_Z,
+    streak: 0, opacity: 1, exitDepth, exitReveal: smooth(INTRO_EXIT_REVEAL_DEPTH, 0, exitDepth),
     phase: t < 2.75 ? 'opening' : cameraZ(t) > INTRO_ENTRANCE_Z ? 'entering' : cameraZ(t) - INTRO_EXIT_Z > 1000 ? 'flying' : 'exiting' };
 }
 
 /** Follow the scroll destination, then stop; no automatic cruise velocity. */
 export function advanceIntroScroll(seconds: number, velocity: number, target: number, delta: number) {
   const dt = clamp(delta, 0, .05), distance = target - seconds;
+  // Reversal cancels residual forward momentum on the very first frame.
+  if (Math.sign(velocity) !== Math.sign(distance)) velocity = 0;
   const desired = clamp(distance * 10, -2, 2);
   const nextVelocity = velocity + clamp(desired - velocity, -6 * dt, 6 * dt);
   const step = (velocity + nextVelocity) * .5 * dt;

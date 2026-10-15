@@ -320,13 +320,18 @@ try {
     assert(gap > SPACE_LAYOUT.projectOrbits.at(-1) * 2.3, "Expanded systems need empty space between their outer orbits");
   }
   assert(FLIGHT_TRACK_VH[1] <= 300, "The second page must not consume a long interstellar track");
-  assert(FLIGHT_TRACK_VH.every(height => height >= 160 && height <= 300), "No section should demand an excessively long scroll track");
+  assert(FLIGHT_TRACK_VH.slice(0, -1).every(height => height >= 160 && height <= 300), "Reading chapters retain bounded scroll tracks");
+  assert.equal(FLIGHT_TRACK_VH[5], 160, 'The last flight uses a shorter scroll distance');
+  assert.equal(FLIGHT_TRACK_VH.at(-1), 100, 'Contact fits one viewport, without an invisible scroll tail');
   const offsets = FLIGHT_TRACK_VH.reduce((values, height, i) => { if (i < 6) values.push(values.at(-1) + height * 10); return values; }, [0]);
   for (let i = 0; i <= 600; i++) {
     const position = i / 100;
     assert(Math.abs(flightPositionForScroll(scrollOffsetForPosition(position, offsets), offsets) - position) < 1e-9, "Unequal chapter lengths must preserve exact camera progress");
   }
   assert.equal(flightPositionForScroll(-100, offsets), 0);
+  for (const reduced of [false, true]) for (const p of [2.02, 2.32, 2.6, 2.94, 3.23, 5.3, 5.82, 5.98]) {
+    assert(Math.abs(flightSample(p, reduced).travel - (p - Math.min(5, Math.floor(p)))) < 1e-9, 'Reduced motion also preserves each gesture\'s exact depth');
+  }
   assert.equal(flightPositionForScroll(offsets.at(-1) + 10000, offsets), 6);
   for (const rock of asteroidLayout(480)) {
     const radius = Math.hypot(rock.position[0], rock.position[1] / ORBIT_PLANE.vertical);
@@ -433,7 +438,7 @@ try {
   for (const mobile of [false, true]) {
     for (const [index, leg] of TRANSIT_LEGS.entries()) {
       assert(journeyCameraZ(leg.from, mobile) - journeyCameraZ(leg.to, mobile) >= (leg.origin < 0 ? 300 : 450), "Each passage must cross the actual corridor rather than animate the lens");
-      assert(storyTimeAt(leg.to) - storyTimeAt(leg.from) >= (leg.origin < 0 ? STORY_PACING.approachSeconds : STORY_PACING.transitSeconds) - 1e-9, "Travel must have time to show the passing planets");
+      assert(storyTimeAt(leg.to) - storyTimeAt(leg.from) >= (leg.origin < 0 ? STORY_PACING.approachSeconds : leg.destination === 3 ? STORY_PACING.finalTransitSeconds : STORY_PACING.transitSeconds) - 1e-9, "Travel retains the selected leg's readable duration");
       const planets = transitPlanets(index, mobile);
       assert.equal(planets.length, mobile ? 4 : 6);
       assert.deepEqual(planets, transitPlanets(index, mobile), "Passing planets must retain their world coordinates on reversal");
@@ -450,10 +455,16 @@ try {
       }
       assert.equal(transitSample((leg.from+leg.to)/2).envelope, 1);
       for (const p of [leg.from, leg.to]) {
-        const derivative = (journeyCameraZ(p+1e-5,mobile)-journeyCameraZ(p-1e-5,mobile))/2e-5;
-        assert(Math.abs(derivative) < .001, "The camera must settle gently at both ends of transit");
+        const left = (journeyCameraZ(p,mobile)-journeyCameraZ(p-1e-6,mobile))/1e-6;
+        const right = (journeyCameraZ(p+1e-6,mobile)-journeyCameraZ(p,mobile))/1e-6;
+        assert(left < -1 && right < -1, 'Scroll keeps moving at transit boundaries');
+        assert(Math.abs(left - right) < .2, 'World velocity meets continuously between reading and flight');
       }
     }
+  }
+  for (const mobile of [false, true]) for (let step = 1920; step < 6000; step++) {
+    const p = step / 1000;
+    assert(journeyCameraZ(p, mobile) - journeyCameraZ(p + .001, mobile) > .005, 'No reading plateau or final approach contains a dead scroll interval');
   }
   // Scroll choreography is reversible; ambient orbit phase is an independent input.
   const forward = Array.from({ length: 601 }, (_, i) => flightSample(i / 100));

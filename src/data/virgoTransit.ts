@@ -47,8 +47,7 @@ export function systemPresence(index: number, position: number) {
   return incoming * outgoing;
 }
 
-/** One monotone world-space axis; the lens and heading do not animate. */
-export function journeyCameraZ(position: number, mobile = false) {
+function createCameraTrack(mobile: boolean) {
   const distance = mobile ? SPACE_LAYOUT.mobileCamera.distance : SPACE_LAYOUT.desktopCamera.distance;
   const anchors = [
     { p: 0, z: 650 }, { p: 1, z: 500 },
@@ -60,10 +59,30 @@ export function journeyCameraZ(position: number, mobile = false) {
     { p: 5.82, z: VIRGO_STARS[3].position[2] + distance },
     { p: 6, z: VIRGO_STARS[3].position[2] + distance - 3 },
   ];
+  const slopes = anchors.slice(1).map((b, i) => (b.z - anchors[i].z) / (b.p - anchors[i].p));
+  const tangents = anchors.map((_, i) => {
+    if (i === 0) return slopes[0];
+    if (i === anchors.length - 1) return slopes[i - 1];
+    const before = anchors[i].p - anchors[i - 1].p, after = anchors[i + 1].p - anchors[i].p;
+    const w1 = 2 * after + before, w2 = after + 2 * before;
+    return (w1 + w2) / (w1 / slopes[i - 1] + w2 / slopes[i]);
+  });
+  return { anchors, tangents };
+}
+
+const CAMERA_TRACKS = [createCameraTrack(false), createCameraTrack(true)];
+
+/** Monotone Hermite interpolation keeps moving across every reading boundary.
+ * Independent smoothsteps stopped at each anchor, making small wheel input feel dead.
+ */
+export function journeyCameraZ(position: number, mobile = false) {
+  const { anchors, tangents } = CAMERA_TRACKS[mobile ? 1 : 0];
   const p = Math.max(0, Math.min(6, position));
   const i = anchors.findIndex((_, index) => index < anchors.length - 1 && p <= anchors[index + 1].p);
-  const a = anchors[i], b = anchors[i + 1];
-  return a.z + (b.z - a.z) * ramp(a.p, b.p, p);
+  const a = anchors[i], b = anchors[i + 1], span = b.p - a.p, t = (p - a.p) / span;
+  const t2 = t * t, t3 = t2 * t;
+  return (2 * t3 - 3 * t2 + 1) * a.z + (t3 - 2 * t2 + t) * span * tangents[i]
+    + (-2 * t3 + 3 * t2) * b.z + (t3 - t2) * span * tangents[i + 1];
 }
 
 /** Owner-approved reference: docs/straight-flight-contract.vi.md. */

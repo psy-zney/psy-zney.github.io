@@ -11,6 +11,7 @@ export const STORY_PACING = {
   readSeconds: 1.30,
   handoffSeconds: .70,
   transitSeconds: 3.4,
+  finalTransitSeconds: 1.8,
   approachSeconds: 1.9,
   wheelStepVh: .12,
   wheelLeadVh: .16,
@@ -38,7 +39,7 @@ limits.push({ from: OPENING_HANDOFF.start, to: OPENING_HANDOFF.covered,
 limits.push({ from: OPENING_HANDOFF.release, to: OPENING_HANDOFF.finish,
   rate: (OPENING_HANDOFF.finish - OPENING_HANDOFF.release) / STORY_PACING.handoffSeconds });
 
-for (const leg of TRANSIT_LEGS) limits.push({ from: leg.from, to: leg.to, rate: (leg.to - leg.from) / (leg.origin < 0 ? STORY_PACING.approachSeconds : STORY_PACING.transitSeconds) });
+for (const leg of TRANSIT_LEGS) limits.push({ from: leg.from, to: leg.to, rate: (leg.to - leg.from) / (leg.origin < 0 ? STORY_PACING.approachSeconds : leg.destination === 3 ? STORY_PACING.finalTransitSeconds : STORY_PACING.transitSeconds) });
 
 // Ease into every speed limit before its boundary. Piecewise constant rates
 // made the same wheel gesture lurch when a reading interval became a flight.

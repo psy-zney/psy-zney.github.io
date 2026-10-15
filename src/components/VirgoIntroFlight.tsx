@@ -93,6 +93,7 @@ export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFin
       root.dataset.entranceWorldRadius = aperture.worldRadius.toFixed(3);
       root.dataset.entranceDepth = aperture.depth.toFixed(3);
       root.dataset.exitRadius = exit.radius.toFixed(3);
+      root.dataset.exitReveal = exit.reveal.toFixed(4);
       root.dataset.exitDepth = frame.exitDepth.toFixed(3);
       root.dataset.vortexTime = idleTime.toFixed(3);
       root.dataset.entranceRadius = aperture.outerRadius.toFixed(3);

@@ -76,11 +76,20 @@ export function introAperture(width: number, height: number, seconds: number, co
 /** Cut a real opening through the overlay to the prepared Home scene, then cross it. */
 export function drawIntroExit(ctx: CanvasRenderingContext2D, width: number, height: number, seconds: number, time: number) {
   const frame = introFrame(seconds), view = introTunnelView(width, height);
-  const radius = view.radius * view.focal / Math.max(1, frame.exitDepth);
+  const physicalRadius = view.radius * view.focal / Math.max(1, frame.exitDepth);
+  const radius = physicalRadius * frame.exitReveal;
+  const rimRadius = physicalRadius * (.35 + .65 * frame.exitReveal);
   const x = width / 2, y = height / 2;
-  if (frame.z > INTRO_ENTRANCE_Z) return { x, y, radius: 0, crossed: false };
+  if (frame.z > INTRO_ENTRANCE_Z) return { x, y, radius: 0, reveal: 0, crossed: false };
+  // The distant end stays opaque black throughout wall reading. Home is prepared
+  // behind it, but only becomes visible as the near exit actually opens.
+  ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.arc(x, y, rimRadius, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = '#000'; ctx.globalCompositeOperation = 'destination-out';
   ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-  if (frame.exitDepth > 0 && radius < Math.hypot(width, height)) drawIntroVortex(ctx, x, y, radius / .35, -time);
-  return { x, y, radius, crossed: frame.exitDepth <= 0 };
+  if (frame.exitDepth > 0 && frame.exitDepth < 1100 && rimRadius < Math.hypot(width, height)) {
+    ctx.save(); ctx.globalAlpha = smooth(1100, 650, frame.exitDepth);
+    drawIntroVortex(ctx, x, y, rimRadius / .35, -time); ctx.restore();
+  }
+  return { x, y, radius, reveal: frame.exitReveal, crossed: frame.exitDepth <= 0 };
 }

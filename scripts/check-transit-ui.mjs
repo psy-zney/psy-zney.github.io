@@ -31,7 +31,7 @@ try {
         await seek(position, true); await page.clock.runFor(100);
         const pose = await page.locator('.virgo-page').evaluate(el => el.dataset.cameraPose.split(',').map(Number));
         assert(pose.every(Number.isFinite));
-        for (const index of [0, 1, 3, 4, 5]) assert(Math.abs(pose[index]) < .00001, 'Reading cannot reintroduce a camera orbit before a straight transition');
+        for (const index of [0, 1, 3, 4, 5]) assert(Math.abs(pose[index]) < .00001, 'The local reading orbit keeps the interstellar camera axis fixed');
         assert(Math.abs(pose[6] - 1) < .00001);
         if (position === 3.23 || position === 3.95) await page.screenshot({ path: `${output}/${name}-reading-${position}.png` });
       }

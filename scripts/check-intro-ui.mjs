@@ -70,6 +70,11 @@ try {
       assert.equal(await intro.getAttribute('data-entrance-world-radius'), matureWorldRadius, 'Entry translates the camera through a fixed-size portal');
       assert(Number(await intro.getAttribute('data-entrance-depth')) < 0, 'The camera crosses the entrance plane');
       assert.equal(await intro.getAttribute('data-virtual-grid'), 'hidden');
+      const centerPixel = () => intro.locator('canvas').evaluate(canvas => {
+        const ctx = canvas.getContext('2d');
+        return [...ctx.getImageData(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 1, 1).data];
+      });
+      assert.deepEqual(await centerPixel(), [0, 0, 0, 255], 'The tunnel centre is opaque black after entry; Home is not visible');
       const lines = intro.locator('.virgo-intro-captions p');
       for (let i = 0; i < 2; i++) {
         assert.equal(await lines.nth(i).getAttribute('data-lines'), '1', 'Each fixed wall sentence is a single line');
@@ -82,12 +87,16 @@ try {
       assert(near[2] > far[2], 'Fixed wall text grows by perspective as the camera approaches');
       await page.screenshot({ path: output + '/' + name + '-greeting-1.png' });
       await scrollTo(5.8);
+      assert.deepEqual(await centerPixel(), [0, 0, 0, 255], 'The distant exit stays dark throughout wall reading');
       await page.screenshot({ path: output + '/' + name + '-greeting-2.png' });
       await scrollTo(4.7);
       assert.deepEqual((await lines.nth(0).getAttribute('data-projected-bounds')).split(',').map(Number), near, 'Reversing restores the same physical wall patch');
       const farExit = Number(await intro.getAttribute('data-exit-radius'));
       const farHomePose = (await page.locator('.virgo-page').getAttribute('data-camera-pose')).split(',').map(Number);
       await scrollTo(7.1);
+      assert.deepEqual(await centerPixel(), [0, 0, 0, 255], 'The exit remains black until the final approach');
+      await page.screenshot({ path: output + '/' + name + '-exit-closed.png' });
+      await scrollTo(7.5);
       const nearHomePose = (await page.locator('.virgo-page').getAttribute('data-camera-pose')).split(',').map(Number);
       assert(nearHomePose[2] < farHomePose[2] - 100, 'The real Home camera also advances behind the exit opening');
       assert(Number(await intro.getAttribute('data-exit-radius')) > farExit, 'A visible exit grows as the camera approaches it');
@@ -99,7 +108,6 @@ try {
       assert.equal(openingAlpha, 0, 'The exit is a real opening onto Home, not painted black');
       await page.screenshot({ path: output + '/' + name + '-exit-opening.png' });
       // The last input reaches the endpoint and unmounts the intro.
-      await page.mouse.wheel(0, 120); await page.clock.runFor(900);
       await page.mouse.wheel(0, 120); await page.clock.runFor(1200);
     } else { await intro.click({ position: { x: 40, y: 40 } }); await page.clock.runFor(100); }
     await intro.waitFor({ state: 'detached' });

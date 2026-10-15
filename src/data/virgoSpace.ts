@@ -23,7 +23,8 @@ export function orbitRadii(skills = false, mobile = false) {
 }
 
 // Physical star distances stay vast; scroll lengths have a bounded reading pace.
-export const FLIGHT_TRACK_VH = [180, 160, 300, 220, 280, 300, 240] as const;
+// Contact ends exactly at the scroll limit: no invisible tail after arrival.
+export const FLIGHT_TRACK_VH = [180, 160, 300, 220, 280, 160, 100] as const;
 export const planetRadius = (index: number, skills = false) =>
   skills ? SKILL_RADII[capabilities[index].id] : PROJECT_RADII[projects[index].id];
 
