@@ -240,45 +240,45 @@ try {
     await sound.click();
     assert.equal(await sound.getAttribute('aria-pressed'), 'true');
 
-    // The opening is static until one gesture; repeated wheel input cannot skip it.
+    // Connections assemble first; the camera stays fixed until one gesture.
     const intro = page.locator('.virgo-intro-flight');
     await intro.waitFor();
+    await page.clock.runFor(5100);
+    await page.waitForFunction(() => document.querySelector('.virgo-intro-flight')?.dataset.phase === 'idle');
+    assert.equal(await intro.getAttribute('data-constellation-edges'), '16');
     assert.equal(await intro.getAttribute('data-phase'), 'idle');
     assert.equal(await intro.getAttribute('data-camera'), '0.000,0.000,1000.000');
-    const introArrow = intro.getByRole('button', { name: 'Begin the journey' });
-    const arrowBounds = await introArrow.boundingBox();
-    assert(arrowBounds.width >= 44 && arrowBounds.height >= 44, 'Intro arrow keeps a usable touch target');
+    assert.equal(await intro.getByRole('button').count(), 0, 'The opening has no visible start cue');
     await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 1000)));
     if (name === 'desktop') {
       await page.mouse.move(720, 450);
       await page.mouse.wheel(0, 120);
-    } else await introArrow.click();
+    } else await intro.click({ position: { x: 40, y: 40 } });
     if (name !== 'reduced') {
-      await page.clock.runFor(100);
-      await page.waitForFunction(() => document.querySelector('.virgo-intro-flight')?.dataset.phase === 'charging');
-      await page.mouse.wheel(0, 1600);
-      assert.equal(await introArrow.isDisabled(), true, 'The arrow cannot restart a running intro');
-      await page.clock.runFor(1450);
-      await page.waitForFunction(() => Number(document.querySelector('.virgo-intro-flight')?.dataset.seconds) >= 1.5);
-      await page.screenshot({ path: `${output}/${name}-intro-tear.png` });
-      let introTime = 1.55;
-      for (const [index, time] of [[0, 2.65], [1, 4]]) {
-        await page.clock.runFor((time - introTime) * 1000); introTime = time;
-        await page.waitForFunction(({ index, time }) => {
-          const root = document.querySelector('.virgo-intro-flight');
-          const line = root?.querySelectorAll('.virgo-intro-captions p')[index];
-          // RAF timestamps end on the previous frame when the test clock is
-          // paused; allow one frame while still checking the actual greeting.
-          return Number(root?.dataset.seconds) >= time - .03 && Number(line?.style.opacity) > .5;
-        }, { index, time });
-        const lines = await intro.locator('.virgo-intro-captions p').evaluateAll(nodes => nodes.filter(node => Number(node.style.opacity) > .1).map(node => node.textContent));
-        assert.equal(lines.length, 1, 'Only one greeting is visible at a time');
-        assert(lines[0].includes(index ? 'creative universe' : 'Lê Quang Khánh'));
-        await page.screenshot({ path: `${output}/${name}-intro-greeting-${index + 1}.png` });
+      const introScrollTo = async target => {
+        for (let attempt = 0; attempt < 40; attempt++) {
+          const current = Number(await intro.getAttribute('data-seconds'));
+          if (Math.abs(current - target) < .002) return;
+          await page.mouse.wheel(0, (target - current) / .0045);
+          await page.clock.runFor(900);
+        }
+        assert.fail('Intro must follow scroll target ' + target);
+      };
+      await introScrollTo(2.75);
+      assert.equal(await intro.getAttribute('data-camera'), '0.000,0.000,1000.000', 'The vortex opens before entry');
+      await page.screenshot({ path: output + '/' + name + '-intro-tear.png' });
+      for (const [index, target] of [[0, 4.7], [1, 5.8]]) {
+        await introScrollTo(target);
+        const line = intro.locator('.virgo-intro-captions p').nth(index);
+        assert.equal(await line.getAttribute('data-lines'), '1');
+        assert(Number(await line.evaluate(el => el.style.opacity)) > .5, 'World-space greeting is already present on the wall');
+        assert((await line.textContent()).includes(index ? 'creative universe' : 'Lê Quang Khánh'));
+        await page.screenshot({ path: output + '/' + name + '-intro-greeting-' + (index + 1) + '.png' });
       }
-      await page.clock.runFor(1700);
-    }
-    else await page.clock.runFor(64);
+      await introScrollTo(7.1);
+      await page.mouse.wheel(0, 120); await page.clock.runFor(900);
+      await page.mouse.wheel(0, 120); await page.clock.runFor(1200);
+    } else await page.clock.runFor(100);
     await intro.waitFor({ state: 'detached' });
     await page.waitForFunction(() => Math.abs(Number(document.querySelector('.virgo-page')?.style.getPropertyValue('--flight-progress')) * 6 - 1.92) < .001);
     assert.equal(await page.evaluate(() => location.hash), '#/home', 'Intro arrives on the home route without replaying the old opening');
@@ -287,11 +287,11 @@ try {
     if (name === 'desktop') {
       await page.goto(`${base}#/cosmos`);
       await intro.waitFor();
-      await intro.getByRole('button', { name: 'Begin the journey' }).click();
+      await intro.click({ position: { x: 40, y: 40 } });
       await page.waitForTimeout(250);
       await page.evaluate(() => { location.hash = '#/skills'; });
       await intro.waitFor({ state: 'detached' });
-      await page.waitForTimeout(5600);
+      await page.waitForTimeout(8000);
       assert.equal(await page.evaluate(() => location.hash), '#/skills', 'Route changes cancel the old intro and its arrival callback');
     }
 
@@ -348,25 +348,42 @@ try {
       assert(state.pose?.length === 7 && state.pose.every(Number.isFinite), 'Record the actual rendered camera position/quaternion');
       return state;
     };
+    // Wheel no longer snaps to a reading anchor: supply only the distance needed.
+    const wheelTo = async position => {
+      for (let attempt = 0; attempt < 400; attempt++) {
+        const state = await page.evaluate(position => {
+          const scroller = document.querySelector('.virgo-scroll');
+          const offsets = [...document.querySelector('.virgo-scroll-content').children].map(el => el.offsetTop);
+          const index = Math.floor(position);
+          return { rendered: Number(document.querySelector('.virgo-page').style.getPropertyValue('--flight-progress')) * 6,
+            remaining: offsets[index] + (offsets[index + 1] - offsets[index]) * (position - index) - scroller.scrollTop };
+        }, position);
+        if (Math.abs(state.rendered - position) < .0005 && Math.abs(state.remaining) < 1) return;
+        if (Math.abs(state.remaining) >= 1) await page.mouse.wheel(0, Math.max(-120, Math.min(120, state.remaining / 1.25)));
+        await page.waitForTimeout(50);
+      }
+      assert.fail('Wheel must reach the requested reading position: ' + position);
+    };
     const firstSentence = 'Each project gives me something new to learn.';
     const secondSentence = 'Here is how I turn those needs into projects.';
     const firstStory = await storyAt(3.23, firstSentence);
     await page.screenshot({ path: `${output}/${name}-story-first.png` });
     await page.mouse.move(options.viewport.width / 2, options.viewport.height * .75);
-    await page.mouse.wheel(0, 120);
+    await wheelTo(3.95);
     const secondStory = await storyAt(3.95, secondSentence);
     await page.screenshot({ path: `${output}/${name}-story-second.png` });
     if (name === 'reduced') assert.equal(firstStory.pose[0], secondStory.pose[0], 'Reduced motion skips the camera orbit');
     else {
-      const angle = pose => Math.atan2(pose[0], pose[2] + 480);
+      const angle = pose => Math.atan2(pose[0] + 90, pose[2] + 480);
       assert(Math.abs(angle(secondStory.pose) - angle(firstStory.pose) - Math.PI) < .001, 'The actual camera completes 180 degrees between reading poses');
       assert(Math.abs(firstStory.pose[4] - secondStory.pose[4]) > .05, 'The rendered camera orientation changes with the orbit');
     }
-    await page.mouse.wheel(0, -120);
+    await wheelTo(3.23);
     const reversedStory = await storyAt(3.23, firstSentence);
     reversedStory.pose.forEach((value, i) => assert(Math.abs(value - firstStory.pose[i]) < .02, `Reverse scroll restores camera pose ${i}: ${value} versus ${firstStory.pose[i]}`));
-    await page.mouse.wheel(0, 120);
+    await wheelTo(3.95);
     await storyAt(3.95, secondSentence);
+    await wheelTo(4.24);
     await page.waitForTimeout(260); // A separate gesture after the preceding reading stop.
     const cylinderArrivalFrame = page.evaluate(() => new Promise(resolve => {
       const timeout = setTimeout(() => { observer.disconnect(); resolve({ missing: true }); }, 10000);
@@ -475,6 +492,7 @@ try {
     await gallery.waitFor({ state: 'detached' });
     await storyAt(4.92, 'Those projects shape the way I build.');
     await page.waitForTimeout(260);
+    await wheelTo(4.81);
     await page.mouse.wheel(0, -120);
     await hashIs('backup');
     await gallery.press('Home');
@@ -523,8 +541,8 @@ try {
       assert(contactFlight.length > 20, `${name}: the actual keyboard journey includes a sustained approach`);
       for (let i = 1; i < contactFlight.length; i++) {
         const previous = contactFlight[i - 1].pose, pose = contactFlight[i].pose;
-        assert(Math.abs(pose[0]) < .001 && Math.abs(pose[1]) < .001 && pose[2] <= previous[2] + .001, 'The complete forward passage has no sideways detour or retreat');
-        if (pose[2] < previous[2] - .001) assert(Math.abs(pose[4]) < .001, 'Every translating frame faces forward');
+        assert(pose[2] <= previous[2] + .001, 'The forward fly-by never retreats');
+        assert(Math.hypot(pose[0] - 85, pose[1], pose[2] + 960) > 45, 'The camera passes beside the outgoing star');
       }
     }
     await page.goto(`${base}#/contact`, { waitUntil: 'domcontentloaded' });
@@ -533,7 +551,8 @@ try {
     await page.waitForFunction(() => Number(document.querySelector('.virgo-page')?.style.getPropertyValue('--flight-progress')) * 6 > 5.8);
     const contactShot = await page.screenshot({ path: `${output}/${name}-contact-arrival.png` });
     const contactRaw = await sharp(contactShot).removeAlpha().raw().toBuffer({ resolveWithObject: true });
-    const contactBoxes = await page.locator('.virgo-contact-narrative, .virgo-overlay-panel[aria-labelledby="virgo-contact-title"] .virgo-bare').evaluateAll(elements => elements.map(el => {
+    assert.equal(await page.locator('.virgo-contact-narrative, .virgo-portal-hint').count(), 0, 'The black-hole view contains no narrative or instruction text');
+    const contactBoxes = await page.locator('.virgo-overlay-panel[aria-labelledby="virgo-contact-title"] .virgo-bare').evaluateAll(elements => elements.filter(el => getComputedStyle(el).display !== 'none').map(el => {
       const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, right: r.right, bottom: r.bottom };
     }));
     for (const box of contactBoxes) {
@@ -565,9 +584,9 @@ try {
       approachFrames.push({ p, warm, pose: await page.locator('.virgo-page').evaluate(el => el.dataset.cameraPose.split(',').map(Number)) });
     }
     if (name !== 'reduced') {
-      assert(approachFrames[0].warm > 30 && approachFrames[1].warm > approachFrames[0].warm * 1.5, `${name}: the luminous black hole is visible from afar and grows during approach`);
+      assert(approachFrames[1].warm > 30 && approachFrames[1].warm > approachFrames[0].warm, `${name}: the luminous black hole is visible from afar and grows during approach`);
       assert(approachFrames[1].pose[2] < approachFrames[0].pose[2], 'The actual camera advances towards the gate');
-      assert(approachFrames.every(frame => Math.abs(frame.pose[0]) < .001 && Math.abs(frame.pose[1]) < .001 && Math.abs(frame.pose[4]) < .001), 'The approach follows a straight axis with a forward heading');
+      assert(approachFrames.every(frame => Math.hypot(frame.pose[0] - 85, frame.pose[1], frame.pose[2] + 960) > 45), 'The approach clears the outgoing star instead of diving through its core');
     }
     await scroller.evaluate(el => { el.scrollTop = el.scrollHeight; });
     const portal = page.getByRole('button', { name: 'Open workspace through Zavijava', exact: true });

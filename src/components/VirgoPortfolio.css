@@ -127,32 +127,6 @@
   pointer-events: none !important;
 }
 
-/* An opaque tear hides the intro/world swap while narration stays above it. */
-.virgo-intro-fracture {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  overflow: hidden;
-  visibility: hidden;
-  pointer-events: none;
-}
-.virgo-page[data-intro-fracture="active"] .virgo-intro-fracture,
-.virgo-page[data-rift-reading="active"] .virgo-intro-fracture { visibility: visible; }
-.virgo-fracture-backdrop {
-  position: absolute;
-  inset: 0;
-  background: #02040b;
-  opacity: var(--intro-cover);
-}
-.virgo-space-rift {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-.virgo-fracture-sound { display: none; }
-
 .virgo-vignette {
   position: absolute;
   inset: 0;
@@ -910,16 +884,7 @@
 #root .virgo-black-hole-orbit { cursor: grab !important; }
 #root .virgo-black-hole-orbit[data-dragging="true"] { cursor: grabbing !important; }
 .virgo-black-hole-orbit:focus-visible { outline: 1px solid #ffcf7633; border-radius: 50%; }
-.virgo-portal-hint {
-  position: absolute;
-  top: calc(var(--portal-label-offset, 135px) + 52px);
-  left: 50%;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  color: #bda786;
-  font: 11px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  pointer-events: none;
-}
+
 @media (pointer: coarse) {
   .virgo-black-hole-orbit { pointer-events: none !important; }
   .virgo-portal-hint { display: none; }

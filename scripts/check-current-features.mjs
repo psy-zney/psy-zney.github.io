@@ -7,27 +7,49 @@ import ts from 'typescript';
 
 // Behavior and integration checks for the current build. Visual QA lives in check-ui.mjs.
 export async function checkCurrentFeatures(server) {
-  const { introFrame, INTRO_CAPTIONS, INTRO_DURATION } = await server.ssrLoadModule('/src/data/virgoIntro.ts');
-  assert.equal(INTRO_DURATION, 5.5, 'The gesture-triggered intro lasts 5.5 seconds');
+  const { introFrame, INTRO_CAPTIONS, INTRO_DURATION, INTRO_ASSEMBLY_DURATION, introConstellationFrame, advanceIntroScroll } = await server.ssrLoadModule('/src/data/virgoIntro.ts');
+  assert.equal(introConstellationFrame(0).stars[1], 1, 'The constellation starts from the central yellow star');
+  assert.equal(introConstellationFrame(0).stars.filter(amount => amount > .1).length, 1, 'Only the central star is visible before connections spread');
+  assert(introConstellationFrame(0).edges.every(([a, b]) => a + b === 0), 'Connections are drawn progressively instead of appearing fully connected');
+  assert(introConstellationFrame(2.4).edges.some(([a, b]) => a + b > 0 && a + b < 1), 'A branching wave is visible before the constellation is complete');
+  assert(introConstellationFrame(INTRO_ASSEMBLY_DURATION).stars.every(amount => amount === 1));
+  assert(introConstellationFrame(INTRO_ASSEMBLY_DURATION).edges.every(([a, b]) => a + b === 1), 'Every original connection survives the restored intro');
+  assert.equal(INTRO_DURATION, 7.8, 'The intro scroll coordinate spans opening, entry and wall reading; it is not an autoplay duration');
   assert.equal(introFrame(0).z, 1000);
-  assert.equal(introFrame(2.2).z, 0);
-  assert.equal(introFrame(3.5).z, INTRO_CAPTIONS[0].z, 'The first text plane passes the camera at 3.5 seconds');
-  assert.equal(introFrame(4.8).z, INTRO_CAPTIONS[1].z, 'The second text plane passes the camera at 4.8 seconds');
-  assert.equal(introFrame(5.5).z, -3000);
-  assert.equal(introFrame(1).charge, 1);
-  assert.equal(introFrame(2.2).tear, 1);
-  assert.equal(introFrame(5.5).streak, 0, 'Star streaks settle into dots on arrival');
+  for (const caption of INTRO_CAPTIONS) assert.equal(introFrame(caption.pass).z, caption.z, 'Wall lettering has a fixed physical position along the flight');
+  assert.equal(introFrame(INTRO_DURATION).z, -3000);
+  assert.equal(introFrame(1).charge, 0, 'The constellation never contracts into the core');
+  assert.equal(introFrame(2.75).z, 1000, 'The vortex opens before the next scroll enters it');
+  assert.equal(introFrame(2.75).tear, 1);
+  assert.equal(introFrame(4).streak, 0, 'The tunnel contains wall dust rather than star streaks');
   let previousIntroZ = 1000;
   let previousArrivalSpeed = Infinity;
-  for (let i = 0; i <= 5500; i++) {
+  let previousVelocity = 0;
+  for (let i = 0; i <= INTRO_DURATION * 1000; i++) {
     const frame = introFrame(i / 1000);
     assert(frame.z <= previousIntroZ + 1e-6, 'The camera always flies forward through the tear');
-    if (i > 5000) {
+    assert.equal(frame.x, 0); assert.equal(frame.y, 0, 'The intro never swerves or reverses its heading');
+    const velocity = (previousIntroZ - frame.z) * 1000;
+    assert(velocity < 1500 && Math.abs(velocity - previousVelocity) < 1, 'Camera displacement changes smoothly along the scroll coordinate');
+    previousVelocity = velocity;
+    if (i > 7250) {
       const speed = previousIntroZ - frame.z;
-      assert(speed <= previousArrivalSpeed + 1e-6, 'The final half-second continuously decelerates');
+      assert(speed <= previousArrivalSpeed + 1e-6, 'Camera displacement tapers continuously near the arrival endpoint');
       previousArrivalSpeed = speed;
     }
     previousIntroZ = frame.z;
+  }
+  for (const fps of [30, 60, 120]) {
+    let playback = { seconds: 4, velocity: 0 };
+    for (let i = 0; i < fps; i++) {
+      const next = advanceIntroScroll(playback.seconds, playback.velocity, 3.6, 1 / fps);
+      assert(Math.abs(next.seconds - playback.seconds) <= 2 / fps + 1e-9, 'Scroll input never jumps the tunnel position');
+      assert(next.seconds >= 3.6 && next.seconds <= 4, 'A reverse gesture cannot overshoot its scroll destination');
+      playback = next;
+    }
+    assert(Math.abs(playback.seconds - 3.6) < .002, 'The intro follows its scroll destination at every refresh rate');
+    assert.equal(advanceIntroScroll(4, 0, 4, 1 / fps).seconds, 4, 'No scroll means no automatic flight');
+    assert(advanceIntroScroll(4, 0, 4.4, 30).seconds <= 4.015, 'A background stall cannot skip the flight');
   }
   const { showcaseProducts, showcaseIndexForHash } = await server.ssrLoadModule('/src/data/productShowcase.ts');
   const { projects } = await server.ssrLoadModule('/src/data/portfolio.ts');
@@ -141,25 +163,32 @@ export async function checkCurrentFeatures(server) {
   assert(Math.abs(spatialGaze(secondView).yaw - spatialGaze(firstView).yaw - Math.PI) < 1e-9, 'Successive project sentences span the full 180 degree half orbit');
   assert.equal(spatialGaze(2.94).yaw, 0);
   assert.equal(spatialGaze(4.25).yaw, Math.PI, 'The project camera completes a real 180 degree semicircle');
+  const { VIRGO_STARS } = await server.ssrLoadModule('/src/data/virgoStations.ts');
+  assert(new Set(VIRGO_STARS.map(star => star.position[0])).size >= 3, 'Neighboring stars are laterally staggered');
   for (const radius of [125, 180]) {
     for (const [from, to] of [[2.32, 2.94], [4.25, 4.80], [5.30, 5.82]]) {
       let previous = narrativeOrbitPose(from, radius, 480);
       for (let step = 1; step <= 200; step++) {
         const pose = narrativeOrbitPose(from + (to - from) * step / 200, radius, 480);
-        assert(Math.abs(pose.x) < 1e-9, 'Station transfers follow one straight axis');
+        assert(VIRGO_STARS.every(star => Math.hypot(pose.x - star.position[0], pose.y, pose.z - star.position[2]) > 45), 'The fly-by clears every stellar core instead of diving through it');
         assert(pose.z <= previous.z + 1e-9, 'Forward travel never retreats');
-        if (pose.z < previous.z - 1e-9) assert(Math.abs(pose.angle) < 1e-9, 'Translation starts only after the camera faces forward');
+        const angularStep = Math.atan2(Math.sin(pose.angle - previous.angle), Math.cos(pose.angle - previous.angle));
+        assert(angularStep >= -1e-9 && angularStep < .04, 'Transit continues the same turn smoothly, without a snapped heading reset');
+        if (step < 200) assert(pose.z < previous.z, 'The transfer moves immediately instead of holding still for a heading reset');
         previous = pose;
       }
     }
     for (let p = 2.94; p <= 4.25; p += .01) {
       const pose = narrativeOrbitPose(p, radius, 480);
-      assert(Math.abs(Math.hypot(pose.x, pose.z + 480) - radius) < 1e-9, 'The camera orbits at constant distance');
+      assert(Math.abs(Math.hypot(pose.x - VIRGO_STARS[1].position[0], pose.z + 480) - radius) < 1e-9, 'The camera orbits at constant distance');
     }
     for (const edge of [2.32, 2.94, 4.25, 4.80, 5.30, 5.82]) {
       const before = narrativeOrbitPose(edge - 1e-6, radius, 480);
       const after = narrativeOrbitPose(edge + 1e-6, radius, 480);
-      if (before && after) assert(Math.hypot(before.x - after.x, before.z - after.z) < .01, 'Orbit and transit meet without a camera jump');
+      if (before && after) {
+        assert(Math.hypot(before.x - after.x, before.z - after.z) < .01, 'Orbit and transit meet without a camera jump');
+        assert(Math.abs(Math.atan2(Math.sin(after.angle - before.angle), Math.cos(after.angle - before.angle))) < .001, 'The view direction is continuous at each station boundary');
+      }
     }
   }
   assert.notEqual(NARRATIVE_BEATS[4].placement, NARRATIVE_BEATS[5].placement, 'Successive project sentences change their layout');

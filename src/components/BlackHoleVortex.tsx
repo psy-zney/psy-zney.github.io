@@ -5,6 +5,7 @@ import { smooth } from "../data/virgoFlight";
 import { ACCRETION_VERTEX, DISPLAY_FRAGMENT } from "./blackHoleShader";
 import type { BlackHoleOrbitState } from "./BlackHoleOrbitControls";
 import { BlackHoleRenderPipeline } from './blackHoleRendering';
+import { BLACK_HOLE_SCALE } from '../data/virgoSpace';
 
 interface BlackHoleProps {
   flight: {
@@ -163,7 +164,7 @@ function BlackHoleAccretionMesh({ flight, orbit }: Pick<BlackHoleProps, "flight"
 
 export function BlackHoleVortex({ flight, orbit }: BlackHoleProps) {
   // Gas, spiral trails and dust share the ray's intersection with one disk.
-  return <group scale={flight.mobile ? .62 : .78} userData={{ preserveOpacity: true }}>
+  return <group scale={flight.mobile ? BLACK_HOLE_SCALE.mobile : BLACK_HOLE_SCALE.desktop} userData={{ preserveOpacity: true }}>
     <BlackHoleAccretionMesh flight={flight} orbit={orbit} />
   </group>;
 }

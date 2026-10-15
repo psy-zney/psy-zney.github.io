@@ -8,12 +8,9 @@ import { clamp, flightFieldOfView, flightPositionForScroll, flightSample, focuse
 import { journeyCameraZ, systemPresence, transitSample, TRANSIT_LEGS } from "../data/virgoTransit";
 import { VirgoTransit } from "./VirgoTransit";
 import { advancePacedFlightPosition } from "../data/virgoPacing";
-import { asteroidLayout, ORBIT_PLANE, orbitRadii, planetRadius, SPACE_LAYOUT } from "../data/virgoSpace";
+import { asteroidLayout, BLACK_HOLE_SCALE, ORBIT_PLANE, orbitRadii, planetRadius, SPACE_LAYOUT } from "../data/virgoSpace";
 import { mobileNarrativeTop, narrativeSample, narrativeTextReveal, NARRATIVE_BEATS } from "../data/virgoNarrative";
 import { openingPresentation, openingStarAppearance, openingTransition, protectOpeningHandoff } from "../data/virgoOpening";
-import { VirgoFractureAudio } from "../data/virgoFractureMedia";
-import { spaceRiftFrame } from "../data/virgoSpaceRift";
-import { VirgoSpaceRiftRenderer } from "./virgoSpaceRiftRenderer";
 import { VirgoOpening } from "./VirgoOpening";
 import { createRockGeometry } from "../data/virgoCelestial";
 import { PlanetTextureLibrary, VirgoPlanet } from "./VirgoPlanet";
@@ -569,25 +566,13 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
   const projectCenter = useMemo(() => new THREE.Vector3(...VIRGO_STARS[1].position), []);
   const glow = useGlowTexture();
   const panels = useMemo(() => Array.from(overlay.querySelectorAll<HTMLElement>(".virgo-overlay-panel")), [overlay]);
-  const narration = useMemo(() => Array.from(overlay.querySelectorAll<HTMLElement>(".virgo-narrative-line")), [overlay]);
-  const fracture = useMemo(() => overlay.parentElement!.querySelector<HTMLElement>(".virgo-intro-fracture")!, [overlay]);
-  const fractureAudio = useRef<VirgoFractureAudio | null>(null);
-  const fractureRift = useRef<VirgoSpaceRiftRenderer | null>(null);
-  useEffect(() => {
-    const player = new VirgoFractureAudio(
-      fracture.querySelector<HTMLAudioElement>(".virgo-fracture-sound")!,
-    );
-    const renderer = new VirgoSpaceRiftRenderer(fracture.querySelector<HTMLCanvasElement>(".virgo-space-rift")!);
-    fractureAudio.current = player;
-    fractureRift.current = renderer;
-    return () => { player.dispose(); renderer.dispose(); fractureAudio.current = null; fractureRift.current = null; };
-  }, [fracture]);
+  const narration = useMemo(() => NARRATIVE_BEATS.map((_, i) => overlay.querySelector<HTMLElement>('[data-narrative-index="' + i + '"]')), [overlay]);
   const narrativeRendered = useRef({ shown: -2, amount: -1 });
   const skillSignal = useRef({ selected: -1 as number | null, at: -Infinity });
   const narrativeBounds = useRef({ shown: -2, width: 0, height: 0, lineHeight: 0, inkHeight: 0, lineWidth: 0, x: 0, y: 0, text: "" });
   useEffect(() => {
     const observer = new ResizeObserver(() => { narrativeBounds.current.shown = -2; invalidate(); });
-    narration.forEach(line => observer.observe(line)); return () => observer.disconnect();
+    narration.forEach(line => { if (line) observer.observe(line); }); return () => observer.disconnect();
   }, [narration, invalidate]);
   const mobileReadingPlacement = useRef({ top: -1, controls: -1 });
   const narrativeStar = useMemo(() => new THREE.Vector3(), []);
@@ -662,10 +647,11 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     const solar = solarPassageSample(passageSeconds);
     if (!reducedMotion && (!paused || showcaseApproach) && !entering && (selectedProject === null || showcaseApproach)) ambientTime.current += dt * (showcaseApproach ? solar.orbitSpeed : 1);
     flight.time = reducedMotion ? 0 : ambientTime.current;
-    const target = scroll.current.target;
+    let target = Math.max(1.92, scroll.current.target);
     const introArrival = overlay.parentElement!.dataset.introArrival;
     if (introArrival !== undefined) {
       scroll.current.value = Number(introArrival);
+      target = scroll.current.target = Math.max(1.92, flightPositionForScroll(scroller.scrollTop, scroll.current.offsets));
       delete overlay.parentElement!.dataset.introArrival;
     }
     overlay.parentElement!.dataset.flightPaused = String(paused || readingFocus);
@@ -682,7 +668,7 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     // A yaw alone would pan the star out of the frame rather than orbit it.
     const orbit = narrativeOrbitPose(position, mobile ? SPACE_LAYOUT.mobileCamera.distance : SPACE_LAYOUT.desktopCamera.distance, -VIRGO_STARS[1].position[2], reducedMotion);
     if (orbit) {
-      point.set(orbit.x, 0, orbit.z);
+      point.set(orbit.x, orbit.y, orbit.z);
       orbitHeading.set(-Math.sin(orbit.angle) * 200, 0, -Math.cos(orbit.angle) * 200);
     }
     const approach = showcaseApproach ? solar.center : 0;
@@ -717,14 +703,20 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     const perspective = camera as THREE.PerspectiveCamera;
     const fov = flightFieldOfView(position, mobile, reducedMotion, flight.exit);
     const passage = transitSample(position);
-    // Hold each reading composition still. Switch sides while the passage is
-    // centered, rather than sliding a star through the outgoing sentence.
+    // Interpolate the outgoing sentence's framing into the incoming one.
+    // Match both endpoint overrides so the view cannot jump at a boundary.
     const stationChapters = [2, 3, 5, 6];
     const readingChapter = position < 1.82 ? 0 : position < 2.94 ? 2 : position < 4.80 ? 3 : position < 5.82 ? 5 : 6;
     const leg = passage.index < 0 ? null : TRANSIT_LEGS[passage.index];
-    const owner = leg ? (passage.progress < .5 ? leg.origin : leg.destination) : null;
-    const compositionChapter = owner === null ? readingChapter : owner < 0 ? 0 : stationChapters[owner];
-    frameOffset.copy(framing[compositionChapter]);
+    const compositionChapter = leg ? (leg.destination < 0 ? 0 : stationChapters[leg.destination]) : readingChapter;
+    if (leg) {
+      const fromChapter = leg.origin < 0 ? 0 : stationChapters[leg.origin];
+      frameOffset.copy(framing[fromChapter]);
+      const destinationX = !mobile && (leg.destination === 1 || leg.destination === 2) ? -.38 : leg.destination === 3 ? 0 : framing[compositionChapter].x;
+      if (!mobile && (leg.origin === 1 || leg.origin === 2)) frameOffset.x = .38;
+      frameOffset.x += (destinationX - frameOffset.x) * smooth(0, 1, passage.progress);
+      frameOffset.y += (framing[compositionChapter].y - frameOffset.y) * smooth(0, 1, passage.progress);
+    } else frameOffset.copy(framing[compositionChapter]);
     if (!mobile && position >= 2.94 && position <= 4.25) frameOffset.x = -.38 + .76 * smooth(3.52, 3.65, position);
     if (!mobile && position >= 4.80 && position <= 5.30) frameOffset.x = -.38 + .76 * smooth(5.015, 5.065, position);
     if (size.height < 600 && size.width > size.height && compositionChapter >= 2) frameOffset.set(-.52, 0);
@@ -732,11 +724,12 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     // camera path, lens or the composition during a transit.
     if (mobile && size.height < 640 && size.height > size.width && compositionChapter >= 2) frameOffset.y = .72;
     if (!mobile) frameOffset.multiplyScalar(1 - smooth(5.94, 5.98, position));
-    if (position >= 5.30) frameOffset.set(0, 0);
+    if (position >= 5.82) frameOffset.set(0, 0);
     frameOffset.multiplyScalar(1 - approach);
     frameOffset.multiplyScalar((1 - flight.exit) * (1 - passage.envelope));
     const offsetX = -frameOffset.x * size.width / 2;
     const offsetY = frameOffset.y * size.height / 2;
+    overlay.parentElement!.dataset.cameraFraming = [frameOffset.x, frameOffset.y].map(value => value.toFixed(5)).join(',');
     if (perspective.fov !== fov || perspective.far !== SPACE_LAYOUT.far || perspective.view?.fullWidth !== size.width || perspective.view?.fullHeight !== size.height || perspective.view?.offsetX !== offsetX || perspective.view?.offsetY !== offsetY) {
       perspective.fov = fov;
       perspective.far = SPACE_LAYOUT.far;
@@ -745,7 +738,6 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     camera.updateMatrixWorld();
     if (lastChapter.current !== flight.chapter) { lastChapter.current = flight.chapter; onChapter(flight.chapter); }
     const previousPresentation = presentation.current;
-    const fractureActive = openingTransition(position, reducedMotion).active || spaceRiftFrame(position, reducedMotion).active;
     if (showcaseApproach || previousPresentation.position !== position || previousPresentation.exit !== flight.exit || previousPresentation.paused !== paused || previousPresentation.entering !== entering || previousPresentation.reducedMotion !== reducedMotion) {
       const transition = openingTransition(position, reducedMotion);
       panels.forEach((panel, i) => {
@@ -768,18 +760,14 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
       overlay.parentElement?.style.setProperty("--intro-cover", String(transition.cover));
       overlay.parentElement?.style.setProperty("--intro-caption-lift", String(transition.lift));
       overlay.parentElement?.style.setProperty("--intro-flare", String(transition.flare));
-      overlay.parentElement!.dataset.introFracture = fractureActive ? "active" : "idle";
       Object.assign(previousPresentation, { position, exit: flight.exit, paused, entering, reducedMotion });
     }
     const narrative = narrativeSample(entering ? -1 : position, reducedMotion);
-    const story = { shown: narrative.index };
+    const story = { shown: narrative.index >= 3 && narrative.index < 8 ? narrative.index : -1 };
     const amount = narrative.reveal;
-    const visibleFracture = narrative.index >= 0 && narrative.index < 3 && amount > .001
-      && NARRATIVE_BEATS[narrative.index].effect === "rift";
-    fractureAudio.current?.update(position, paused || entering || document.hidden || !visibleFracture,
-      reducedMotion, fracture.dataset.sound === "on");
     if (narrativeRendered.current.shown !== story.shown || narrativeRendered.current.amount !== amount) {
       narration.forEach((line, i) => {
+        if (!line) return;
         const visible = i === story.shown && amount > .001;
         line.classList.toggle("is-visible", visible);
         line.style.opacity = visible ? "1" : "0";
@@ -797,9 +785,9 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     const side = story.shown < 0 ? "none" : NARRATIVE_BEATS[story.shown].side;
     const bounds = narrativeBounds.current;
     let measureRift = false;
-    const text = story.shown < 0 ? "" : narration[story.shown].textContent ?? "";
+    const text = story.shown < 0 ? "" : narration[story.shown]!.textContent ?? "";
     if (bounds.shown !== story.shown || bounds.width !== size.width || bounds.height !== size.height || bounds.text !== text) {
-      bounds.lineHeight = story.shown < 0 ? 0 : narration[story.shown].getBoundingClientRect().height;
+      bounds.lineHeight = story.shown < 0 ? 0 : narration[story.shown]!.getBoundingClientRect().height;
       measureRift = true;
       Object.assign(bounds, { shown: story.shown, width: size.width, height: size.height, text });
     }
@@ -829,20 +817,18 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
       mobileReadingPlacement.current = { top: -1, controls: -1 };
     }
     if (story.shown >= 3 && (!mobile || size.width > size.height) && measureRift) {
-      const rect = narration[story.shown].getBoundingClientRect();
+      const rect = narration[story.shown]!.getBoundingClientRect();
       overlay.parentElement!.style.setProperty("--station-controls-top", `${rect.bottom + 24}px`);
     }
     if (measureRift && story.shown >= 0) {
       const range = document.createRange();
-      range.selectNodeContents(narration[story.shown].querySelector("span")!);
+      range.selectNodeContents(narration[story.shown]!.querySelector("span")!);
       const rect = range.getBoundingClientRect();
-      const origin = fracture.getBoundingClientRect();
+      const origin = overlay.getBoundingClientRect();
       Object.assign(bounds, { x: rect.x - origin.x + rect.width / 2, y: rect.y - origin.y + rect.height / 2, lineWidth: rect.width, inkHeight: rect.height });
     }
     const riftReading = story.shown >= 0 && amount > .001 && !reducedMotion ? "active" : "idle";
     if (overlay.parentElement!.dataset.riftReading !== riftReading) overlay.parentElement!.dataset.riftReading = riftReading;
-    fractureRift.current?.update(position, reducedMotion, paused || entering || document.hidden,
-      story.shown >= 0 && story.shown < 3 ? { reveal: amount, width: bounds.lineWidth, height: bounds.inkHeight, x: bounds.x, y: bounds.y, seed: story.shown, effect: NARRATIVE_BEATS[story.shown].effect } : undefined);
     const accent = overlay.querySelector<SVGSVGElement>('.virgo-reading-accent');
     if (skillSignal.current.selected !== selectedSkill) skillSignal.current = { selected: selectedSkill, at: performance.now() };
     if (accent) {
@@ -882,7 +868,7 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
       const gateY = projection.y;
       // Fit the label below the lensed lower disk at its actual projected size.
       const belowView = smooth(.18, .55, -(blackHoleOrbit.current?.elevation ?? .13));
-      const diskZoom = mobile ? 1 : .78 / .62;
+      const diskZoom = (mobile ? BLACK_HOLE_SCALE.mobile : BLACK_HOLE_SCALE.desktop) / .62;
       projection.set(0, (23.6 + belowView * 5.8) * diskZoom * (mobile ? .78 : 1), 0).applyQuaternion(camera.quaternion).add(gate).project(camera);
       const labelOffset = Math.min(Math.abs(projection.y - gateY) * size.height / 2 + 30,
         size.height - (-gateY * .5 + .5) * size.height - 50);

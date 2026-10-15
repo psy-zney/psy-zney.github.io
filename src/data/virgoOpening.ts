@@ -65,7 +65,7 @@ export function createOpeningConnections(points: readonly (readonly number[])[],
   return { arrivals, lengths, duration };
 }
 
-export const OPENING_CONNECTIONS = createOpeningConnections(OPENING_STARS.map(star => star.position), OPENING_EDGES, 4);
+export const OPENING_CONNECTIONS = createOpeningConnections(OPENING_STARS.map(star => star.position), OPENING_EDGES, 1);
 const openingWaveTime = (reveal: number) => clamp((reveal - .04) / .96) * OPENING_CONNECTIONS.duration;
 
 export function openingStarAppearance(index: number, reveal: number) {

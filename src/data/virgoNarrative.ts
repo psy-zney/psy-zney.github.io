@@ -44,7 +44,7 @@ export function mobileNarrativeTop(height: number, starBottom: number, lineHeigh
 export const NARRATIVE_STOPS = [0, ...NARRATIVE_BEATS.map(beat => Math.min(6, (beat.from + beat.to) / 2)), 6];
 /** Public chapter links land on a complete sentence and its matching view. */
 export function chapterReadingPosition(chapter: number) {
-  const entries = [0, 1, ...[3, 4, 5, 6, 8].map(index => (NARRATIVE_BEATS[index].from + NARRATIVE_BEATS[index].to) / 2)];
+  const entries = [0, 1.92, ...[3, 4, 5, 6, 8].map(index => (NARRATIVE_BEATS[index].from + NARRATIVE_BEATS[index].to) / 2)];
   return entries[chapter] ?? 0;
 }
 export function nextNarrativeStop(position: number, direction: number) {

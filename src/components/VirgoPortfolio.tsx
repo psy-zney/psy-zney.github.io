@@ -15,9 +15,9 @@ import { ResumePage } from "./ResumePage";
 import { VIRGO_STARS } from "../data/virgoStations";
 import { FLIGHT_MOTION, flightPositionForScroll, navigationDuration, scrollOffsetForPosition, smooth } from "../data/virgoFlight";
 import { FLIGHT_TRACK_VH } from "../data/virgoSpace";
-import { NARRATIVE_BEATS, advanceStoryGesture, chapterReadingPosition } from "../data/virgoNarrative";
+import { storyWheelTarget } from "../data/virgoPacing";
+import { NARRATIVE_BEATS, chapterReadingPosition } from "../data/virgoNarrative";
 import { OPENING_EDGES, OPENING_STARS } from "../data/virgoOpening";
-import { VirgoIntroFracture } from "./VirgoIntroFracture";
 import { VirgoIntroFlight } from './VirgoIntroFlight';
 import "./VirgoPortfolio.css";
 import { motionStyle } from '../data/motionTokens';
@@ -67,7 +67,9 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
   const [showcasePassage, setShowcasePassage] = useState<{ direction: number; index: number; source: string; phase: 'approaching' | 'revealing' } | null>(null);
   const [ready, setReady] = useState(false);
   const [hash, setHash] = useState(() => window.location.hash);
-  const [openingVisible, setOpeningVisible] = useState(() => !window.location.hash || window.location.hash === '#/cosmos');
+  const [openingVisible, setOpeningVisible] = useState(() => !window.location.hash || window.location.hash === '#/' || window.location.hash === '#/cosmos');
+  const [openingDirection, setOpeningDirection] = useState<1 | -1>(1);
+  const [openingAssembled, setOpeningAssembled] = useState(false);
   const [active, setActive] = useState(() => chapterFromHash(window.location.hash));
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
   const projectHoverTimer = useRef(0), projectHoverCandidate = useRef<number | null>(null);
@@ -123,9 +125,49 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
     navigateHash('#/home', true);
     scrollerRef.current?.focus({ preventScroll: true });
   }, []);
+  const returnFromIntro = useCallback(() => {
+    const page = pageRef.current;
+    navigationTarget.current = null;
+    if (page) page.dataset.introArrival = '0';
+    if (lenisRef.current) lenisRef.current.scrollTo(0, { immediate: true });
+    else scrollerRef.current?.scrollTo({ top: 0, behavior: 'instant' });
+    setOpeningDirection(1);
+    setOpeningAssembled(true);
+    setOpeningVisible(true);
+    navigatedHash.current = '#/cosmos';
+    navigateHash('#/cosmos', true);
+  }, []);
   useEffect(() => {
-    setOpeningVisible(!hash || hash === '#/cosmos');
+    if ((!hash || hash === '#/' || hash === '#/cosmos') && navigatedHash.current !== hash) setOpeningAssembled(false);
+    setOpeningDirection(1);
+    setOpeningVisible(!hash || hash === '#/' || hash === '#/cosmos');
   }, [hash]);
+
+  // At Home, an intentional reverse gesture re-enters the same scroll-driven tunnel.
+  useEffect(() => {
+    const page = pageRef.current; if (!page) return;
+    let reversePixels = 0, lastInput = 0, touchY = 0;
+    const reverse = (event: Event, pixels: number) => {
+      if (interactionPaused.current || pixels >= 0) { reversePixels = 0; return; }
+      if (event.target instanceof Element && event.target.closest('a,button,input,textarea,select,[contenteditable="true"],[data-lenis-prevent]')) return;
+      const position = Number(page.style.getPropertyValue('--flight-progress') || 0) * 6;
+      if (position > 1.925) return;
+      event.preventDefault(); event.stopImmediatePropagation();
+      const now = performance.now();
+      reversePixels = now - lastInput > 350 ? -pixels : reversePixels - pixels; lastInput = now;
+      if (reversePixels < 80) return;
+      reversePixels = 0; navigationTarget.current = null;
+      if (reducedMotion) returnFromIntro();
+      else { interactionPaused.current = true; setOpeningDirection(-1); setOpeningVisible(true); }
+    };
+    const wheel = (event: WheelEvent) => { if (!event.ctrlKey) reverse(event, event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? page.clientHeight : 1)); };
+    const key = (event: KeyboardEvent) => { if (['ArrowUp', 'PageUp'].includes(event.key)) reverse(event, -80); };
+    const touchStart = (event: TouchEvent) => { touchY = event.touches[0]?.clientY ?? 0; };
+    const touchMove = (event: TouchEvent) => { const next = event.touches[0]?.clientY ?? touchY; reverse(event, (touchY - next) * 2); touchY = next; };
+    page.addEventListener('wheel', wheel, { capture: true, passive: false }); page.addEventListener('keydown', key, true);
+    page.addEventListener('touchstart', touchStart, { passive: true }); page.addEventListener('touchmove', touchMove, { capture: true, passive: false });
+    return () => { page.removeEventListener('wheel', wheel, true); page.removeEventListener('keydown', key, true); page.removeEventListener('touchstart', touchStart); page.removeEventListener('touchmove', touchMove, true); };
+  }, [reducedMotion, returnFromIntro]);
   const openFlowShowcase = useCallback((direction: number, preferredIndex?: number) => {
     if (passageBusy.current) return;
     const index = preferredIndex ?? (direction > 0 ? 0 : showcaseProducts.length - 1);
@@ -265,7 +307,6 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
     const scroller = scrollerRef.current;
     const content = contentRef.current;
     if (!page || !scroller || !content) return;
-    let gesture = { direction: 0, at: -Infinity, destination: -1 };
     // Lenis advances on GSAP's ticker. The scene samples actual scrollTop inside
     // its render frame, avoiding a second ScrollTrigger scrub animation.
     if (!reducedMotion) {
@@ -282,25 +323,17 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
         const progress = page.style.getPropertyValue("--flight-progress");
         const position = progress ? Number(progress) * 6 : 0;
         const offsets = Array.from(content.children, child => (child as HTMLElement).offsetTop);
-        const inputDestination = scrollOffsetForPosition(gesture.destination, offsets);
-        const externallyNavigated = navigationTarget.current !== null || gesture.destination >= 0 && Math.abs(lenis.targetScroll - inputDestination) > 2;
-        if (externallyNavigated) gesture = { direction: 0, at: -Infinity, destination: -1 };
-        const step = advanceStoryGesture(gesture, position, direction, performance.now());
-        gesture = step.gesture;
-        if (!step.accepted) return false;
-        if (position <= 0.08 && direction < 0) {
-          navigatedHash.current = '#/cosmos';
-          navigateHash('#/cosmos', true);
-          return false;
-        }
-        if (position >= 3.65 && position <= 4.25 && direction > 0 || position >= 4.80 && position <= 5.04 && direction < 0) {
+        if (position >= 4.24 && position <= 4.80 && direction > 0 || position >= 4.25 && position <= 4.81 && direction < 0) {
           openFlowShowcase(direction);
           return false;
         }
+        const rendered = scrollOffsetForPosition(position, offsets);
+        const minimum = scrollOffsetForPosition(1.92, offsets);
+        const nextTarget = storyWheelTarget(data.deltaY * FLIGHT_MOTION.wheelMultiplier, lenis.targetScroll, rendered, scroller.clientHeight, minimum, lenis.limit);
         navigationTarget.current = null;
         // The invisible scroll track changes immediately; camera, words and
         // effects all follow the same paced, reversible render coordinate.
-        lenis.scrollTo(scrollOffsetForPosition(gesture.destination, offsets), { immediate: true });
+        lenis.scrollTo(nextTarget, { immediate: true });
         return false;
       } });
       lenisRef.current = lenis;
@@ -324,15 +357,9 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
       event.preventDefault();
       const offsets = Array.from(content.children, child => (child as HTMLElement).offsetTop);
       const position = Number(page.style.getPropertyValue("--flight-progress") || 0) * 6;
-      const step = advanceStoryGesture(gesture, position, Math.sign(event.deltaY * unit), performance.now());
-      gesture = step.gesture;
-      if (step.accepted) {
-        if (position <= 0.08 && Math.sign(event.deltaY * unit) < 0) {
-          navigatedHash.current = '#/cosmos';
-          navigateHash('#/cosmos', true);
-        } else if (position >= 3.65 && position <= 4.25 && event.deltaY > 0 || position >= 4.80 && position <= 5.04 && event.deltaY < 0) openFlowShowcase(Math.sign(event.deltaY));
-        else scroller.scrollTo({ top: scrollOffsetForPosition(gesture.destination, offsets), behavior: "instant" });
-      }
+      const direction = Math.sign(event.deltaY);
+      if (position >= 4.24 && position <= 4.80 && direction > 0 || position >= 4.25 && position <= 4.81 && direction < 0) openFlowShowcase(direction);
+      else scroller.scrollTo({ top: storyWheelTarget(event.deltaY * unit * FLIGHT_MOTION.wheelMultiplier, scroller.scrollTop, scrollOffsetForPosition(position, offsets), scroller.clientHeight, scrollOffsetForPosition(1.92, offsets), scroller.scrollHeight - scroller.clientHeight), behavior: "instant" });
     };
     page.addEventListener("wheel", wheel, { passive: false });
     setReady(true);
@@ -352,6 +379,12 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
       if (['PageDown', 'PageUp', 'ArrowDown', 'ArrowUp', ' '].includes(event.key) && !interactionPaused.current) touch();
     };
     const scroll = () => {
+      const minimum = scrollOffsetForPosition(1.92, Array.from(content.children, child => (child as HTMLElement).offsetTop));
+      if (!pageRef.current?.querySelector('.virgo-intro-flight') && scroller.scrollTop < minimum) {
+        if (lenisRef.current) lenisRef.current.scrollTo(minimum, { immediate: true });
+        else scroller.scrollTop = minimum;
+        return;
+      }
       const position = flightPositionForScroll(scroller.scrollTop, Array.from(content.children, child => (child as HTMLElement).offsetTop));
       if (performance.now() < nativeGestureUntil.current && !interactionPaused.current && navigationTarget.current === null) {
         if (previous <= 4.40 && position > 4.40) openFlowShowcase(1);
@@ -468,15 +501,14 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
       <small>{item.stack.slice(0, 3).join(" · ")}</small>
     </div>)}</div>
     <div className="virgo-vignette virgo-vignette-right" aria-hidden="true" />
-    <VirgoIntroFracture soundEnabled />
-    {openingVisible && <VirgoIntroFlight lang={lang} pageRef={pageRef} reducedMotion={reducedMotion} onArrive={arriveFromIntro} onFinish={finishIntro} />}
+    {openingVisible && <VirgoIntroFlight key={openingDirection} initialDirection={openingDirection} initialAssemblyComplete={openingAssembled} lang={lang} pageRef={pageRef} reducedMotion={reducedMotion} onArrive={arriveFromIntro} onFinish={finishIntro} onReturn={returnFromIntro} />}
 
     <main ref={overlayRef} className="virgo-overlay">
       <svg className="virgo-reading-accent" aria-hidden="true"><path fill="none" stroke="#b9cde6" strokeWidth="1"/></svg>
       <div className="virgo-narrative" aria-label={t("Dẫn truyện", "Story")}>
-        {NARRATIVE_BEATS.map((beat, index) => <p key={index} className={`virgo-narrative-line virgo-narrative-${beat.side} virgo-placement-${beat.placement}${index === 0 ? " virgo-identity" : ""}${index === 8 ? " virgo-contact-narrative" : ""}`} aria-hidden="true">
+        {NARRATIVE_BEATS.map((beat, index) => index >= 3 && index < 8 ? <p data-narrative-index={index} key={index} className={`virgo-narrative-line virgo-narrative-${beat.side} virgo-placement-${beat.placement}${index === 0 ? " virgo-identity" : ""}${index === 8 ? " virgo-contact-narrative" : ""}`} aria-hidden="true">
           <span>{beat[lang]}</span>
-        </p>)}
+        </p> : null)}
       </div>
       <section className="virgo-overlay-panel virgo-cosmos" aria-label={t("Chòm sao Xử Nữ xuất hiện", "Virgo constellation appearing")} aria-hidden={active !== 0}>
       </section>
@@ -597,7 +629,6 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
       <a className="virgo-map-home" href="#/cosmos" onClick={() => navigate(0)}>VIRGO</a>
     </nav>
 
-    <button className={`virgo-opening-cue${active === 0 ? " is-active" : ""}`} aria-hidden={active !== 0} aria-label={t("Cuộn để bắt đầu hành trình", "Begin the journey")} tabIndex={active === 0 ? 0 : -1} onClick={() => { if (window.location.hash === '#/home') navigate(1); else navigateHash('#/home'); }}><ArrowDown size={19} /></button>
     <BlackHoleOrbitControls controlRef={blackHoleControlRef} orbit={blackHoleOrbit}
       enabled={active === 6 && !entering && !showDialog && !isShowcase}
       resetOnDisable={!entering}
@@ -605,8 +636,7 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
     <button ref={portalRef} className={`virgo-star-portal${active === 6 ? " is-active" : ""}`} type="button"
       aria-label={t("Mở không gian làm việc qua sao Zavijava", "Open workspace through Zavijava")}
       aria-hidden={active !== 6} tabIndex={active === 6 ? 0 : -1} disabled={entering} onClick={enterWorkspace}>
-      <span className="virgo-portal-label">{t("Vào workspace", "Enter workspace")} <ArrowUpRight size={13} /></span>
-      <span className="virgo-portal-hint" aria-hidden="true">{t("Kéo để xoay · Nhấp đúp để đặt lại", "Drag to orbit · Double-click to reset")}</span>
+      <span className="virgo-portal-label"><ArrowUpRight size={22} /></span>
     </button>
     <div className="virgo-flight-progress" aria-hidden="true"><span /></div>
     <div className="virgo-index" aria-hidden="true"><span>{String(active + 1).padStart(2, "0")}</span> / 07</div>

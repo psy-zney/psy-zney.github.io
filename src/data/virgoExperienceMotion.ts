@@ -1,4 +1,5 @@
 import { clamp, smooth } from './virgoFlight';
+import { VIRGO_STARS } from './virgoStations';
 
 export type ShowcaseMotionMode = 'target' | 'inertia';
 
@@ -49,27 +50,27 @@ export function spatialGaze(position: number, reduced = false) {
  * Contact keeps its front view so the black-hole billboard remains undistorted.
  */
 export function narrativeOrbitPose(position: number, radius: number, spacing: number, reduced = false) {
-  if (reduced || position < 1.92 || position > 5.82) return null;
+  if (position < 1.92 || position > 5.82) return null;
   const windows = [[1.92, 2.32], [2.94, 4.25], [4.80, 5.30], [5.82, 5.82]];
   for (let station = 0; station < 3; station++) {
     const [, to] = windows[station];
     if (position <= to) {
-      const angle = Math.PI * smooth(READING_ORBITS[station][2], READING_ORBITS[station][3], position);
-      return { x: Math.sin(angle) * radius, z: -station * spacing + Math.cos(angle) * radius, angle };
+      const angle = reduced ? 0 : Math.PI * smooth(READING_ORBITS[station][2], READING_ORBITS[station][3], position);
+      return { x: VIRGO_STARS[station].position[0] + Math.sin(angle) * radius, y: 0, z: -station * spacing + Math.cos(angle) * radius, angle };
     }
     const next = windows[station + 1][0];
     if (position < next) {
-      // Finish the reading orbit, turn in place, then travel straight ahead.
-      // Translating while still looking back made the departure feel reversed.
+      // Keep turning in the reading orbit's direction while travelling.
+      // A full continuous half-turn replaces the stationary heading reset.
       const progress = (position - to) / (next - to);
-      const turn = smooth(0, .18, progress);
-      const t = smooth(.18, 1, progress);
-      return { x: 0,
-        z: (-station * spacing - radius) * (1 - t) + (-(station + 1) * spacing + radius) * t,
-        angle: Math.PI * (1 - turn) };
+      const t = smooth(0, 1, progress);
+      return { x: VIRGO_STARS[station].position[0] * (1 - t) + VIRGO_STARS[station + 1].position[0] * t + (reduced ? 0 : Math.sin(Math.PI * t) * 110),
+        y: reduced ? 0 : Math.sin(Math.PI * t) * 20,
+        z: (-station * spacing + (reduced ? radius : -radius)) * (1 - t) + (-(station + 1) * spacing + radius) * t,
+        angle: reduced ? 0 : Math.PI * (1 + t) };
     }
   }
-  return { x: 0, z: -3 * spacing + radius, angle: 0 };
+  return { x: 0, y: 0, z: -3 * spacing + radius, angle: 0 };
 }
 
 /** Neighboring screens share a cylinder: scrolling changes its angle continuously. */

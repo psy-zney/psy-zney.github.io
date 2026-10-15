@@ -1,6 +1,7 @@
 /** Deliberate scene scales: interstellar gaps are larger than local systems. */
 import { projects, capabilities } from './portfolio';
 import { PROJECT_RADII, SKILL_RADII } from './celestialRegistry';
+export const BLACK_HOLE_SCALE = { desktop: .87, mobile: .67 } as const;
 const orbitLength = Math.hypot(.55, .34);
 export const ORBIT_PLANE = { vertical: .55 / orbitLength, depth: .34 / orbitLength } as const;
 

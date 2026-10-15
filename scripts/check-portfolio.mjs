@@ -168,8 +168,8 @@ try {
   assert.equal(OPENING_EDGES.length, 16);
   assert(OPENING_EDGES.flat().every(i => i >= 0 && i < OPENING_STARS.length));
   assert(OPENING_CONNECTIONS.arrivals.every(Number.isFinite), "The opening wave must reach every star");
-  assert.equal(openingStarAppearance(4, .04), 1);
-  assert(OPENING_STARS.every((_, i) => i === 4 || openingStarAppearance(i, .04) === 0), "Only the source star can light up before its wave travels");
+  assert.equal(openingStarAppearance(1, .04), 1);
+  assert(OPENING_STARS.every((_, i) => i === 1 || openingStarAppearance(i, .04) === 0), "Only the central yellow star can light up before its wave travels");
   const revealAtWaveTime = time => .04 + .96 * time / OPENING_CONNECTIONS.duration;
   const branchingStar = 1;
   const branchReveal = revealAtWaveTime(OPENING_CONNECTIONS.arrivals[branchingStar] + .2);
@@ -183,7 +183,7 @@ try {
       activeBranches++;
     }
   });
-  assert.equal(activeBranches, 4, "Porrima must fan out into four simultaneous branches, including its cross-connections");
+  assert.equal(activeBranches, 5, "The central yellow star must fan out into all five connected branches");
   const loopEdge = 7;
   const loopArrival = Math.max(...OPENING_EDGES[loopEdge].map(i => OPENING_CONNECTIONS.arrivals[i]));
   const meeting = openingEdgeProgress(loopEdge, revealAtWaveTime(loopArrival + .1));
@@ -231,7 +231,8 @@ try {
       if (focused !== null) assert(cameraPoint.z > VIRGO_STARS[focused].position[2], "A reading system must stay ahead of the camera while its panel is visible");
       previousZ = cameraPoint.z;
     }
-    VIRGO_STARS.forEach(star => { assert.equal(star.position[0],0);assert.equal(star.position[1],0);assert(star.radius>=10); });
+    assert.deepEqual(VIRGO_STARS.map(star => star.position[0]), [0, -90, 85, 0], 'Systems sit on alternating sides of the fly-by');
+    VIRGO_STARS.forEach(star => { assert.equal(star.position[1],0);assert(star.radius>=10); });
     const { targets, framing, direction } = createCameraComposition(mobile);
     for (let step = 0; step <= 1200; step++) {
       const p = step / 200;
@@ -344,7 +345,7 @@ try {
     }
   }
   assert(advanceFlightPosition(0, 3, 30) < 1, "Resuming after a long idle frame must not jump to the target");
-  const { STORY_PACING, narrativePacing, storyTimeAt, storyPositionAt, advancePacedFlightPosition, storyWheelDelta } = await server.ssrLoadModule("/src/data/virgoPacing.ts");
+  const { STORY_PACING, narrativePacing, storyTimeAt, storyPositionAt, advancePacedFlightPosition, storyWheelDelta, storyWheelTarget } = await server.ssrLoadModule("/src/data/virgoPacing.ts");
   for (let i = 0; i <= 600; i++) {
     const p = i / 100;
     assert(Math.abs(storyPositionAt(storyTimeAt(p)) - p) < 1e-9, "Pacing must preserve exact scroll positions in both directions");
@@ -356,6 +357,12 @@ try {
   for (const [index, beat] of NARRATIVE_BEATS.entries()) {
     const {open, close} = narrativeEdges(index);
     const pace = narrativePacing(index);
+    for (const edge of [beat.from, open, close, beat.to].filter(p => p > 0 && p < 6)) {
+      const epsilon = .00001;
+      const incoming = epsilon / (storyTimeAt(edge) - storyTimeAt(edge - epsilon));
+      const outgoing = epsilon / (storyTimeAt(edge + epsilon) - storyTimeAt(edge));
+      assert(Math.abs(outgoing - incoming) < .005, 'Reading and travel rates meet continuously rather than lurching at their boundary');
+    }
     assert(storyTimeAt(open) - storyTimeAt(beat.from) >= pace.openSeconds - 1e-9, "A fast wheel burst must leave time to see the aperture open");
     if (beat.to <= 6) {
       assert(storyTimeAt(close) - storyTimeAt(open) >= pace.readSeconds - 1e-9, "A fast wheel burst must leave a readable sentence plateau");
@@ -374,13 +381,16 @@ try {
     assert(reversed < position, "Reversing input must respond on the first frame, without a timed lock");
   }
   for (const height of [568, 720, 932]) {
-    assert.equal(storyWheelDelta(125, 0, 0, height), 125, "Ordinary wheel input must preserve its 1.25 speed");
+    assert.equal(storyWheelDelta(60, 0, 0, height), 60, "Small wheel input preserves its actual magnitude");
     assert.equal(storyWheelDelta(1e6, 0, 0, height), height * STORY_PACING.wheelStepVh);
     const fullLead = height * STORY_PACING.wheelLeadVh;
     assert.equal(storyWheelDelta(100, fullLead, 0, height), 0, "A burst must not build an unbounded scroll queue");
     assert(storyWheelDelta(-100, fullLead, 0, height) < 0, "A full forward queue must never block reversing");
     assert(storyWheelDelta(100, fullLead - 20, 0, height) <= 20 + 1e-9);
   }
+  assert.equal(storyWheelTarget(-100, 1000, 1000, 715, 1000, 5000), 1000, 'Home is the reverse scroll boundary');
+  assert(storyWheelTarget(40, 1000, 1000, 715, 1000, 5000) > storyWheelTarget(10, 1000, 1000, 715, 1000, 5000), 'Wheel distance follows gesture magnitude');
+  assert(storyWheelTarget(-10, 1100, 1050, 715, 1000, 5000) < 1050, 'Reverse discards the pending forward queue');
   const epsilon = .0001;
   assert(flightEase(epsilon) / epsilon < 1e-6 && (1 - flightEase(1 - epsilon)) / epsilon < 1e-6, "Flight starts and ends with a gentle velocity");
   assert(navigationDuration(1) >= 2.5 && navigationDuration(6) > navigationDuration(1));
@@ -527,7 +537,7 @@ try {
     assert.deepEqual(orbitPosition(0, count, position, skills, 1, 0), before, "A frozen ambient phase must not drift");
   }
   for (const lang of ["vie", "eng"]) {
-    for (const hash of ["", "#/cosmos", "#/home", "#/story", "#/projects", "#/projects-more", "#/skills", "#/contact", "#/project/beatsync", "#/projects/all", "#/cv/web"]) {
+    for (const hash of ["", "#/", "#/cosmos", "#/home", "#/story", "#/projects", "#/projects-more", "#/skills", "#/contact", "#/project/beatsync", "#/projects/all", "#/cv/web"]) {
       window.location.hash = hash;
       const html = renderToStaticMarkup(React.createElement(VirgoPortfolio, {
         lang, onToggleLang() {}, onEnterWorkspace() {},
@@ -536,10 +546,11 @@ try {
       assert.equal((html.match(/class="virgo-overlay-panel/g) || []).length, 7);
       assert.equal((html.match(/<main[\s\S]*?<\/main>/)?.[0].match(/<h1[ >]/g) || []).length, 1, "The main portfolio has one primary heading; modal documents have their own heading");
       assert(html.includes('class="virgo-overlay-panel virgo-cosmos"'));
+      assert.equal(html.includes('class="virgo-intro-flight"'), ['', '#/', '#/cosmos'].includes(hash), 'All root aliases mount only the new scroll-driven opening');
       assert(!html.includes('class="virgo-header"') && !html.includes('virgo-scroll-rail'), "The portfolio top bar and vertical dot rail must be removed; reader headers are allowed");
       assert(html.includes('virgo-constellation-map') && html.includes('aria-label="Virgo"'), "Navigation must use the original Virgo map");
       assert.equal((html.match(/class="virgo-map-star"/g) || []).length,4);
-      assert(html.includes('<canvas class="virgo-space-rift"'), "The fracture must be rendered directly on the web");
+      assert(!html.includes('class="virgo-space-rift"') && !html.includes('class="virgo-intro-fracture"'), "The obsolete black-screen fracture is removed from the mounted portfolio");
       assert(!html.includes('<video') && !html.includes('fracture-transition.webm'), "Fracture visuals must never use the reference film");
       assert(html.includes('Open workspace through Zavijava') || html.includes('Mở không gian làm việc qua sao Zavijava'));
       assert(html.includes("SPICA") && html.includes("PORRIMA") && html.includes("VINDEMIATRIX") && html.includes("ZAVIJAVA"));
@@ -547,7 +558,7 @@ try {
       assert.equal((html.match(/class="virgo-row-star"/g) || []).length >= projects.length, true);
       assert.equal((html.match(/class="virgo-skill-list"([\s\S]*?)<\/div>/)?.[1].match(/aria-pressed="(?:true|false)"/g) || []).length, capabilities.length);
       assert(!html.includes('virgo-utilities') && !html.includes('virgo-language') && !html.includes('virgo-motion'), "Portfolio must not expose sound, motion or language switches");
-      assert(html.includes('data-sound="on"'), "The fracture audio is enabled without a separate switch");
+      assert(!html.includes('data-narrative-index="0"') && !html.includes('data-narrative-index="8"'), "Legacy opening and black-hole narration are removed from the spatial view");
       assert(html.includes(`${projects.length} projects in orbit`) || html.includes(`${projects.length} hành tinh dự án đang quay`));
       if (hash === "#/project/beatsync") assert(html.includes(projects[0].problem[lang]));
       if (hash === "#/projects/all") {
@@ -741,7 +752,7 @@ try {
   );
   assert(!unsafe.includes('href="javascript:') && !unsafe.includes("<script>"));
   console.log(
-    `PASS: 20 Virgo scrollytelling renders, 26 scroll portfolio renders, ${rendered} legacy bilingual route renders, ${projects.length} projects, five HTML CVs, preserved source GLB, and safe Markdown rendering.`,
+    `PASS: 24 Virgo scrollytelling renders, 26 scroll portfolio renders, ${rendered} legacy bilingual route renders, ${projects.length} projects, five HTML CVs, preserved source GLB, and safe Markdown rendering.`,
   );
 } finally {
   await server.close();

@@ -1,4 +1,4 @@
-import { advanceFlightPosition, clamp } from "./virgoFlight";
+import { clamp, FLIGHT_MOTION, smooth } from "./virgoFlight";
 import { narrativeEdges, NARRATIVE_BEATS } from "./virgoNarrative";
 import { TRANSIT_LEGS } from "./virgoTransit";
 import { OPENING_HANDOFF } from "./virgoOpening";
@@ -12,8 +12,8 @@ export const STORY_PACING = {
   handoffSeconds: .70,
   transitSeconds: 3.4,
   approachSeconds: 1.9,
-  wheelStepVh: .32,
-  wheelLeadVh: .80,
+  wheelStepVh: .12,
+  wheelLeadVh: .16,
 } as const;
 
 export const HOME_PACING = {
@@ -40,36 +40,53 @@ limits.push({ from: OPENING_HANDOFF.release, to: OPENING_HANDOFF.finish,
 
 for (const leg of TRANSIT_LEGS) limits.push({ from: leg.from, to: leg.to, rate: (leg.to - leg.from) / (leg.origin < 0 ? STORY_PACING.approachSeconds : STORY_PACING.transitSeconds) });
 
-const boundaries = [...new Set([0, 6, ...limits.flatMap(l => [clamp(l.from, 0, 6), clamp(l.to, 0, 6)])])].sort((a, b) => a - b);
-let seconds = 0;
-const timeline = boundaries.slice(0, -1).map((from, i) => {
-  const to = boundaries[i + 1], center = (from + to) / 2;
-  const baseRate = center >= NARRATIVE_BEATS[0].from && center < 1.82 ? HOME_PACING.travelRate : STORY_PACING.travelRate;
-  const rate = Math.min(baseRate, ...limits.filter(l => center >= l.from && center < l.to).map(l => l.rate));
-  const start = seconds;
-  seconds += (to - from) / rate;
-  return { from, to, rate, start, end: seconds };
-});
+// Ease into every speed limit before its boundary. Piecewise constant rates
+// made the same wheel gesture lurch when a reading interval became a flight.
+const positions = [...new Set([...Array.from({ length: 6001 }, (_, i) => i / 1000),
+  ...limits.flatMap(limit => [clamp(limit.from, 0, 6), clamp(limit.to, 0, 6)])])].sort((a, b) => a - b);
+const resolution = positions.length - 1, times = new Float64Array(positions.length);
+function rateAt(position: number) {
+  const home = smooth(NARRATIVE_BEATS[0].from - .025, NARRATIVE_BEATS[0].from, position) * (1 - smooth(1.78, 1.86, position));
+  const base = STORY_PACING.travelRate + (HOME_PACING.travelRate - STORY_PACING.travelRate) * home;
+  let rate: number = base;
+  for (const limit of limits) {
+    const influence = smooth(limit.from - .025, limit.from, position) * (1 - smooth(limit.to, limit.to + .025, position));
+    rate = Math.min(rate, base + (Math.min(base, limit.rate) - base) * influence);
+  }
+  return rate;
+}
+let inverseRate = 1 / rateAt(0);
+for (let i = 1; i <= resolution; i++) {
+  const nextInverse = 1 / rateAt(positions[i]);
+  times[i] = times[i - 1] + (positions[i] - positions[i - 1]) * (inverseRate + nextInverse) / 2;
+  inverseRate = nextInverse;
+}
 
 /** One reversible travel-time map, with no locks, timers or replayed entrances. */
 export function storyTimeAt(position: number) {
   const p = clamp(position, 0, 6);
-  const segment = timeline.find(s => p <= s.to)!;
-  return segment.start + (p - segment.from) / segment.rate;
+  let low = 0, high = resolution;
+  while (high - low > 1) {
+    const mid = (low + high) >>> 1;
+    if (positions[mid] <= p) low = mid; else high = mid;
+  }
+  return times[low] + (times[high] - times[low]) * (p - positions[low]) / (positions[high] - positions[low]);
 }
 export function storyPositionAt(time: number) {
-  const t = clamp(time, 0, seconds);
-  const segment = timeline.find(s => t <= s.end)!;
-  return segment.from + (t - segment.start) * segment.rate;
+  const t = clamp(time, 0, times[resolution]);
+  let low = 0, high = resolution;
+  while (high - low > 1) {
+    const mid = (low + high) >>> 1;
+    if (times[mid] <= t) low = mid; else high = mid;
+  }
+  return positions[low] + (positions[high] - positions[low]) * (t - times[low]) / (times[high] - times[low]);
 }
 export function advancePacedFlightPosition(current: number, target: number, delta: number) {
-  const next = advanceFlightPosition(current, target, delta);
-  const start = storyTimeAt(current), end = storyTimeAt(next);
-  const maxStep = clamp(delta, 0, .045);
-  const step = clamp(end - start, -maxStep, maxStep);
-  const candidate = Math.abs(end - start) <= Math.abs(step) ? next : storyPositionAt(start + step);
-  const maxDelta = 1.45 * clamp(delta, 0, .05);
-  return clamp(candidate, current - maxDelta, current + maxDelta);
+  if (Math.abs(target - current) < FLIGHT_MOTION.settleThreshold) return target;
+  const start = storyTimeAt(current), distance = storyTimeAt(target) - start;
+  const dt = clamp(delta, 0, .045);
+  const travel = Math.min(dt, Math.abs(distance) * -Math.expm1(-FLIGHT_MOTION.cameraDamping * dt));
+  return storyPositionAt(start + Math.sign(distance) * travel);
 }
 
 /** Bound burst input to a small lead; ordinary wheel speed remains unchanged. */
@@ -77,4 +94,10 @@ export function storyWheelDelta(delta: number, target: number, rendered: number,
   const direction = Math.sign(delta);
   const remaining = Math.max(0, height * STORY_PACING.wheelLeadVh - direction * (target - rendered));
   return direction * Math.min(Math.abs(delta), height * STORY_PACING.wheelStepVh, remaining);
+}
+
+/** Wheel magnitude drives distance; reversing discards the pending forward lead. */
+export function storyWheelTarget(delta: number, target: number, rendered: number, height: number, minimum: number, maximum: number) {
+  const origin = Math.sign(delta) !== Math.sign(target - rendered) ? rendered : target;
+  return clamp(origin + storyWheelDelta(delta, origin, rendered, height), minimum, maximum);
 }
