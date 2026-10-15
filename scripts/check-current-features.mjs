@@ -95,13 +95,19 @@ export async function checkCurrentFeatures(server) {
   assert.equal(new Set([3, 4, 5, 6, 7].map(narrativeRevealStyle)).size, 4, 'Narrative ink uses four scroll-driven reveal modes');
   for (const reduced of [false, true]) for (const p of [5.94, 5.98, 6]) assert.equal(contactPresence(p, reduced), 1, 'Contact stays visible through the endpoint');
   assert.equal(contactPresence(5.8), 0);
-  const { stellarProminence, stellarEmission, supernovaSample } = await server.ssrLoadModule('/src/data/virgoStellarEffects.ts');
+  const { stellarProminence, stellarEmission, prominenceSample, prominenceTiming, supernovaSample } = await server.ssrLoadModule('/src/data/virgoStellarEffects.ts');
   for (let index = 0; index < 6; index++) {
     const arc = stellarProminence(index, 12);
     assert(arc.every(point => point.every(Number.isFinite)));
     assert(Math.abs(Math.hypot(...arc[0]) - 12 * 1.015) < 1e-8);
     assert(Math.hypot(...arc[16]) > 12 * 1.2, 'Prominence loops rise above the actual photosphere');
     assert(Math.abs(Math.hypot(...arc.at(-1)) - 12 * 1.015) < 1e-8);
+    const { period } = prominenceTiming(index);
+    const bursts = Array.from({ length: 1201 }, (_, i) => prominenceSample(index, i * period / 1200));
+    assert(bursts.filter(frame => frame.strength === 0).length > 600, 'Each eruption spends more than half its cycle fully dark');
+    assert(bursts.some(frame => frame.strength > .99 && frame.lift > .9), 'Plasma grows away from the surface before it dissipates');
+    assert(bursts.every((frame, i) => !i || Math.abs(frame.strength - bursts[i - 1].strength) < .03), 'Eruptions fade continuously through cycle boundaries');
+    assert.equal(prominenceSample(index, period * .3, true).strength, 0, 'Reduced motion omits the intermittent ejections');
   }
   assert.equal(stellarEmission(2, 5.37), 0, 'The progenitor surface has dispersed when the shock front expands');
   assert.equal(stellarEmission(1, 5.37), 1);

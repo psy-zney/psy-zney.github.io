@@ -13,6 +13,11 @@ sao lúc đọc; phép quay góc nhìn cục bộ không làm bẻ hướng came
 
 Cập nhật hình ảnh theo phản hồi mới: plasma đối lưu và vòng lửa nằm trên
 bề mặt sao; vật liệu được cache, thời gian ambient dừng ở reduced motion.
+Các vòng plasma không phải đường trắng thường trực: trào từ bề mặt trong
+3–4,4 giây, tan hẳn rồi nghỉ hơn nửa chu kỳ 8–12 giây. Mỗi vòng lệch pha,
+khí có mật độ mềm và giữ màu sao; điểm nóng chỉ sáng trong đợt trào. Reduced
+motion bỏ các đợt phun, không để lại dây tĩnh. `check-stellar-ui.mjs` lấy mẫu
+12 giây trên mỗi viewport, chụp lúc trào/lúc nghỉ và kiểm tra từng vòng tắt hẳn.
 `VirgoSupernova` là cảnh tiền cảnh riêng tại 5,30–5,62: lõi sao phân tán,
 sóng xung kích cyan sắc nét và ejecta 3D mở rộng theo cuộn, lùi khớp cùng
 trạng thái. Nó kết thúc trước Contact; không sửa BlackHoleVortex,

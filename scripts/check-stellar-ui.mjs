@@ -66,6 +66,20 @@ try {
     }
     assert(samples > 100 && max - min > 50, `${name}: the stellar surface has crisp hot cells and dark channels`);
     assert(name === 'reduced' ? moved === 0 : moved / samples > .06, `${name}: plasma actually boils at rest (changed ${moved}/${samples})`);
+    const eruptionFrames = [];
+    let capturedPeak = false, capturedRest = false;
+    for (let step = 0; step <= (name === 'reduced' ? 1 : 24); step++) {
+      const strengths = (await root.getAttribute('data-plasma-bursts')).split(',').map(Number);
+      eruptionFrames.push(strengths);
+      if (!capturedPeak && strengths[0] > .85) { await page.screenshot({ path: `${output}/${name}-eruption-peak.png` }); capturedPeak = true; }
+      if (!capturedRest && strengths[0] === 0) { await page.screenshot({ path: `${output}/${name}-eruption-rest.png` }); capturedRest = true; }
+      await page.clock.runFor(500);
+    }
+    for (let i = 0; i < eruptionFrames[0].length; i++) {
+      assert.equal(Math.min(...eruptionFrames.map(frame => frame[i])), 0, 'Every plasma loop fully disappears between eruptions');
+      if (name !== 'reduced') assert(Math.max(...eruptionFrames.map(frame => frame[i])) > .8, 'Every loop has a visible, short eruption');
+      else assert(eruptionFrames.every(frame => frame[i] === 0), 'Reduced motion never leaves static wires around the star');
+    }
     await seek(3.95); assert((await page.locator('[data-narrative-index="5"]').getAttribute('class')).includes('virgo-narrative-right'), 'The following sentence moves to the right');
     if (viewport.width >= 700) {
       const box = await page.locator('[data-narrative-index="5"]').boundingBox(); assert(box.x + box.width / 2 > viewport.width / 2, 'The following sentence occupies the right half');
@@ -121,7 +135,7 @@ try {
     await contact.locator('.virgo-email').focus();
     assert.equal(await contact.locator('.virgo-email').evaluate(el => el === document.activeElement), true, 'The persistent email link remains keyboard accessible');
     assert.deepEqual(errors, []);
-    scenarios.push({ name, changedPlasmaPixels: moved, stellarPixels: samples, surfaceContrast: max - min, reveals, supernova: nova, persistentContact: true });
+    scenarios.push({ name, changedPlasmaPixels: moved, stellarPixels: samples, surfaceContrast: max - min, eruptionFrames, reveals, supernova: nova, persistentContact: true });
     console.log(`PASS stellar effects: ${name}`); await page.close();
   }
   assert.equal(await digest(), sourceSha256, 'The tested source stayed unchanged during visual QA'); status = 'passed';
