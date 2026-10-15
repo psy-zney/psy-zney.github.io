@@ -1,5 +1,9 @@
 import { copy, type Copy } from './portfolio';
 
+// Temporarily hidden at the owner's request; keep the gallery and assets intact.
+export const SHOWCASE_ENABLED: boolean = false;
+export const visiblePortfolioHash = (hash: string) => !SHOWCASE_ENABLED && /^#\/showcase(?:\/|$)/.test(hash) ? '#/projects' : hash;
+
 export interface ShowcaseProduct {
   id: string;
   name: string;

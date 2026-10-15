@@ -111,6 +111,16 @@ try {
         await page.screenshot({ path: `${output}/${name}-scene-${scenario}.png` });
       }
     }
+    if (await page.locator('.virgo-page').getAttribute('data-showcase-enabled') === 'false') {
+      await seek(4.25, true); await page.clock.runFor(100);
+      await page.mouse.move(viewport.width / 2, viewport.height * .75);
+      await page.mouse.wheel(0, 120); await page.waitForTimeout(50); await page.clock.runFor(2000);
+      assert.equal(await page.locator('.screening-room, .virgo-showcase-passage').count(), 0, 'The temporary flag bypasses gallery entry');
+      const p = await page.locator('.virgo-page').evaluate(el => Number(el.style.getPropertyValue('--flight-progress')) * 6);
+      assert(p > 4.25, 'Wheel continues forward instead of being consumed by the hidden gallery');
+      results.push({ name, showcaseTemporarilyHidden: true });
+      assert.deepEqual(errors, []); console.log('PASS transit: ' + name); await page.close(); continue;
+    }
     // Exercise the actual gallery trigger: its old camera arc/roll must not survive.
     await seek(4.25, true); await page.clock.runFor(100);
     const entryRecording = page.evaluate(() => new Promise(resolve => {

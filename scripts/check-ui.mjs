@@ -89,6 +89,11 @@ try {
     };
 
     await page.goto(`${base}#/showcase/beatsync`, { waitUntil: 'domcontentloaded' });
+    await page.locator('[data-page-loader]').waitFor({ state: 'detached' });
+    const showcaseEnabled = await page.locator('.virgo-page').getAttribute('data-showcase-enabled') === 'true';
+    let initialFit = null;
+    if (name === 'desktop' || name === 'reduced') assert((await page.locator('body').evaluate(el => getComputedStyle(el).cursor)).includes('deep-space-arrow.png'), 'The default native cursor uses the selected arrow');
+    if (showcaseEnabled) {
     await gallery.waitFor({ state: 'visible' });
     await page.locator('[data-page-loader]').waitFor({ state: 'detached' });
     await gallery.locator('.screening-slide.is-active .screening-tv[data-state="ready"]').waitFor();
@@ -104,7 +109,7 @@ try {
       assert(surfaces[0].pose[0] < 0 && surfaces[2].pose[0] > 0 && surfaces[0].pose[2] > surfaces[1].pose[2] + 1 && surfaces[2].pose[2] > surfaces[1].pose[2] + 1, 'Neighbor screens share a true cylindrical scene');
     }
     assert.equal(await title.textContent(), 'BeatSync');
-    const initialFit = await fit();
+    initialFit = await fit();
     if (name === 'desktop' || name === 'reduced') {
       assert((await page.locator('body').evaluate(el => getComputedStyle(el).cursor)).includes('deep-space-arrow.png'), 'The default native cursor uses the selected arrow');
       assert((await gallery.getByRole('button', { name: 'Web experiences', exact: true }).evaluate(el => getComputedStyle(el).cursor)).includes('deep-space-hand.png'), 'Buttons use the selected hand cursor');
@@ -228,6 +233,11 @@ try {
     await gallery.locator('.screening-slide.is-active .screening-tv[data-state="error"]').waitFor();
     assert.equal(await gallery.getByRole('link', { name: 'Visit website', exact: true }).getAttribute('href'), 'https://beatsync.zney295.id.vn/');
     await page.unroute('**/img/products/beatsync.webp');
+    } else {
+      assert(page.url().endsWith('#/projects'), 'Hidden showcase routes resolve to Projects');
+      assert.equal(await page.locator('.screening-room, a[href^="#/showcase"]').count(), 0);
+      await page.screenshot({ path: `${output}/${name}-showcase-hidden.png` });
+    }
 
     // Main intro and portal remain functional after all gallery interactions.
     await page.goto(base, { waitUntil: 'domcontentloaded' });
@@ -392,6 +402,7 @@ try {
     await storyAt(3.95, secondSentence);
     await wheelTo(4.24);
     await page.waitForTimeout(260); // A separate gesture after the preceding reading stop.
+    if (showcaseEnabled) {
     const cylinderArrivalFrame = page.evaluate(() => new Promise(resolve => {
       const timeout = setTimeout(() => { observer.disconnect(); resolve({ missing: true }); }, 10000);
       const observer = new MutationObserver(() => {
@@ -523,6 +534,14 @@ try {
       await gallery.waitFor({ state: 'detached' });
       await storyAt(3.95, secondSentence);
       await touch.detach();
+    }
+    } else {
+      await wheelTo(4.92);
+      await storyAt(4.92, 'Those projects shape the way I build.');
+      assert.equal(await page.locator('.screening-room, .virgo-showcase-passage').count(), 0, 'Wheel bypasses the hidden gallery');
+      await wheelTo(3.95);
+      await storyAt(3.95, secondSentence);
+      assert.equal(await page.locator('.screening-room, .virgo-showcase-passage').count(), 0, 'Reverse wheel also bypasses the gallery');
     }
     let contactFlight = [];
     if (name !== 'reduced') {

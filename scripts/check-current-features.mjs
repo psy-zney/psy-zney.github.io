@@ -175,12 +175,18 @@ export async function checkCurrentFeatures(server) {
   assert(missing.includes('This screen isn’t here.') && missing.includes('See products'), 'Invalid product routes offer recovery');
 
   const originalHash = window.location.hash;
+  const { SHOWCASE_ENABLED, visiblePortfolioHash } = await server.ssrLoadModule('/src/data/productShowcase.ts');
+  assert.equal(SHOWCASE_ENABLED, false, 'Showcase is temporarily hidden at the owner request');
+  assert.equal(visiblePortfolioHash('#/showcase'), '#/projects');
+  assert.equal(visiblePortfolioHash('#/showcase/mpoly'), '#/projects');
+  assert.equal(visiblePortfolioHash('#/projects/all'), '#/projects/all');
   try {
     for (const product of showcaseProducts) {
       window.location.hash = `#/showcase/${product.id}`;
       const markup = renderToStaticMarkup(React.createElement(VirgoPortfolio, { lang: 'eng', onEnterWorkspace() {} }));
-      assert(markup.includes('class="screening-room"'), 'Public showcase routes mount the actual gallery');
-      assert(markup.includes(`href="${product.url}"`));
+      assert.equal(markup.includes('class="screening-room"'), SHOWCASE_ENABLED, 'Hidden public showcase routes never mount the gallery');
+      if (SHOWCASE_ENABLED) assert(markup.includes(`href="${product.url}"`));
+      else assert(!markup.includes('href="#/showcase'), 'Public gallery entry links stay hidden');
     }
   } finally { window.location.hash = originalHash; }
   const loader = renderToStaticMarkup(React.createElement(WavePageLoader, { label: 'Opening workspace' }));

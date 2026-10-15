@@ -11,6 +11,17 @@ sao lúc đọc; phép quay góc nhìn cục bộ không làm bẻ hướng came
 
 ## Những gì cần giữ
 
+**Showcase đang tạm ẩn theo yêu cầu mới nhất.** `SHOWCASE_ENABLED = false`
+trong `src/data/productShowcase.ts` tắt nút vào gallery và mọi đường tự mở
+bằng wheel/touch/phím. Projects → Skills cuộn xuyên suốt hai chiều; link cũ
+`#/showcase/*` thay URL về `#/projects`. CTA dự án mở archive hiện có. Giữ nguyên
+component, dữ liệu, asset và kiểm tra gallery để có thể bật lại; các mô tả
+gallery bên dưới là baseline khi bật lại. Kiểm tra trạng thái ẩn bằng
+`node scripts/check-showcase-visibility.mjs http://127.0.0.1:5182/`.
+Đã PASS trên desktop/phone/reduced: link cũ, archive đủ 10 dự án, wheel hai
+chiều và phím End. `check-transit-ui.mjs` nhánh entry xác nhận wheel tiếp tục
+trên desktop/phone. Bộ UI tổng giữ assertion con trỏ cũ và vẫn dừng tại đó.
+
 Cập nhật hình ảnh theo phản hồi mới: plasma đối lưu và vòng lửa nằm trên
 bề mặt sao; vật liệu được cache, thời gian ambient dừng ở reduced motion.
 Các vòng plasma không phải đường trắng thường trực: trào từ bề mặt trong

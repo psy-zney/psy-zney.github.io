@@ -2,7 +2,7 @@ import { Fragment, lazy, Suspense, useCallback, useEffect, useRef, useState, typ
 import { ArrowDown, ArrowUpRight, Github, Linkedin, Monitor, Volume2, VolumeX, X } from "lucide-react";
 import { ProductShowcase } from "./ProductShowcase";
 import { VirgoSceneBoundary } from "./VirgoSceneFallback";
-import { showcaseIndexForHash, showcaseProducts } from "../data/productShowcase";
+import { SHOWCASE_ENABLED, visiblePortfolioHash, showcaseIndexForHash, showcaseProducts } from "../data/productShowcase";
 import { stopIntroAudio } from "../utils/audioPreloader";
 import gsap from "gsap";
 import Lenis from "lenis";
@@ -66,7 +66,7 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
   const passageBusy = useRef(false);
   const [showcasePassage, setShowcasePassage] = useState<{ direction: number; index: number; source: string; phase: 'approaching' | 'revealing' } | null>(null);
   const [ready, setReady] = useState(false);
-  const [hash, setHash] = useState(() => window.location.hash);
+  const [hash, setHash] = useState(() => visiblePortfolioHash(window.location.hash));
   const [openingVisible, setOpeningVisible] = useState(() => !window.location.hash || window.location.hash === '#/' || window.location.hash === '#/cosmos');
   const [openingDirection, setOpeningDirection] = useState<1 | -1>(1);
   const [openingAssembled, setOpeningAssembled] = useState(false);
@@ -98,7 +98,7 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
   const allProjects = documentRoute?.kind === 'archive';
   const missingDocument = documentRoute?.kind === 'missing';
   const showcaseIndex = showcaseIndexForHash(hash);
-  const isShowcase = hash.startsWith('#/showcase');
+  const isShowcase = SHOWCASE_ENABLED && hash.startsWith('#/showcase');
   const [showcaseActive, setShowcaseActive] = useState(() => showcaseIndex ?? 0);
   const [soundMuted, setSoundMuted] = useState(() => typeof document !== "undefined" && document.documentElement.dataset.journeySound === "off");
 
@@ -169,7 +169,7 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
     return () => { page.removeEventListener('wheel', wheel, true); page.removeEventListener('keydown', key, true); page.removeEventListener('touchstart', touchStart); page.removeEventListener('touchmove', touchMove, true); };
   }, [reducedMotion, returnFromIntro]);
   const openFlowShowcase = useCallback((direction: number, preferredIndex?: number) => {
-    if (passageBusy.current) return;
+    if (!SHOWCASE_ENABLED || passageBusy.current) return;
     const index = preferredIndex ?? (direction > 0 ? 0 : showcaseProducts.length - 1);
     const next = `#/showcase/${showcaseProducts[index].id}`;
     interactionPaused.current = true;
@@ -323,7 +323,7 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
         const progress = page.style.getPropertyValue("--flight-progress");
         const position = progress ? Number(progress) * 6 : 0;
         const offsets = Array.from(content.children, child => (child as HTMLElement).offsetTop);
-        if (position >= 4.24 && position <= 4.80 && direction > 0 || position >= 4.25 && position <= 4.81 && direction < 0) {
+        if (SHOWCASE_ENABLED && (position >= 4.24 && position <= 4.80 && direction > 0 || position >= 4.25 && position <= 4.81 && direction < 0)) {
           openFlowShowcase(direction);
           return false;
         }
@@ -358,7 +358,7 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
       const offsets = Array.from(content.children, child => (child as HTMLElement).offsetTop);
       const position = Number(page.style.getPropertyValue("--flight-progress") || 0) * 6;
       const direction = Math.sign(event.deltaY);
-      if (position >= 4.24 && position <= 4.80 && direction > 0 || position >= 4.25 && position <= 4.81 && direction < 0) openFlowShowcase(direction);
+      if (SHOWCASE_ENABLED && (position >= 4.24 && position <= 4.80 && direction > 0 || position >= 4.25 && position <= 4.81 && direction < 0)) openFlowShowcase(direction);
       else scroller.scrollTo({ top: storyWheelTarget(event.deltaY * unit * FLIGHT_MOTION.wheelMultiplier, scroller.scrollTop, scrollOffsetForPosition(position, offsets), scroller.clientHeight, scrollOffsetForPosition(1.92, offsets), scroller.scrollHeight - scroller.clientHeight), behavior: "instant" });
     };
     page.addEventListener("wheel", wheel, { passive: false });
@@ -386,7 +386,7 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
         return;
       }
       const position = flightPositionForScroll(scroller.scrollTop, Array.from(content.children, child => (child as HTMLElement).offsetTop));
-      if (performance.now() < nativeGestureUntil.current && !interactionPaused.current && navigationTarget.current === null) {
+      if (SHOWCASE_ENABLED && performance.now() < nativeGestureUntil.current && !interactionPaused.current && navigationTarget.current === null) {
         if (previous <= 4.40 && position > 4.40) openFlowShowcase(1);
         else if (previous >= 4.40 && position < 4.40) openFlowShowcase(-1);
       }
@@ -405,7 +405,12 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
   }, [openFlowShowcase]);
 
   useEffect(() => {
-    const sync = () => setHash(window.location.hash);
+    const sync = () => {
+      const requested = window.location.hash, visible = visiblePortfolioHash(requested);
+      if (visible !== requested) navigateHash(visible, true);
+      setHash(visible);
+    };
+    sync();
     window.addEventListener("hashchange", sync);
     return () => window.removeEventListener("hashchange", sync);
   }, []);
@@ -468,7 +473,7 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
     }
   };
 
-  return <div ref={pageRef} style={motionStyle} className={`virgo-page${active === 0 ? " virgo-is-opening" : ""}${entering ? " virgo-is-entering" : ""}${reducedMotion ? " virgo-reduced-motion" : ""}`}>
+  return <div ref={pageRef} data-showcase-enabled={SHOWCASE_ENABLED} style={motionStyle} className={`virgo-page${active === 0 ? " virgo-is-opening" : ""}${entering ? " virgo-is-entering" : ""}${reducedMotion ? " virgo-reduced-motion" : ""}`}>
     <a className="virgo-skip" href="#/home" onClick={() => navigate(1)}>{t("Bỏ qua chòm sao mở đầu", "Skip constellation opening")}</a>
     <div ref={scrollerRef} className={`virgo-scroll${showDialog || entering ? " is-paused" : ""}`} role="region" tabIndex={0} aria-label={t("Cuộn để bay qua các ngôi sao", "Scroll to travel between stars")}>
       <div ref={contentRef} className="virgo-scroll-content" aria-hidden="true">
@@ -548,15 +553,15 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
           </div>
           <div className="virgo-showcase-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '14px', flexWrap: 'wrap' }}>
             <a className="virgo-more virgo-more-scroll" href="#/projects-more" onClick={() => navigate(4)}>{t(`Cuộn tiếp · ${projects.length - 3} dự án còn lại`, `Keep scrolling · ${projects.length - 3} more projects`)} <ArrowDown size={15} /></a>
-            <a className="virgo-showcase-pill" href="#/showcase" onClick={e => { e.preventDefault(); navigate(3); window.location.hash = `#/showcase/${showcaseProducts[showcaseActive].id}`; }} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(255,255,255,0.08)', borderRadius: '999px', fontSize: '13px', color: '#e2e8f0', textDecoration: 'none', border: '1px solid rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)' }}>
+            {SHOWCASE_ENABLED && <a className="virgo-showcase-pill" href="#/showcase" onClick={e => { e.preventDefault(); navigate(3); window.location.hash = `#/showcase/${showcaseProducts[showcaseActive].id}`; }} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(255,255,255,0.08)', borderRadius: '999px', fontSize: '13px', color: '#e2e8f0', textDecoration: 'none', border: '1px solid rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)' }}>
               <Monitor size={15} />
               <span>{t("Phòng chiếu cong 3D", "3D Curved Screening")}</span>
               <ArrowUpRight size={14} />
-            </a>
+            </a>}
           </div>
           <p className="virgo-orbit-caption">{selectedProject === null ? t(`${projects.length} hành tinh dự án đang quay`, `${projects.length} projects in orbit`) : `${String(selectedProject + 1).padStart(2, "00")} / ${projects[selectedProject].name}`}</p>
         </div>
-        <div className="virgo-single-link"><a href={`#/showcase/${showcaseProducts[showcaseActive].id}`} onClick={event => { event.preventDefault(); openFlowShowcase(1, showcaseActive); }}>{t('Khám phá sản phẩm', 'Explore the work')}<ArrowUpRight size={16}/></a></div>
+        <div className="virgo-single-link"><a href={SHOWCASE_ENABLED ? `#/showcase/${showcaseProducts[showcaseActive].id}` : '#/projects/all'} onClick={SHOWCASE_ENABLED ? event => { event.preventDefault(); openFlowShowcase(1, showcaseActive); } : undefined}>{SHOWCASE_ENABLED ? t('Khám phá sản phẩm', 'Explore the work') : t('Xem dự án', 'View projects')}<ArrowUpRight size={16}/></a></div>
       </section>
 
       {/* CHAPTER 4 — PROJECTS MORE (Porrima outer) — top-left */}
@@ -578,7 +583,7 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
             <a href="#/projects/all">{t("Xem tất cả", "View all")} <ArrowUpRight size={14} /></a>
           </div>
         </div>
-        <div className="virgo-single-link"><a href={`#/showcase/${showcaseProducts[showcaseActive].id}`} onClick={event => { event.preventDefault(); openFlowShowcase(1, showcaseActive); }}>{t('Khám phá sản phẩm', 'Explore the work')}<ArrowUpRight size={16}/></a></div>
+        <div className="virgo-single-link"><a href={SHOWCASE_ENABLED ? `#/showcase/${showcaseProducts[showcaseActive].id}` : '#/projects/all'} onClick={SHOWCASE_ENABLED ? event => { event.preventDefault(); openFlowShowcase(1, showcaseActive); } : undefined}>{SHOWCASE_ENABLED ? t('Khám phá sản phẩm', 'Explore the work') : t('Xem dự án', 'View projects')}<ArrowUpRight size={16}/></a></div>
       </section>
 
       {/* CHAPTER 5 — SKILLS (Vindemiatrix) — center-right */}
