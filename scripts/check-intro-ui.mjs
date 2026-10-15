@@ -76,11 +76,13 @@ try {
       });
       assert.deepEqual(await centerPixel(), [0, 0, 0, 255], 'The tunnel centre is opaque black after entry; Home is not visible');
       const lines = intro.locator('.virgo-intro-captions p');
+      assert.deepEqual(await lines.evaluateAll(nodes => nodes.map(node => node.dataset.effect)), ['ion-scan', 'wave-light']);
       for (let i = 0; i < 2; i++) {
         assert.equal(await lines.nth(i).getAttribute('data-lines'), '1', 'Each fixed wall sentence is a single line');
         assert(Number(await lines.nth(i).evaluate(el => el.style.opacity)) > .2, 'Both sentences already exist ahead in the tunnel');
       }
       const far = (await lines.nth(0).getAttribute('data-projected-bounds')).split(',').map(Number);
+      assert(far[0] + far[2] / 2 < viewport.width / 2, 'The greeting starts on the left tunnel wall');
       await page.screenshot({ path: output + '/' + name + '-tunnel-entry.png' });
       await scrollTo(4.7);
       const near = (await lines.nth(0).getAttribute('data-projected-bounds')).split(',').map(Number);
@@ -95,6 +97,13 @@ try {
       const farHomePose = (await page.locator('.virgo-page').getAttribute('data-camera-pose')).split(',').map(Number);
       await scrollTo(7.1);
       assert.deepEqual(await centerPixel(), [0, 0, 0, 255], 'The exit remains black until the final approach');
+      const blackArea = await intro.locator('canvas').evaluate(canvas => {
+        const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+        let black = 0;
+        for (let i = 0; i < pixels.length; i += 4) if (pixels[i] === 0 && pixels[i + 1] === 0 && pixels[i + 2] === 0 && pixels[i + 3] === 255) black++;
+        return black / (canvas.width * canvas.height);
+      });
+      assert(blackArea < .04, 'The late tunnel has depth haze, not a large flat black disk');
       await page.screenshot({ path: output + '/' + name + '-exit-closed.png' });
       await scrollTo(7.5);
       const nearHomePose = (await page.locator('.virgo-page').getAttribute('data-camera-pose')).split(',').map(Number);

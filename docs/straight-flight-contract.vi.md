@@ -40,6 +40,9 @@ Giữ chuyển động này; không tái tạo những lỗi chữ chồng nhau 
   cửa ra thật và nền Home liên tục của intro. Lòng hầm/cửa xa giữ đen kín khi
   đọc chữ; chỉ mở lộ Home khi cách cửa ra dưới 650 đơn vị. Không lộ sao ngay
   lúc vào hầm, không dừng camera chờ một màn chuyển cảnh theo timer.
+- Chỗ tối cuối hầm là sương chiều sâu có mép mềm, không phải một đĩa đen
+  phình lớn. Chữ bắt đầu ở thành trái rồi sang phải; hiệu ứng ink lấy từ
+  độ sâu/cuộn và giữ nguyên vị trí chữ trên thành.
 - Khí cổng, sao, hành tinh, thiên thạch và đĩa hố đen được quay độc lập.
   Điều khiển xoay hố đen bằng tay, gallery hình trụ và workspace vẫn giữ;
   đây không phải quyền thêm chuyển động xoay tự động cho camera hành trình.
@@ -56,6 +59,9 @@ trình; ba đoạn bay chính dùng ba cảnh khác nhau. Không chọn ngẫu n
 render loop hoặc khi đổi chiều; lùi trên cùng đoạn phải thấy lại cảnh đã chọn.
 Có thể bổ sung cảnh bay ngang hố đen hay hiện tượng khác vào danh sách này,
 miễn giữ các bất biến trên và ngân sách chất lượng cho điện thoại/reduced motion.
+`VirgoSupernova` bổ sung một cảnh tiền cảnh riêng trước Contact; chỉ thay
+plasma sao và ejecta, không sửa renderer hố đen hiện tại. Đến Contact, các
+liên kết yên ở footer cho tới vị trí cuối, không biến mất theo câu dẫn.
 
 ## Kiểm tra trước khi bàn giao
 

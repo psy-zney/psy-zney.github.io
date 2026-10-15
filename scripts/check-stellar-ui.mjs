@@ -1,0 +1,129 @@
+import assert from 'node:assert/strict';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { chromium } from 'playwright';
+import sharp from 'sharp';
+
+const output = 'artifacts/stellar-effects'; await mkdir(output, { recursive: true });
+const selected = process.env.STELLAR_VIEWPORT;
+const sourcePaths = ['src/components/VirgoStellarEffects.tsx', 'src/data/virgoStellarEffects.ts', 'src/components/VirgoScene.tsx', 'src/components/VirgoPortfolio.tsx', 'src/components/VirgoPortfolio.css', 'src/data/virgoNarrative.ts'];
+const digest = async () => {
+  const hash = createHash('sha256');
+  for (const path of sourcePaths) hash.update(path).update(await readFile(path));
+  return hash.digest('hex');
+};
+const sourceSha256 = await digest(), scenarios = [];
+const blackHoleSources = {};
+for (const file of ['BlackHoleVortex.tsx', 'blackHoleShader.ts', 'blackHoleRendering.ts', 'BlackHoleOrbitControls.tsx']) blackHoleSources[file] = createHash('sha256').update(await readFile(`src/components/${file}`)).digest('hex');
+const browser = await chromium.launch({ headless: true, executablePath: process.env.UI_CHROME_PATH });
+let status = 'failed', failure;
+try {
+  for (const [name, viewport, reducedMotion] of [
+    ['desktop', { width: 1242, height: 715 }, 'no-preference'],
+    ['phone', { width: 390, height: 844 }, 'no-preference'],
+    ['landscape', { width: 844, height: 390 }, 'no-preference'],
+    ['reduced', { width: 1242, height: 715 }, 'reduce'],
+  ]) {
+    if (selected && selected !== name) continue;
+    const page = await browser.newPage({ viewport, reducedMotion });
+    const errors = []; page.on('pageerror', error => errors.push(error.message));
+    page.on('console', message => { if (message.type() === 'error' && /Shader Error|VALIDATE_STATUS|WebGL/.test(message.text())) errors.push(message.text()); });
+    await page.clock.install();
+    await page.goto((process.argv[2] || 'http://127.0.0.1:5182/') + '#/home');
+    await page.locator('[data-page-loader]').waitFor({ state: 'detached' });
+    await page.waitForFunction(() => document.querySelector('.virgo-page')?.dataset.cameraPose);
+    await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 1000)));
+    const seek = async p => {
+      await page.evaluate(p => {
+        const root = document.querySelector('.virgo-page'), offsets = [...document.querySelector('.virgo-scroll-content').children].map(el => el.offsetTop);
+        const i = Math.min(5, Math.floor(p)); root.dataset.introArrival = String(p);
+        document.querySelector('.virgo-scroll').scrollTop = offsets[i] + (offsets[i + 1] - offsets[i]) * (p - i);
+      }, p); await page.clock.runFor(120);
+    };
+    const root = page.locator('.virgo-page');
+    await seek(3.23);
+    const first = page.locator('[data-narrative-index="4"]');
+    assert((await first.getAttribute('class')).includes('virgo-narrative-left'), 'The first reading sentence starts on the left');
+    if (viewport.width >= 700) {
+      const box = await first.boundingBox(); assert(box.x + box.width / 2 < viewport.width / 2, 'The first sentence is actually in the left half, including landscape');
+      const action = await page.locator('.virgo-single-link a:visible').first().boundingBox();
+      assert(action.x + action.width / 2 < viewport.width / 2, 'The matching action stays under the first sentence');
+    }
+    const shotA = await page.screenshot({ path: `${output}/${name}-plasma-a.png` });
+    const pose = (await root.getAttribute('data-camera-pose')).split(',').map(Number);
+    const framing = (await root.getAttribute('data-camera-framing')).split(',').map(Number);
+    await page.clock.runFor(1400);
+    const shotB = await page.screenshot({ path: `${output}/${name}-plasma-b.png` });
+    const a = await sharp(shotA).removeAlpha().raw().toBuffer({ resolveWithObject: true }), b = await sharp(shotB).removeAlpha().raw().toBuffer();
+    const cx = (1 + framing[0]) * viewport.width / 2, cy = (1 - framing[1]) * viewport.height / 2;
+    const radius = 10.4 * viewport.height / (2 * Math.tan((viewport.width < 700 ? 49 : 46) * Math.PI / 360)) / (pose[2] + 480);
+    let samples = 0, moved = 0, min = 255, max = 0;
+    for (let y = Math.max(0, Math.ceil(cy - radius * .8)); y < Math.min(viewport.height, cy + radius * .8); y++) for (let x = Math.max(0, Math.ceil(cx - radius * .8)); x < Math.min(viewport.width, cx + radius * .8); x++) {
+      if (Math.hypot(x - cx, y - cy) > radius * .8) continue;
+      const i = (y * a.info.width + x) * 3; samples++;
+      const light = Math.max(a.data[i], a.data[i + 1], a.data[i + 2]); min = Math.min(min, light); max = Math.max(max, light);
+      if (Math.abs(a.data[i] - b[i]) + Math.abs(a.data[i + 1] - b[i + 1]) + Math.abs(a.data[i + 2] - b[i + 2]) > 18) moved++;
+    }
+    assert(samples > 100 && max - min > 50, `${name}: the stellar surface has crisp hot cells and dark channels`);
+    assert(name === 'reduced' ? moved === 0 : moved / samples > .06, `${name}: plasma actually boils at rest (changed ${moved}/${samples})`);
+    await seek(3.95); assert((await page.locator('[data-narrative-index="5"]').getAttribute('class')).includes('virgo-narrative-right'), 'The following sentence moves to the right');
+    if (viewport.width >= 700) {
+      const box = await page.locator('[data-narrative-index="5"]').boundingBox(); assert(box.x + box.width / 2 > viewport.width / 2, 'The following sentence occupies the right half');
+    }
+    await page.screenshot({ path: `${output}/${name}-reading-right.png` });
+    assert.equal(new Set(await page.locator('.virgo-narrative-line').evaluateAll(lines => lines.map(line => line.dataset.reveal))).size, 4, 'Four distinct scroll-driven ink reveals are mounted');
+    const reveals = [];
+    for (const [p, index] of [[1.96, 3], [2.98, 4], [3.69, 5], [4.83, 6]]) {
+      await seek(p);
+      const ink = await page.locator(`[data-narrative-index="${index}"]`).evaluate(line => {
+        const style = getComputedStyle(line.firstElementChild), words = [...line.querySelectorAll('.virgo-story-word')];
+        return { mode: line.dataset.reveal, clip: style.clipPath, filter: style.filter, transform: style.transform, words: words.map(word => Number(getComputedStyle(word).opacity)) };
+      }); reveals.push(ink);
+      if (name === 'reduced') assert(ink.clip === 'none' && ink.filter === 'none' && ink.transform === 'none', 'Reduced motion keeps ink immediately legible');
+    }
+    if (name !== 'reduced') {
+      assert(reveals[0].clip !== 'none'); assert(reveals[1].filter !== 'none');
+      assert(reveals[2].words[0] > reveals[2].words.at(-1), 'The word cascade advances from left to right');
+      assert(reveals[3].transform !== 'none');
+    }
+    const nova = [];
+    for (const p of [5.335, 5.37, 5.60]) {
+      await seek(p); const frame = (await root.getAttribute('data-supernova-frame')).split(',').map(Number); nova.push(frame);
+      const shot = await page.screenshot({ path: `${output}/${name}-supernova-${p}.png` });
+      if (p === 5.37 && name !== 'reduced') {
+        const pixels = await sharp(shot).removeAlpha().raw().toBuffer({ resolveWithObject: true }); let edges = 0;
+        for (let y = 10; y < viewport.height - 10; y++) for (let x = 10; x < viewport.width - 10; x++) {
+          const i = (y * pixels.info.width + x) * 3;
+          if (pixels.data[i + 1] > 120 && pixels.data[i + 2] > 150 && pixels.data[i + 1] > pixels.data[i] * 1.1 && Math.abs(pixels.data[i + 1] - pixels.data[i + 4]) > 45) edges++;
+        }
+        assert(edges > 20, `${name}: the explosion has bright, sharp cyan filaments (${edges})`);
+      }
+    }
+    assert(nova[1][2] > nova[0][2], 'The world-space shock wave expands before black-hole arrival');
+    if (name === 'reduced') assert(nova.every(frame => frame[1] === 0), 'Reduced motion omits the explosive flash');
+    else assert(nova[0][1] > .9 && nova[2][1] < .1, 'The foreground explosion finishes before Contact');
+
+    const contact = page.locator('[aria-labelledby="virgo-contact-title"]');
+    for (const p of [5.94, 5.98, 6]) {
+      await seek(p); await page.clock.runFor(500);
+      assert.equal(await contact.getAttribute('aria-hidden'), 'false');
+      assert.equal(await contact.evaluate(el => el.hasAttribute('inert')), false);
+      assert(Number(await contact.evaluate(el => getComputedStyle(el).opacity)) > .99, 'Contact stays visible through the endpoint');
+      const boxes = await contact.locator('a').evaluateAll(links => links.map(link => { const r = link.getBoundingClientRect(); return { x: r.x, y: r.y, right: r.right, bottom: r.bottom, href: link.getAttribute('href') }; }));
+      assert.equal(boxes.length, 5);
+      for (const box of boxes) assert(box.x >= 0 && box.right <= viewport.width + 1 && box.y >= 0 && box.bottom <= viewport.height + 1, `${name}: all Contact links fit: ${JSON.stringify(box)}`);
+      const entry = await page.locator('.virgo-portal-label').boundingBox();
+      for (const box of boxes) assert(!entry || box.right <= entry.x || box.x >= entry.x + entry.width || box.bottom <= entry.y || box.y >= entry.y + entry.height, `${name}: Contact links leave room for workspace entry: ${JSON.stringify({ box, entry })}`);
+      const mute = await page.locator('.virgo-sound-toggle').boundingBox();
+      for (const box of boxes) assert(box.right <= mute.x || box.x >= mute.x + mute.width || box.bottom <= mute.y || box.y >= mute.y + mute.height, `${name}: Contact links never overlap mute: ${JSON.stringify({ box, mute })}`);
+    }
+    await page.screenshot({ path: `${output}/${name}-contact-final.png` });
+    await contact.locator('.virgo-email').focus();
+    assert.equal(await contact.locator('.virgo-email').evaluate(el => el === document.activeElement), true, 'The persistent email link remains keyboard accessible');
+    assert.deepEqual(errors, []);
+    scenarios.push({ name, changedPlasmaPixels: moved, stellarPixels: samples, surfaceContrast: max - min, reveals, supernova: nova, persistentContact: true });
+    console.log(`PASS stellar effects: ${name}`); await page.close();
+  }
+  assert.equal(await digest(), sourceSha256, 'The tested source stayed unchanged during visual QA'); status = 'passed';
+} catch (error) { failure = String(error); throw error; }
+finally { await writeFile(`${output}/report${selected ? '-' + selected : ''}.json`, JSON.stringify({ status, sourceSha256, blackHoleSources, scenarios, failure }, null, 2)); await browser.close(); }

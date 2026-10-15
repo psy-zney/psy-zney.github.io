@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { Fragment, lazy, Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { ArrowDown, ArrowUpRight, Github, Linkedin, Monitor, Volume2, VolumeX, X } from "lucide-react";
 import { ProductShowcase } from "./ProductShowcase";
 import { VirgoSceneBoundary } from "./VirgoSceneFallback";
@@ -16,7 +16,7 @@ import { VIRGO_STARS } from "../data/virgoStations";
 import { FLIGHT_MOTION, flightPositionForScroll, navigationDuration, scrollOffsetForPosition, smooth } from "../data/virgoFlight";
 import { FLIGHT_TRACK_VH } from "../data/virgoSpace";
 import { storyWheelTarget } from "../data/virgoPacing";
-import { NARRATIVE_BEATS, chapterReadingPosition } from "../data/virgoNarrative";
+import { NARRATIVE_BEATS, chapterReadingPosition, narrativeRevealStyle } from "../data/virgoNarrative";
 import { OPENING_EDGES, OPENING_STARS } from "../data/virgoOpening";
 import { VirgoIntroFlight } from './VirgoIntroFlight';
 import "./VirgoPortfolio.css";
@@ -506,8 +506,8 @@ export function VirgoPortfolio({ lang, onPrepareWorkspace, onEnterWorkspace }: {
     <main ref={overlayRef} className="virgo-overlay">
       <svg className="virgo-reading-accent" aria-hidden="true"><path fill="none" stroke="#b9cde6" strokeWidth="1"/></svg>
       <div className="virgo-narrative" aria-label={t("Dẫn truyện", "Story")}>
-        {NARRATIVE_BEATS.map((beat, index) => index >= 3 && index < 8 ? <p data-narrative-index={index} key={index} className={`virgo-narrative-line virgo-narrative-${beat.side} virgo-placement-${beat.placement}${index === 0 ? " virgo-identity" : ""}${index === 8 ? " virgo-contact-narrative" : ""}`} aria-hidden="true">
-          <span>{beat[lang]}</span>
+        {NARRATIVE_BEATS.map((beat, index) => index >= 3 && index < 8 ? <p data-narrative-index={index} data-reveal={narrativeRevealStyle(index)} key={index} className={`virgo-narrative-line virgo-narrative-${beat.side} virgo-placement-${beat.placement}${index === 0 ? " virgo-identity" : ""}${index === 8 ? " virgo-contact-narrative" : ""}`} aria-hidden="true">
+          <span>{beat[lang].split(' ').map((word, i, words) => <Fragment key={i}><span className="virgo-story-word" style={{ '--word-delay': i / words.length * .32 } as CSSProperties}>{word}</span>{i < words.length - 1 ? ' ' : null}</Fragment>)}</span>
         </p> : null)}
       </div>
       <section className="virgo-overlay-panel virgo-cosmos" aria-label={t("Chòm sao Xử Nữ xuất hiện", "Virgo constellation appearing")} aria-hidden={active !== 0}>

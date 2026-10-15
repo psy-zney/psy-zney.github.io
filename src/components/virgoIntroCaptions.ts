@@ -1,5 +1,5 @@
 import type { Language } from '../data/portfolio';
-import { INTRO_CAPTIONS, introCaptionPoint, introFrame, introTunnelView } from '../data/virgoIntro';
+import { INTRO_CAPTIONS, introCaptionInk, introCaptionPoint, introFrame, introTunnelView } from '../data/virgoIntro';
 import { smooth } from '../data/virgoFlight';
 
 /** Rasterize only on language/font changes; the render loop just projects strips. */
@@ -49,7 +49,7 @@ export function drawIntroCaptions(ctx: CanvasRenderingContext2D, width: number, 
         // Two triangles keep the trapezoid edges joined; a CSS rotation or one
         // affine parallelogram per strip would slide glyphs off the curved wall.
         for (const lower of [false, true]) {
-          ctx.save(); ctx.globalAlpha = opacity;
+          ctx.save(); ctx.globalAlpha = opacity * introCaptionInk(frame, index, (i + .5) / strips);
           if (!lower) ctx.transform((b.x - a.x) / sw, (b.y - a.y) / sw, (c.x - a.x) / sh, (c.y - a.y) / sh, a.x, a.y);
           else ctx.transform((d.x - c.x) / sw, (d.y - c.y) / sw, (d.x - b.x) / sh, (d.y - b.y) / sh, b.x + c.x - d.x, b.y + c.y - d.y);
           ctx.beginPath();

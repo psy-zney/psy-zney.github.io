@@ -78,18 +78,22 @@ export function drawIntroExit(ctx: CanvasRenderingContext2D, width: number, heig
   const frame = introFrame(seconds), view = introTunnelView(width, height);
   const physicalRadius = view.radius * view.focal / Math.max(1, frame.exitDepth);
   const radius = physicalRadius * frame.exitReveal;
-  const rimRadius = physicalRadius * (.35 + .65 * frame.exitReveal);
+  const horizonRadius = Math.min(width, height) * .13;
   const x = width / 2, y = height / 2;
   if (frame.z > INTRO_ENTRANCE_Z) return { x, y, radius: 0, reveal: 0, crossed: false };
-  // The distant end stays opaque black throughout wall reading. Home is prepared
-  // behind it, but only becomes visible as the near exit actually opens.
-  ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = '#000';
-  ctx.beginPath(); ctx.arc(x, y, rimRadius, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-  ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = '#000'; ctx.globalCompositeOperation = 'destination-out';
-  ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-  if (frame.exitDepth > 0 && frame.exitDepth < 1100 && rimRadius < Math.hypot(width, height)) {
-    ctx.save(); ctx.globalAlpha = smooth(1100, 650, frame.exitDepth);
-    drawIntroVortex(ctx, x, y, rimRadius / .35, -time); ctx.restore();
+  // Depth haze closes the distant vanishing point, without a growing black disk.
+  const haze = ctx.createRadialGradient(x, y, 0, x, y, horizonRadius * 1.8);
+  haze.addColorStop(0, '#000'); haze.addColorStop(.25, '#000');
+  haze.addColorStop(.62, 'rgba(0,0,0,.75)'); haze.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = haze; ctx.fillRect(0, 0, width, height); ctx.restore();
+  if (radius > 0) {
+    const opening = ctx.createRadialGradient(x, y, radius * .94, x, y, radius * 1.02);
+    opening.addColorStop(0, '#000'); opening.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = opening; ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillRect(0, 0, width, height); ctx.restore();
+  }
+  if (frame.exitDepth > 0 && radius > 1 && radius < Math.hypot(width, height)) {
+    drawIntroVortex(ctx, x, y, radius / .35, -time);
   }
   return { x, y, radius, reveal: frame.exitReveal, crossed: frame.exitDepth <= 0 };
 }

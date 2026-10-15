@@ -24,8 +24,8 @@ const cameraZ = (position: number) => {
   return 1000 - 5401 * distance;
 };
 export const INTRO_CAPTIONS = [
-  { z: cameraZ(5.5), pass: 5.5, side: 1, vie: 'Xin chào, tôi là Lê Quang Khánh', eng: "Hello, I'm Lê Quang Khánh" },
-  { z: cameraZ(6.9), pass: 6.9, side: -1, vie: 'Chào mừng đến với vũ trụ sáng tạo của tôi', eng: 'Welcome to my creative universe' },
+  { z: cameraZ(5.5), pass: 5.5, side: -1, effect: 'ion-scan', vie: 'Xin chào, tôi là Lê Quang Khánh', eng: "Hello, I'm Lê Quang Khánh" },
+  { z: cameraZ(6.9), pass: 6.9, side: 1, effect: 'wave-light', vie: 'Chào mừng đến với vũ trụ sáng tạo của tôi', eng: 'Welcome to my creative universe' },
 ] as const;
 
 /** The camera keeps a fixed heading on the tunnel axis, including reverse travel. */
@@ -50,6 +50,14 @@ export function advanceIntroScroll(seconds: number, velocity: number, target: nu
 }
 
 export type IntroFrame = ReturnType<typeof introFrame>;
+
+/** Existing wall ink charges as we approach; its geometry never appears at the lens. */
+export function introCaptionInk(frame: IntroFrame, index: number, u: number) {
+  const depth = frame.z - INTRO_CAPTIONS[index].z;
+  const charge = 1 - smooth(850, 4800, depth);
+  const front = index === 0 ? u * .32 : Math.abs(u - .5) * .64;
+  return .48 + .52 * smooth(front, front + .65, charge);
+}
 
 /** Grid, wall dust and lettering share this exact cylinder and projection. */
 export function introTunnelView(width: number, height: number) {

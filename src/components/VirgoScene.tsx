@@ -9,7 +9,7 @@ import { straightFlightPose, systemPresence, transitSample, TRANSIT_LEGS } from 
 import { VirgoTransit } from "./VirgoTransit";
 import { advancePacedFlightPosition } from "../data/virgoPacing";
 import { asteroidLayout, BLACK_HOLE_SCALE, ORBIT_PLANE, orbitRadii, planetRadius, SPACE_LAYOUT } from "../data/virgoSpace";
-import { mobileNarrativeTop, narrativeSample, narrativeTextReveal, NARRATIVE_BEATS } from "../data/virgoNarrative";
+import { contactPresence, mobileNarrativeTop, narrativeSample, narrativeTextReveal, NARRATIVE_BEATS } from "../data/virgoNarrative";
 import { openingPresentation, openingStarAppearance, openingTransition, protectOpeningHandoff } from "../data/virgoOpening";
 import { VirgoOpening } from "./VirgoOpening";
 import { createRockGeometry } from "../data/virgoCelestial";
@@ -21,6 +21,8 @@ import { BlackHoleVortex } from "./BlackHoleVortex";
 import type { BlackHoleOrbitState } from "./BlackHoleOrbitControls";
 import { solarPassageSample } from '../data/solarShowcaseMotion';
 import { readingOrbitAngle, readingOrbitPoint } from '../data/virgoExperienceMotion';
+import { StellarPlasma, VirgoSupernova } from './VirgoStellarEffects';
+import { STELLAR_NOISE_GLSL, stellarEmission } from '../data/virgoStellarEffects';
 
 export { VIRGO_STARS, VIRGO_SUPPORT_STARS } from "../data/virgoStations";
 
@@ -57,6 +59,7 @@ const STAR_FRAGMENT = `
   varying vec2 surfaceUv;
   varying vec3 surfaceNormal;
   varying vec3 viewDirection;
+  ${STELLAR_NOISE_GLSL}
   void main() {
     float facing = max(dot(normalize(surfaceNormal), normalize(viewDirection)), 0.0);
     float limb = 0.30 + 0.70 * pow(facing, 0.42);
@@ -64,8 +67,14 @@ const STAR_FRAGMENT = `
     vec3 granules = texture2D(surface, flowing).rgb;
     float cells = texture2D(surface, flowing * vec2(3.0, 2.0)).r;
     float spots = smoothstep(.24, .41, cells);
-    float convection = .94 + .06 * sin(surfaceUv.y * 110.0 + cells * 8.0 + stellarTime * .7);
-    gl_FragColor = vec4(granules * limb * mix(.46, 1.18, spots) * convection, presence);
+    float age=stellarTime*.16;
+    vec2 warp=vec2(stellarNoise(surfaceUv*11.0+age),stellarNoise(surfaceUv*13.0-age*.7));
+    float boiling=stellarFbm(surfaceUv*vec2(30.0,18.0)+warp*2.5+vec2(age,-age*.4));
+    float grain=stellarNoise(surfaceUv*vec2(140.0,80.0)+warp+age*2.0);
+    float filaments=pow(1.0-abs(sin(boiling*20.0+grain*2.5)),8.0);
+    vec3 hot=mix(granules,vec3(1.0,.96,.84),.35);
+    vec3 plasma=granules*mix(.3,1.35,smoothstep(.25,.78,boiling))+hot*filaments*.65;
+    gl_FragColor = vec4(plasma * limb * mix(.6, 1.2, spots), presence);
     #include <colorspace_fragment>
   }
 `;
@@ -190,7 +199,8 @@ function VirgoNode({ index, flight, glow, support = false }: FlightProps & { ind
   useFrame(() => {
     if (!group.current) return;
     uniforms.stellarTime.value = flight.time;
-    const presence = support ? 1 : starPresence(flight, index);
+    const emission = support ? 1 : stellarEmission(index, flight.position);
+    const presence = support ? 1 : starPresence(flight, index) * emission;
     uniforms.presence.value = presence;
     const fadeOutForBlackHole = index === 3 ? (1 - smooth(5.92, 5.97, flight.position)) : 1;
     const appearance = openingStarAppearance(support ? index + 4 : index, flight.reveal) * fadeOutForBlackHole;
@@ -205,19 +215,20 @@ function VirgoNode({ index, flight, glow, support = false }: FlightProps & { ind
     (sprite.material as THREE.SpriteMaterial).opacity = appearance * presence * (support ? .42 : .68 + focus * .26);
     group.current.children[1].scale.setScalar(appearance);
     group.current.children[1].rotation.y = flight.time * .055;
-    for (let i = 2; i < group.current.children.length; i++) {
+    for (let i = 2; i < Math.min(4, group.current.children.length); i++) {
       const ring = group.current.children[i] as THREE.Mesh;
       ring.quaternion.copy(camera.quaternion);
       if (!support) ring.rotateY(readingOrbitAngle(index, flight.position, flight.reduced));
       const phase = ((flight.position * 1.8 + flight.time * .42 + (i - 2) * .5) % 1 + 1) % 1;
       ring.scale.setScalar(1.05 + phase * .4);
-      (ring.material as THREE.MeshBasicMaterial).opacity = flight.reduced ? 0 : focus * appearance * (1 - phase) * .07;
+      (ring.material as THREE.MeshBasicMaterial).opacity = flight.reduced ? 0 : focus * appearance * (1 - phase) * .07 * emission;
     }
   });
   return <group ref={group} position={star.position}>
     <sprite><spriteMaterial map={glow} color={star.color} transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} /></sprite>
     <mesh onClick={event => event.stopPropagation()} onPointerOver={event => event.stopPropagation()}><sphereGeometry args={[radius, support ? 16 : 48, support ? 12 : 32]} /><shaderMaterial uniforms={uniforms} vertexShader={STAR_VERTEX} fragmentShader={STAR_FRAGMENT} transparent toneMapped={false} /></mesh>
     {!support && [0, 1].map(i => <mesh key={i}><ringGeometry args={[radius * 1.06, radius * 1.06 + .025, 80]} /><meshBasicMaterial color={star.color} transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} /></mesh>)}
+    {!support && <StellarPlasma index={index} radius={radius} color={star.color} flight={flight} glow={glow} />}
   </group>;
 }
 
@@ -516,7 +527,7 @@ export function createCameraComposition(mobile = false) {
   const targets = [new THREE.Vector3(), new THREE.Vector3(), ...VIRGO_STARS.slice(0, 2).map(star => new THREE.Vector3(...star.position)), new THREE.Vector3(...VIRGO_STARS[1].position), ...VIRGO_STARS.slice(2).map(star => new THREE.Vector3(...star.position))];
   const direction = new THREE.Vector3(0, 0, -200);
   // A single heading and projection shift keep every stellar disk circular.
-  const framing = [new THREE.Vector2(), new THREE.Vector2(), ...[-.38, .38, .38, -.38, -.38].map(x => new THREE.Vector2(mobile ? 0 : x, mobile ? .40 : 0))];
+  const framing = [new THREE.Vector2(), new THREE.Vector2(), ...[.38, -.38, -.38, .38, .38].map(x => new THREE.Vector2(mobile ? 0 : x, mobile ? .40 : 0))];
   return { targets, framing, direction };
 }
 
@@ -718,14 +729,14 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     if (leg) {
       const fromChapter = leg.origin < 0 ? 0 : stationChapters[leg.origin];
       frameOffset.copy(framing[fromChapter]);
-      const destinationX = !mobile && (leg.destination === 1 || leg.destination === 2) ? -.38 : leg.destination === 3 ? 0 : framing[compositionChapter].x;
-      if (!mobile && (leg.origin === 1 || leg.origin === 2)) frameOffset.x = .38;
+      const destinationX = !mobile && (leg.destination === 1 || leg.destination === 2) ? .38 : leg.destination === 3 ? 0 : framing[compositionChapter].x;
+      if (!mobile && (leg.origin === 1 || leg.origin === 2)) frameOffset.x = -.38;
       frameOffset.x += (destinationX - frameOffset.x) * smooth(0, 1, passage.progress);
       frameOffset.y += (framing[compositionChapter].y - frameOffset.y) * smooth(0, 1, passage.progress);
     } else frameOffset.copy(framing[compositionChapter]);
-    if (!mobile && position >= 2.94 && position <= 4.25) frameOffset.x = -.38 + .76 * smooth(3.52, 3.65, position);
-    if (!mobile && position >= 4.80 && position <= 5.30) frameOffset.x = -.38 + .76 * smooth(5.015, 5.065, position);
-    if (size.height < 600 && size.width > size.height && compositionChapter >= 2) frameOffset.set(-.52, 0);
+    if (!mobile && position >= 2.94 && position <= 4.25) frameOffset.x = .38 - .76 * smooth(3.52, 3.65, position);
+    if (!mobile && position >= 4.80 && position <= 5.30) frameOffset.x = .38 - .76 * smooth(5.015, 5.065, position);
+    if (size.height < 600 && size.width > size.height && compositionChapter >= 2) frameOffset.set(frameOffset.x * .52 / .38, 0);
     // Fit the stellar disk above the compact reader without changing the
     // camera path, lens or the composition during a transit.
     if (mobile && size.height < 640 && size.height > size.width && compositionChapter >= 2) frameOffset.y = .72;
@@ -749,11 +760,12 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
       const transition = openingTransition(position, reducedMotion);
       panels.forEach((panel, i) => {
         const reading = narrativeSample(position, reducedMotion);
-        const opacity = panelVisibility(i, position, reducedMotion) * (i < 2 ? 1 : reading.controls) * (1 - transition.cover) * (1 - smooth(0, .5, flight.exit));
+        const visibility = i === 6 ? contactPresence(position, reducedMotion) : panelVisibility(i, position, reducedMotion) * (i < 2 ? 1 : reading.controls);
+        const opacity = visibility * (1 - transition.cover) * (1 - smooth(0, .5, flight.exit));
         panel.style.opacity = String(opacity);
         panel.style.visibility = opacity > .001 ? "visible" : "hidden";
         panel.style.transform = "none";
-        const inert = opacity < .5 || (i >= 2 && !reading.interactive) || paused || entering;
+        const inert = opacity < .5 || (i >= 2 && i !== 6 && !reading.interactive) || paused || entering;
         panel.toggleAttribute('inert', inert);
         panel.style.pointerEvents = 'none';
         panel.setAttribute('aria-hidden', String(inert));
@@ -916,6 +928,7 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     <ambientLight intensity={.18} />
     {VIRGO_STARS.map(star => <pointLight key={star.name} position={star.position} intensity={2000} distance={120} color={star.color} />)}
     <VirgoTransit flight={flight} glow={glow} />
+    <VirgoSupernova flight={flight} />
     {VIRGO_STARS.map((star, index) => <FocusedSystem key={star.name} index={index} flight={flight}>
       {index !== 3 && <VirgoNode index={index} flight={flight} glow={glow} />}
       {index === 0 && <OriginForge flight={flight} glow={glow} selected={selectedOrigin ?? null} />}

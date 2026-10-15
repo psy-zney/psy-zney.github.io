@@ -7,7 +7,7 @@ import ts from 'typescript';
 
 // Behavior and integration checks for the current build. Visual QA lives in check-ui.mjs.
 export async function checkCurrentFeatures(server) {
-  const { introFrame, INTRO_CAPTIONS, INTRO_DURATION, INTRO_ASSEMBLY_DURATION, introConstellationFrame, advanceIntroScroll, introCaptionPoint, introTunnelView, introWarpPoint, introVortexAngle, INTRO_TUNNEL_GRID, INTRO_EXIT_Z } = await server.ssrLoadModule('/src/data/virgoIntro.ts');
+  const { introFrame, INTRO_CAPTIONS, INTRO_DURATION, INTRO_ASSEMBLY_DURATION, introConstellationFrame, advanceIntroScroll, introCaptionInk, introCaptionPoint, introTunnelView, introWarpPoint, introVortexAngle, INTRO_TUNNEL_GRID, INTRO_EXIT_Z } = await server.ssrLoadModule('/src/data/virgoIntro.ts');
   assert.equal(introConstellationFrame(0).stars[1], 1, 'The constellation starts from the central yellow star');
   assert.equal(introConstellationFrame(0).stars.filter(amount => amount > .1).length, 1, 'Only the central star is visible before connections spread');
   assert(introConstellationFrame(0).edges.every(([a, b]) => a + b === 0), 'Connections are drawn progressively instead of appearing fully connected');
@@ -17,6 +17,13 @@ export async function checkCurrentFeatures(server) {
   assert.equal(INTRO_DURATION, 7.8, 'The intro scroll coordinate spans opening, entry and wall reading; it is not an autoplay duration');
   assert.equal(introFrame(0).z, 1000);
   for (const caption of INTRO_CAPTIONS) assert.equal(introFrame(caption.pass).z, caption.z, 'Wall lettering has a fixed physical position along the flight');
+  assert.deepEqual(INTRO_CAPTIONS.map(caption => caption.side), [-1, 1], 'Read the left wall first, then the right wall');
+  assert.equal(new Set(INTRO_CAPTIONS.map(caption => caption.effect)).size, 2, 'Wall ink has two different charging effects');
+  for (let index = 0; index < 2; index++) for (const u of [0, .25, .5, .75, 1]) {
+    const far = introCaptionInk(introFrame(3.9), index, u), near = introCaptionInk(introFrame(INTRO_CAPTIONS[index].pass), index, u);
+    assert(far >= .48 && near <= 1 && near >= far, 'Ink already exists on the distant wall and gains light as it approaches');
+    assert.equal(far, introCaptionInk(introFrame(3.9), index, u), 'Reversing restores the exact wall ink');
+  }
   assert.equal(introFrame(INTRO_DURATION).z, -4401);
   assert(introFrame(INTRO_DURATION).exitDepth < 0, 'The camera crosses the exit plane before the overlay unmounts');
   assert.equal(INTRO_TUNNEL_GRID.visible, false, 'The cylinder grid is a placement guide, not a visible wireframe');
@@ -83,7 +90,31 @@ export async function checkCurrentFeatures(server) {
   const { advanceShowcaseMotion, showcaseChapterTransition, readingOrbitAngle, readingOrbitPoint } = await server.ssrLoadModule('/src/data/virgoExperienceMotion.ts');
   const { straightFlightPose, TRANSIT_LEGS, TRANSIT_SCENARIOS, createTransitScenarios } = await server.ssrLoadModule('/src/data/virgoTransit.ts');
   const { solarPassageSample } = await server.ssrLoadModule('/src/data/solarShowcaseMotion.ts');
-  const { chapterReadingPosition, narrativeSample, NARRATIVE_BEATS } = await server.ssrLoadModule('/src/data/virgoNarrative.ts');
+  const { chapterReadingPosition, narrativeSample, narrativeRevealStyle, contactPresence, NARRATIVE_BEATS } = await server.ssrLoadModule('/src/data/virgoNarrative.ts');
+  assert.deepEqual(NARRATIVE_BEATS.slice(3, 8).map(beat => beat.side), ['left', 'left', 'right', 'left', 'right'], 'Every reading pair starts on the left');
+  assert.equal(new Set([3, 4, 5, 6, 7].map(narrativeRevealStyle)).size, 4, 'Narrative ink uses four scroll-driven reveal modes');
+  for (const reduced of [false, true]) for (const p of [5.94, 5.98, 6]) assert.equal(contactPresence(p, reduced), 1, 'Contact stays visible through the endpoint');
+  assert.equal(contactPresence(5.8), 0);
+  const { stellarProminence, stellarEmission, supernovaSample } = await server.ssrLoadModule('/src/data/virgoStellarEffects.ts');
+  for (let index = 0; index < 6; index++) {
+    const arc = stellarProminence(index, 12);
+    assert(arc.every(point => point.every(Number.isFinite)));
+    assert(Math.abs(Math.hypot(...arc[0]) - 12 * 1.015) < 1e-8);
+    assert(Math.hypot(...arc[16]) > 12 * 1.2, 'Prominence loops rise above the actual photosphere');
+    assert(Math.abs(Math.hypot(...arc.at(-1)) - 12 * 1.015) < 1e-8);
+  }
+  assert.equal(stellarEmission(2, 5.37), 0, 'The progenitor surface has dispersed when the shock front expands');
+  assert.equal(stellarEmission(1, 5.37), 1);
+  let previousNovaRadius = 0;
+  for (let i = 0; i <= 320; i++) {
+    const p = 5.3 + i / 1000, frame = supernovaSample(p);
+    assert(frame.radius >= previousNovaRadius && frame.opacity >= 0 && frame.opacity <= 1);
+    assert.deepEqual(frame, supernovaSample(p), 'Reverse scroll retraces the same explosion geometry');
+    assert.equal(supernovaSample(p, true).opacity, 0, 'Reduced motion suppresses the explosive flash');
+    previousNovaRadius = frame.radius;
+  }
+  assert.equal(supernovaSample(5.3).opacity, 0);
+  assert.equal(supernovaSample(5.82).opacity, 0, 'The new foreground scene is gone before the existing Contact view');
   const destinations = [
     ['mpoly', 'https://mpoly.zney295.id.vn/'],
     ['beatsync', 'https://beatsync.zney295.id.vn/'],
@@ -249,12 +280,13 @@ export async function checkCurrentFeatures(server) {
   for (const [path, components] of [
     ['src/App.tsx', ['WavePageLoader']],
     ['src/components/VirgoPortfolio.tsx', ['ProductShowcase', 'VirgoSceneBoundary', 'VirgoScene']],
-    ['src/components/VirgoScene.tsx', ['PortalGate', 'BlackHoleVortex']],
+    ['src/components/VirgoScene.tsx', ['PortalGate', 'BlackHoleVortex', 'StellarPlasma', 'VirgoSupernova']],
     ['src/components/BlackHoleVortex.tsx', ['BlackHoleAccretionMesh']],
   ]) {
     const { names, calls, attributes } = await jsxNames(path);
     for (const component of components) assert(names.has(component), `${path} must still render ${component}`);
     if (path.endsWith('VirgoScene.tsx')) assert(calls.has('straightFlightPose'), 'The straight path must remain connected to the rendered camera');
+    if (path.endsWith('VirgoScene.tsx')) assert(calls.has('contactPresence'), 'The live Contact panel has independent persistent visibility');
     if (path.endsWith('VirgoScene.tsx')) assert(calls.has('readingOrbitAngle') && calls.has('readingOrbitPoint'), 'Both station meshes and labels use the local reading orbit');
     if (path.endsWith('VirgoPortfolio.tsx')) {
       assert((calls.get('openFlowShowcase') ?? 0) >= 3, 'Wheel and native-scroll paths must still enter the showcase automatically');

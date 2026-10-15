@@ -107,7 +107,7 @@ export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFin
       page.dataset.openingFlight = started.current ? 'running' : 'idle';
       surfaces.forEach((patch, i) => {
         const el = captions.current?.children[i] as HTMLElement | undefined; if (!el) return;
-        el.style.opacity = String(patch.opacity); el.dataset.lines = '1';
+        el.style.opacity = String(patch.opacity); el.dataset.lines = '1'; el.dataset.effect = INTRO_CAPTIONS[i].effect;
         el.dataset.projectedBounds = [patch.left, patch.top, patch.width, patch.height].map(v => v.toFixed(2)).join(',');
         el.setAttribute('aria-hidden', String(patch.opacity < .1 || elapsed < 2.75));
       });

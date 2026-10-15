@@ -1696,6 +1696,11 @@
   .virgo-skills-panel .virgo-skill-tools { margin-top: 8px; }
   .virgo-overlay-panel[aria-labelledby="virgo-contact-title"]:not(.virgo-cosmos):not(.virgo-prologue-hero) { padding-top: 39dvh; }
 }
+@media (max-height: 599px) and (orientation: landscape) {
+  .virgo-page .virgo-narrative .virgo-narrative-line.virgo-narrative-left[class*="virgo-placement-"]:not(.virgo-placement-middle) {
+    top: 72px; left: 24px; right: 52%; width: auto; text-align: left;
+  }
+}
 .virgo-bare-label { font-size: 9px; letter-spacing: .17em; margin-bottom: 18px !important; }
 .virgo-project-link { min-height: 54px; padding-block: 10px; grid-template-columns: 16px 1fr 18px; }
 .virgo-project-link > small { display: none; }
@@ -1946,6 +1951,34 @@
 }
 .virgo-identity.is-visible > span { animation: none; }
 
+/* All reveals sample scroll, so reversing restores the same ink state. */
+.virgo-narrative-line[data-reveal="scan"] > span {
+  clip-path: inset(-8px calc((1 - var(--text-reveal, 0)) * 100%) -8px -8px);
+  transform: none;
+}
+.virgo-narrative-line[data-reveal="focus"] > span {
+  filter: blur(calc((1 - var(--text-reveal, 0)) * 6px));
+  transform: scale(calc(.97 + var(--text-reveal, 0) * .03));
+  transform-origin: left center;
+}
+.virgo-narrative-line[data-reveal="rise"] > span {
+  transform: translate3d(0, calc((1 - var(--text-reveal, 0)) * 18px), 0);
+  filter: blur(calc((1 - var(--text-reveal, 0)) * 2px));
+}
+.virgo-story-word { display: inline-block; }
+.virgo-narrative-line[data-reveal="stagger"] > span { opacity: 1; transform: none; }
+.virgo-narrative-line[data-reveal="stagger"] .virgo-story-word {
+  --word-ink: clamp(0, (var(--text-reveal, 0) - var(--word-delay, 0)) * 1.5, 1);
+  opacity: var(--word-ink);
+  transform: translateY(calc((1 - var(--word-ink)) * 9px));
+}
+@media (prefers-reduced-motion: reduce) {
+  .virgo-page .virgo-narrative-line[data-reveal] > span,
+  .virgo-page .virgo-narrative-line[data-reveal] .virgo-story-word {
+    clip-path: none; filter: none; transform: none; opacity: 1;
+  }
+}
+
 /* A full-bleed stellar flash bridges WebGL and CSS3D, without an aperture. */
 .virgo-showcase-passage {
   position: absolute; inset: 0; z-index: 80; overflow: hidden;
@@ -1982,6 +2015,7 @@
 .virgo-page .virgo-overlay-panel[aria-labelledby="virgo-contact-title"] .virgo-bare {
   width: auto; max-width: none; display: flex; flex-wrap: wrap;
   justify-content: center; align-items: center; gap: 4px 24px; margin: 0;
+  max-height: none; overflow: visible;
 }
 .virgo-page .virgo-overlay-panel[aria-labelledby="virgo-contact-title"] .virgo-bare-label { display: none; }
 .virgo-page .virgo-overlay-panel[aria-labelledby="virgo-contact-title"] .virgo-email {
@@ -1990,11 +2024,20 @@
 .virgo-page .virgo-overlay-panel[aria-labelledby="virgo-contact-title"] .virgo-contact-links {
   margin: 0; gap: 4px; flex-wrap: wrap; justify-content: center;
 }
+@media (min-width: 701px) {
+  .virgo-page .virgo-overlay-panel[aria-labelledby="virgo-contact-title"] { padding-inline: 88px; }
+  .virgo-page .virgo-overlay-panel[aria-labelledby="virgo-contact-title"] .virgo-bare {
+    display: grid; grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1fr);
+    width: min(1050px, 100%); gap: 4px;
+  }
+  .virgo-page .virgo-overlay-panel[aria-labelledby="virgo-contact-title"] .virgo-email { grid-column: 1; justify-self: start; }
+  .virgo-page .virgo-overlay-panel[aria-labelledby="virgo-contact-title"] .virgo-contact-links { grid-column: 3; justify-self: end; justify-content: flex-end; }
+}
 @media (max-width: 700px) {
   .virgo-page .virgo-narrative .virgo-narrative-line.virgo-narrative-right.virgo-contact-narrative {
     top: 146px; left: 24px; right: 24px; width: auto; font-size: 25px;
   }
-  .virgo-page .virgo-overlay-panel[aria-labelledby="virgo-contact-title"] { bottom: 36px; }
+  .virgo-page .virgo-overlay-panel[aria-labelledby="virgo-contact-title"] { bottom: calc(64px + env(safe-area-inset-bottom)); }
 }
 @media (max-height: 580px) and (orientation: landscape) {
   .virgo-page .virgo-narrative .virgo-narrative-line.virgo-narrative-right.virgo-contact-narrative {
@@ -2013,5 +2056,6 @@
 @media(max-height:599px) and (orientation:landscape) {
   .virgo-single-link, .virgo-panel-right .virgo-single-link { left: 48%; }
   .virgo-page[data-story] .virgo-single-link { left: 48%; }
+  .virgo-page[data-story="left"] .virgo-single-link { left: 24px; }
   .virgo-page .virgo-narrative-line.virgo-narrative-right.virgo-placement-lower-right, .virgo-page .virgo-narrative-line.virgo-narrative-left.virgo-placement-lower-left { top: 40%; font-size: 22px; }
 }

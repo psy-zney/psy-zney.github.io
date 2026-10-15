@@ -44,7 +44,7 @@ try {
             const frames = []; const start = performance.now();
             const sample = now => {
               const root = document.querySelector('.virgo-page');
-              frames.push({ p: Number(root.style.getPropertyValue('--flight-progress')) * 6, pose: root.dataset.cameraPose.split(',').map(Number), projection: root.dataset.cameraFraming?.split(',').map(Number), scenario: root.dataset.transitScenario });
+              frames.push({ p: Number(root.style.getPropertyValue('--flight-progress')) * 6, pose: root.dataset.cameraPose.split(',').map(Number), projection: root.dataset.cameraFraming?.split(',').map(Number), scenario: root.dataset.transitScenario, nova: root.dataset.supernovaFrame?.split(',').map(Number) });
               if (now - start >= 11900) resolve(frames); else requestAnimationFrame(sample);
             }; requestAnimationFrame(sample);
           }));
@@ -75,6 +75,7 @@ try {
             assert(angle < .00001, 'Camera orientation never rotates between frames');
             assert(Math.abs(moving[i].projection[0] - moving[i - 1].projection[0]) < .08, 'Projection does not jump between left and right framing');
             assert((moving[i].pose[2] - moving[i - 1].pose[2]) * (reverse ? -1 : 1) <= .001, 'Depth follows the scroll direction without a turn');
+            if (from === 5.3) assert((moving[i].nova[0] - moving[i - 1].nova[0]) * (reverse ? -1 : 1) >= -.001, 'The foreground explosion expands or contracts with the actual scroll direction');
           }
           assert(Math.abs(frames.at(-1).p - end) < .002, 'The transfer reaches its destination');
           for (let i = 1; i < frames.length; i++) assert(Math.abs(frames[i].projection[0] - frames[i - 1].projection[0]) < .08, 'Framing remains continuous at both transfer boundaries');
