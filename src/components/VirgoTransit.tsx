@@ -16,7 +16,7 @@ function Passage({ index, flight, glow, scenario }: { index: number; flight: Tra
   const rocks = useRef<THREE.InstancedMesh>(null);
   const dust = useRef<THREE.Points>(null);
   const opacity = useRef(0);
-  const meteors = useRef<THREE.LineSegments>(null);
+  const meteors = useRef<THREE.Points>(null);
   const planets = useMemo(() => transitPlanets(index, flight.mobile).slice(0,flight.tier === 'low' ? 3 : flight.tier === 'medium' ? 4 : 6), [index, flight.mobile, flight.tier]);
   const rockGeometry = useMemo(() => createRockGeometry(index + 12), [index]);
   const count = flight.tier === 'low' ? 24 : flight.tier === 'medium' || flight.mobile ? 48 : 110;
@@ -31,7 +31,7 @@ function Passage({ index, flight, glow, scenario }: { index: number; flight: Tra
   }, [count, index, flight.mobile]);
   const dustGeometry = useMemo(() => new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(positions.flatMap(p => p.position), 3)), [positions]);
   const meteorGeometry = useMemo(() => new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(
-    positions.slice(0, flight.tier === 'low' ? 8 : 18).flatMap(({ position: [x, y, z] }) => [x, y, z, x + (x < 0 ? -3 : 3), y + 1.5, z + 16]), 3)), [positions, flight.tier]);
+    positions.slice(0, flight.tier === 'low' ? 2 : 5).flatMap(({ position }) => position), 3)), [positions, flight.tier]);
   useEffect(() => () => { rockGeometry.dispose(); dustGeometry.dispose(); meteorGeometry.dispose(); }, [rockGeometry, dustGeometry, meteorGeometry]);
   useLayoutEffect(() => {
     if (!rocks.current) return;
@@ -53,7 +53,7 @@ function Passage({ index, flight, glow, scenario }: { index: number; flight: Tra
     if (dust.current) (dust.current.material as THREE.PointsMaterial).opacity = opacity.current * (scenario === 'stardust' ? .7 : .28);
     if (meteors.current) {
       meteors.current.position.z = -passage.progress * 24;
-      (meteors.current.material as THREE.LineBasicMaterial).opacity = opacity.current * .7;
+      (meteors.current.material as THREE.PointsMaterial).opacity = opacity.current * .35;
     }
   }, -.4);
   return <group ref={group} visible={false}>
@@ -67,9 +67,9 @@ function Passage({ index, flight, glow, scenario }: { index: number; flight: Tra
     <points ref={dust} geometry={dustGeometry}>
       <pointsMaterial map={glow} size={.65} color="#aac5df" transparent depthWrite={false} blending={THREE.AdditiveBlending} />
     </points>
-    {scenario === 'meteors' && <lineSegments ref={meteors} geometry={meteorGeometry}>
-      <lineBasicMaterial color="#c9eaff" transparent depthWrite={false} blending={THREE.AdditiveBlending} />
-    </lineSegments>}
+    {scenario === 'meteors' && <points ref={meteors} geometry={meteorGeometry}>
+      <pointsMaterial map={glow} size={.5} color="#8eacc7" transparent depthWrite={false} blending={THREE.AdditiveBlending} />
+    </points>}
   </group>;
 }
 

@@ -59,6 +59,9 @@ trình; ba đoạn bay chính dùng ba cảnh khác nhau. Không chọn ngẫu n
 render loop hoặc khi đổi chiều; lùi trên cùng đoạn phải thấy lại cảnh đã chọn.
 Có thể bổ sung cảnh bay ngang hố đen hay hiện tượng khác vào danh sách này,
 miễn giữ các bất biến trên và ngân sách chất lượng cho điện thoại/reduced motion.
+Sao băng dùng vài đốm sáng mềm; không khôi phục lớp vệt tốc độ quanh camera
+hoặc các đuôi trắng lineSegments phủ lên cảnh. Cảm giác bay đến từ parallax
+của vật thể/bụi và độ sâu camera, không cần thêm các nét trắng cứng.
 Chủ repo đã yêu cầu bỏ vụ nổ: không khôi phục `VirgoSupernova`, ejecta,
 chớp nổ ngẫu nhiên hoặc nhánh làm sao cuối tan sớm. Vindemiatrix giữ bề mặt
 plasma xanh rõ khi đọc, mờ cùng hệ sao khi rời trạm; renderer hố đen giữ nguyên.

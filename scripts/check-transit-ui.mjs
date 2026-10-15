@@ -6,6 +6,7 @@ await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ headless: true, executablePath: process.env.UI_CHROME_PATH });
 const results = [];
 const entryOnly = process.env.TRANSIT_CHECK === 'entry';
+const sceneryOnly = process.env.TRANSIT_CHECK === 'scenery';
 try {
   for (const [name, viewport] of [['desktop', { width: 1242, height: 715 }], ['phone', { width: 390, height: 844 }]]) {
     const page = await browser.newPage({ viewport });
@@ -25,6 +26,27 @@ try {
         if (snap) root.dataset.introArrival = String(position);
         document.querySelector('.virgo-scroll').scrollTop = offsets[index] + (offsets[index + 1] - offsets[index]) * (position - index);
     }, { position, snap });
+    if (sceneryOnly) {
+      const seen = new Set();
+      for (const [from, to] of [[2.32, 2.94], [4.25, 4.8], [5.3, 5.82]]) {
+        let chosen;
+        for (const [step, fraction] of [.12, .5, .85, .5, .12].entries()) {
+          const p = from + (to - from) * fraction;
+          await seek(p, true); await page.clock.runFor(180);
+          const state = await page.locator('.virgo-page').evaluate(root => ({ p: Number(root.style.getPropertyValue('--flight-progress')) * 6, pose: root.dataset.cameraPose.split(',').map(Number), scene: root.dataset.transitScenario, explosion: root.hasAttribute('data-supernova-frame') }));
+          assert(Math.abs(state.p - p) < .003, 'The screenshot samples the actual requested transit depth');
+          assert(['asteroids', 'meteors', 'stardust'].includes(state.scene));
+          if (chosen) assert.equal(state.scene, chosen, 'Reversing preserves the same quiet scenery');
+          chosen = state.scene; seen.add(chosen);
+          for (const axis of [0, 1, 3, 4, 5]) assert(Math.abs(state.pose[axis]) < .00001, 'Scenery refinement keeps the camera straight');
+          assert.equal(state.explosion, false);
+          if (step === 0 || step === 2) await page.screenshot({ path: `${output}/${name}-quiet-${chosen}-${step}.png` });
+          results.push({ name, p, scenario: chosen, pose: state.pose });
+        }
+      }
+      assert.equal(seen.size, 3, 'Inspect each quiet scenery variant');
+      assert.deepEqual(errors, []); console.log('PASS quiet transit scenery: ' + name); await page.close(); continue;
+    }
     if (!entryOnly) {
       // The rendered reading poses must share the transit's heading as well.
       for (const position of [1.92, 2.22, 3.23, 3.95, 4.92, 5.17, 6]) {
@@ -122,4 +144,4 @@ try {
     results.push({ name, showcaseStraightEntry: { pose: entry.pose, solar: entry.solar, samples: entryPoses.length } });
     assert.deepEqual(errors, []); console.log('PASS transit: ' + name); await page.close();
   }
-} finally { await writeFile(`${output}/report${entryOnly ? '-entry' : ''}.json`, JSON.stringify(results, null, 2)); await browser.close(); }
+} finally { await writeFile(`${output}/report${sceneryOnly ? '-scenery' : entryOnly ? '-entry' : ''}.json`, JSON.stringify(results, null, 2)); await browser.close(); }

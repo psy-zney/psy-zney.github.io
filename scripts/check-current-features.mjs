@@ -278,10 +278,13 @@ export async function checkCurrentFeatures(server) {
     ['src/App.tsx', ['WavePageLoader']],
     ['src/components/VirgoPortfolio.tsx', ['ProductShowcase', 'VirgoSceneBoundary', 'VirgoScene']],
     ['src/components/VirgoScene.tsx', ['PortalGate', 'BlackHoleVortex', 'StellarPlasma']],
+    ['src/components/VirgoTransit.tsx', ['VirgoPlanet', 'points']],
     ['src/components/BlackHoleVortex.tsx', ['BlackHoleAccretionMesh']],
   ]) {
     const { names, calls, attributes } = await jsxNames(path);
     for (const component of components) assert(names.has(component), `${path} must still render ${component}`);
+    if (path.endsWith('VirgoScene.tsx')) assert(!names.has('FlightTrails'), 'The camera speed-line overlay stays removed');
+    if (path.endsWith('VirgoTransit.tsx')) assert(!names.has('lineSegments'), 'Transit uses soft particles instead of hard white meteor segments');
     if (path.endsWith('VirgoScene.tsx')) assert(!names.has('VirgoSupernova') && !calls.has('stellarEmission'), 'Neither the removed explosion nor its early stellar fade can be remounted');
     if (path.endsWith('VirgoScene.tsx')) assert(calls.has('straightFlightPose'), 'The straight path must remain connected to the rendered camera');
     if (path.endsWith('VirgoScene.tsx')) assert(calls.has('contactPresence'), 'The live Contact panel has independent persistent visibility');

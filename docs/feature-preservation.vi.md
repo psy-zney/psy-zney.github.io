@@ -25,6 +25,14 @@ Cảnh nổ ngẫu nhiên bên đường cũng được thay bằng bụi sao, k
 chớp nổ. Không sửa BlackHoleVortex, blackHoleShader, blackHoleRendering hoặc
 BlackHoleOrbitControls; không đổi camera, độ dài cuộn hoặc pacing.
 
+Theo phản hồi về nét trắng dư: bỏ lớp FlightTrails quanh camera và đuôi sao
+băng dạng lineSegments. Biến thể sao băng chỉ dùng 2–5 đốm glow xanh dịu,
+không dựng các đoạn trắng cứng trên hệ sao. Giữ chuyển động vật thể/bụi,
+đường quỹ đạo, chòm sao và plasma; không đổi đường bay để bù hiệu ứng.
+Chế độ `TRANSIT_CHECK=scenery` của `check-transit-ui.mjs` chụp ba cảnh ở
+năm mốc thuận/ngược trên desktop/phone. Dùng để xem bố cục nhanh; kiểm tra
+chuyển động liên tục vẫn dùng lệnh đầy đủ trong quy tắc bay thẳng.
+
 Chữ intro xuất hiện trên thành trái trước, thành phải sau; luôn một dòng,
 có sẵn từ xa và sáng dần bằng ion scan/wave light. Các cặp câu đọc cũng
 trái → phải; wipe, focus, word cascade và rise đều lấy cùng tiến độ cuộn,

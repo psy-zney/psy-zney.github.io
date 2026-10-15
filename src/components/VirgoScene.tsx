@@ -237,43 +237,6 @@ function VirgoNode({ index, flight, glow, support = false }: FlightProps & { ind
   </group>;
 }
 
-function FlightTrails({ flight }: { flight: Flight }) {
-  const { camera } = useThree();
-  const group = useRef<THREE.Group>(null);
-  const material = useRef<THREE.LineBasicMaterial>(null);
-  const { geometry, particles } = useMemo(() => {
-    const count = flight.mobile ? 60 : 150;
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(count * 6), 3).setUsage(THREE.DynamicDrawUsage));
-    const particles = Array.from({ length: count }, (_, i) => {
-      const angle = random(i + 200) * Math.PI * 2;
-      const radius = .34 + random(i + 60) * .56;
-      return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius, phase: random(i + 50), length: 1 + random(i + 70) * 2.5 };
-    });
-    return { geometry, particles };
-  }, [flight.mobile]);
-  useEffect(() => () => geometry.dispose(), [geometry]);
-  useFrame(() => {
-    if (!group.current || !material.current) return;
-    group.current.position.copy(camera.position);
-    group.current.quaternion.copy(camera.quaternion);
-    const power = flight.reduced || !openingPresentation(flight.position).journey ? 0 : clamp(flight.thrust * .48 + flight.speed * .8 + flight.exit);
-    group.current.visible = power > .005;
-    if (!group.current.visible) return;
-    material.current.opacity = power * .48;
-    const positions = geometry.getAttribute("position") as THREE.BufferAttribute;
-    for (let i = 0; i < positions.count / 2; i++) {
-      const particle = particles[i];
-      const z = 3 + ((particle.phase + flight.position * .9 + flight.time * (.12 + power * .35) + flight.exit * 2) % 1) * 15;
-      const length = .06 + power * particle.length;
-      positions.setXYZ(i * 2, particle.x * z, particle.y * z, -z);
-      positions.setXYZ(i * 2 + 1, particle.x * (z + length), particle.y * (z + length), -z - length);
-    }
-    positions.needsUpdate = true;
-  });
-  return <group ref={group}><lineSegments geometry={geometry} frustumCulled={false}><lineBasicMaterial ref={material} color="#b7d7ff" transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} /></lineSegments></group>;
-}
-
 function ForegroundDebris({ flight }: { flight: Flight }) {
   const { camera } = useThree();
   const group = useRef<THREE.Group>(null);
@@ -941,7 +904,7 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     </FocusedSystem>)}
     {/* Visible from the departure, before the destination's reading reveal. */}
     <PortalGate flight={flight} glow={glow} gate={gate} orbit={blackHoleOrbit} />
-    <FlightTrails flight={flight} /><ForegroundDebris flight={flight} />
+    <ForegroundDebris flight={flight} />
   </PlanetTextureLibrary>;
 }
 
