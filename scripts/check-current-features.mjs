@@ -95,7 +95,9 @@ export async function checkCurrentFeatures(server) {
   assert.equal(new Set([3, 4, 5, 6, 7].map(narrativeRevealStyle)).size, 4, 'Narrative ink uses four scroll-driven reveal modes');
   for (const reduced of [false, true]) for (const p of [5.94, 5.98, 6]) assert.equal(contactPresence(p, reduced), 1, 'Contact stays visible through the endpoint');
   assert.equal(contactPresence(5.8), 0);
-  const { stellarProminence, stellarEmission, prominenceSample, prominenceTiming, supernovaSample } = await server.ssrLoadModule('/src/data/virgoStellarEffects.ts');
+  const stellarEffects = await server.ssrLoadModule('/src/data/virgoStellarEffects.ts');
+  const { stellarProminence, prominenceSample, prominenceTiming } = stellarEffects;
+  assert(!('supernovaSample' in stellarEffects) && !('stellarEmission' in stellarEffects), 'The removed explosion must not dissolve the last star');
   for (let index = 0; index < 6; index++) {
     const arc = stellarProminence(index, 12);
     assert(arc.every(point => point.every(Number.isFinite)));
@@ -109,18 +111,6 @@ export async function checkCurrentFeatures(server) {
     assert(bursts.every((frame, i) => !i || Math.abs(frame.strength - bursts[i - 1].strength) < .03), 'Eruptions fade continuously through cycle boundaries');
     assert.equal(prominenceSample(index, period * .3, true).strength, 0, 'Reduced motion omits the intermittent ejections');
   }
-  assert.equal(stellarEmission(2, 5.37), 0, 'The progenitor surface has dispersed when the shock front expands');
-  assert.equal(stellarEmission(1, 5.37), 1);
-  let previousNovaRadius = 0;
-  for (let i = 0; i <= 320; i++) {
-    const p = 5.3 + i / 1000, frame = supernovaSample(p);
-    assert(frame.radius >= previousNovaRadius && frame.opacity >= 0 && frame.opacity <= 1);
-    assert.deepEqual(frame, supernovaSample(p), 'Reverse scroll retraces the same explosion geometry');
-    assert.equal(supernovaSample(p, true).opacity, 0, 'Reduced motion suppresses the explosive flash');
-    previousNovaRadius = frame.radius;
-  }
-  assert.equal(supernovaSample(5.3).opacity, 0);
-  assert.equal(supernovaSample(5.82).opacity, 0, 'The new foreground scene is gone before the existing Contact view');
   const destinations = [
     ['mpoly', 'https://mpoly.zney295.id.vn/'],
     ['beatsync', 'https://beatsync.zney295.id.vn/'],
@@ -255,6 +245,7 @@ export async function checkCurrentFeatures(server) {
   }
   for (let i = 0; i <= 400; i++) assert.equal(solarPassageSample(i / 100).roll, 0, 'Showcase entry keeps the straight heading too');
   const a = createTransitScenarios(() => 0), b = createTransitScenarios(() => .99);
+  assert.deepEqual([...TRANSIT_SCENARIOS].sort(), ['asteroids', 'meteors', 'stardust'], 'All transit scenery remains non-explosive');
   for (const scenes of [a, b]) assert.deepEqual([...scenes.slice(1)].sort(), [...TRANSIT_SCENARIOS].sort(), 'Each journey uses all three scenery variants without repeats');
   assert.notDeepEqual(a, b, 'New journeys can vary the scene order');
   assert.deepEqual(a, createTransitScenarios(() => 0), 'Scene selection is independent of frame timing');
@@ -286,11 +277,12 @@ export async function checkCurrentFeatures(server) {
   for (const [path, components] of [
     ['src/App.tsx', ['WavePageLoader']],
     ['src/components/VirgoPortfolio.tsx', ['ProductShowcase', 'VirgoSceneBoundary', 'VirgoScene']],
-    ['src/components/VirgoScene.tsx', ['PortalGate', 'BlackHoleVortex', 'StellarPlasma', 'VirgoSupernova']],
+    ['src/components/VirgoScene.tsx', ['PortalGate', 'BlackHoleVortex', 'StellarPlasma']],
     ['src/components/BlackHoleVortex.tsx', ['BlackHoleAccretionMesh']],
   ]) {
     const { names, calls, attributes } = await jsxNames(path);
     for (const component of components) assert(names.has(component), `${path} must still render ${component}`);
+    if (path.endsWith('VirgoScene.tsx')) assert(!names.has('VirgoSupernova') && !calls.has('stellarEmission'), 'Neither the removed explosion nor its early stellar fade can be remounted');
     if (path.endsWith('VirgoScene.tsx')) assert(calls.has('straightFlightPose'), 'The straight path must remain connected to the rendered camera');
     if (path.endsWith('VirgoScene.tsx')) assert(calls.has('contactPresence'), 'The live Contact panel has independent persistent visibility');
     if (path.endsWith('VirgoScene.tsx')) assert(calls.has('readingOrbitAngle') && calls.has('readingOrbitPoint'), 'Both station meshes and labels use the local reading orbit');

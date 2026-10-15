@@ -6,7 +6,7 @@ import sharp from 'sharp';
 
 const output = 'artifacts/stellar-effects'; await mkdir(output, { recursive: true });
 const selected = process.env.STELLAR_VIEWPORT;
-const sourcePaths = ['src/components/VirgoStellarEffects.tsx', 'src/data/virgoStellarEffects.ts', 'src/components/VirgoScene.tsx', 'src/components/VirgoPortfolio.tsx', 'src/components/VirgoPortfolio.css', 'src/data/virgoNarrative.ts'];
+const sourcePaths = ['src/components/VirgoStellarEffects.tsx', 'src/data/virgoStellarEffects.ts', 'src/components/VirgoScene.tsx', 'src/components/VirgoTransit.tsx', 'src/data/virgoTransit.ts', 'src/components/VirgoPortfolio.tsx', 'src/components/VirgoPortfolio.css', 'src/data/virgoNarrative.ts'];
 const digest = async () => {
   const hash = createHash('sha256');
   for (const path of sourcePaths) hash.update(path).update(await readFile(path));
@@ -38,7 +38,17 @@ try {
         const root = document.querySelector('.virgo-page'), offsets = [...document.querySelector('.virgo-scroll-content').children].map(el => el.offsetTop);
         const i = Math.min(5, Math.floor(p)); root.dataset.introArrival = String(p);
         document.querySelector('.virgo-scroll').scrollTop = offsets[i] + (offsets[i + 1] - offsets[i]) * (p - i);
-      }, p); await page.clock.runFor(120);
+      }, p);
+      // Native scroll delivery can lag a demand-rendered reduced-motion frame.
+      // Wait for the actual scene position before measuring pixels at rest.
+      let reached = false;
+      for (let attempt = 0; attempt < 15; attempt++) {
+        await page.clock.runFor(120);
+        reached = await page.locator('.virgo-page').evaluate((root, p) => Math.abs(Number(root.style.getPropertyValue('--flight-progress')) * 6 - p) < .002 && Math.abs(Number(root.dataset.flightTarget) - p) < .002, p);
+        if (reached) break;
+        await page.waitForTimeout(20);
+      }
+      assert(reached, `The rendered scene reaches ${p} before taking a screenshot`);
     };
     const root = page.locator('.virgo-page');
     await seek(3.23);
@@ -100,22 +110,29 @@ try {
       assert(reveals[2].words[0] > reveals[2].words.at(-1), 'The word cascade advances from left to right');
       assert(reveals[3].transform !== 'none');
     }
-    const nova = [];
-    for (const p of [5.335, 5.37, 5.60]) {
-      await seek(p); const frame = (await root.getAttribute('data-supernova-frame')).split(',').map(Number); nova.push(frame);
-      const shot = await page.screenshot({ path: `${output}/${name}-supernova-${p}.png` });
-      if (p === 5.37 && name !== 'reduced') {
-        const pixels = await sharp(shot).removeAlpha().raw().toBuffer({ resolveWithObject: true }); let edges = 0;
-        for (let y = 10; y < viewport.height - 10; y++) for (let x = 10; x < viewport.width - 10; x++) {
-          const i = (y * pixels.info.width + x) * 3;
-          if (pixels.data[i + 1] > 120 && pixels.data[i + 2] > 150 && pixels.data[i + 1] > pixels.data[i] * 1.1 && Math.abs(pixels.data[i + 1] - pixels.data[i + 4]) > 45) edges++;
-        }
-        assert(edges > 20, `${name}: the explosion has bright, sharp cyan filaments (${edges})`);
+    const lastStar = [];
+    for (const p of [4.92, 5.17, 5.28, ...(name === 'reduced' ? [] : [5.34])]) {
+      await seek(p);
+      assert.equal(await root.getAttribute('data-supernova-frame'), null, 'The removed explosion stays absent');
+      const shot = await page.screenshot({ path: `${output}/${name}-last-star-${p}.png` });
+      const camera = (await root.getAttribute('data-camera-pose')).split(',').map(Number);
+      const shift = (await root.getAttribute('data-camera-framing')).split(',').map(Number);
+      const centerX = (1 + shift[0]) * viewport.width / 2, centerY = (1 - shift[1]) * viewport.height / 2;
+      const diskRadius = 10.8 * viewport.height / (2 * Math.tan((viewport.width < 700 ? 49 : 46) * Math.PI / 360)) / (camera[2] + 960);
+      const pixels = await sharp(shot).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+      let min = 255, max = 0, count = 0, detail = 0, blue = 0;
+      for (let y = Math.max(1, Math.ceil(centerY - diskRadius * .65)); y < Math.min(viewport.height - 1, centerY + diskRadius * .65); y++) for (let x = Math.max(1, Math.ceil(centerX - diskRadius * .65)); x < Math.min(viewport.width - 1, centerX + diskRadius * .65); x++) {
+        if (Math.hypot(x - centerX, y - centerY) > diskRadius * .65) continue;
+        const i = (y * pixels.info.width + x) * 3, light = Math.max(...pixels.data.subarray(i, i + 3));
+        min = Math.min(min, light); max = Math.max(max, light); count++;
+        if (Math.abs(pixels.data[i + 2] - pixels.data[i + 5]) > 15) detail++;
+        if (pixels.data[i + 2] > pixels.data[i] * 1.15) blue++;
       }
+      const metrics = { p, contrast: max - min, detail: detail / count, blue: blue / count }; lastStar.push(metrics);
+      assert(count > 100 && metrics.contrast > 50 && metrics.detail > .08, `${name}: the last photosphere keeps visible detail, not an empty halo: ${JSON.stringify(metrics)}`);
+      assert(metrics.blue > .8, `${name}: the last star keeps a blue plasma surface: ${JSON.stringify(metrics)}`);
     }
-    assert(nova[1][2] > nova[0][2], 'The world-space shock wave expands before black-hole arrival');
-    if (name === 'reduced') assert(nova.every(frame => frame[1] === 0), 'Reduced motion omits the explosive flash');
-    else assert(nova[0][1] > .9 && nova[2][1] < .1, 'The foreground explosion finishes before Contact');
+    for (const p of [5.37, 5.60, 5.37]) { await seek(p); assert.equal(await root.getAttribute('data-supernova-frame'), null); }
 
     const contact = page.locator('[aria-labelledby="virgo-contact-title"]');
     for (const p of [5.94, 5.98, 6]) {
@@ -135,7 +152,7 @@ try {
     await contact.locator('.virgo-email').focus();
     assert.equal(await contact.locator('.virgo-email').evaluate(el => el === document.activeElement), true, 'The persistent email link remains keyboard accessible');
     assert.deepEqual(errors, []);
-    scenarios.push({ name, changedPlasmaPixels: moved, stellarPixels: samples, surfaceContrast: max - min, eruptionFrames, reveals, supernova: nova, persistentContact: true });
+    scenarios.push({ name, changedPlasmaPixels: moved, stellarPixels: samples, surfaceContrast: max - min, eruptionFrames, reveals, lastStar, persistentContact: true });
     console.log(`PASS stellar effects: ${name}`); await page.close();
   }
   assert.equal(await digest(), sourceSha256, 'The tested source stayed unchanged during visual QA'); status = 'passed';

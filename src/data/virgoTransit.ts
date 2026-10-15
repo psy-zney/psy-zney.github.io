@@ -16,7 +16,7 @@ export const TRANSIT_LEGS = [
   { from: 5.30, to: 5.82, origin: 2, destination: 3 },
 ] as const;
 
-export const TRANSIT_SCENARIOS = ['asteroids', 'meteors', 'supernova'] as const;
+export const TRANSIT_SCENARIOS = ['asteroids', 'meteors', 'stardust'] as const;
 export type TransitScenario = typeof TRANSIT_SCENARIOS[number];
 
 /** Choose scenery once per journey. Reversing a leg keeps its original scene. */

@@ -53,15 +53,16 @@ Giữ chuyển động này; không tái tạo những lỗi chữ chồng nhau 
 được `createFlightPaths` trong `VirgoScene.tsx` dùng trực tiếp. Cảnh nền nằm
 trong `VirgoTransit.tsx` và không được sửa transform camera.
 
-Hiện có trường thiên thạch, vệt sao băng và chớp siêu tân tinh cục bộ bên
+Hiện có trường thiên thạch, vệt sao băng và bụi sao nhẹ bên
 cạnh hành lang. `createTransitScenarios` xáo ba cảnh một lần khi dựng hành
 trình; ba đoạn bay chính dùng ba cảnh khác nhau. Không chọn ngẫu nhiên trong
 render loop hoặc khi đổi chiều; lùi trên cùng đoạn phải thấy lại cảnh đã chọn.
 Có thể bổ sung cảnh bay ngang hố đen hay hiện tượng khác vào danh sách này,
 miễn giữ các bất biến trên và ngân sách chất lượng cho điện thoại/reduced motion.
-`VirgoSupernova` bổ sung một cảnh tiền cảnh riêng trước Contact; chỉ thay
-plasma sao và ejecta, không sửa renderer hố đen hiện tại. Đến Contact, các
-liên kết yên ở footer cho tới vị trí cuối, không biến mất theo câu dẫn.
+Chủ repo đã yêu cầu bỏ vụ nổ: không khôi phục `VirgoSupernova`, ejecta,
+chớp nổ ngẫu nhiên hoặc nhánh làm sao cuối tan sớm. Vindemiatrix giữ bề mặt
+plasma xanh rõ khi đọc, mờ cùng hệ sao khi rời trạm; renderer hố đen giữ nguyên.
+Đến Contact, các liên kết yên ở footer cho tới vị trí cuối, không biến mất theo câu dẫn.
 
 ## Kiểm tra trước khi bàn giao
 

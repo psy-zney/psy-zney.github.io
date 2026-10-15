@@ -21,8 +21,8 @@ import { BlackHoleVortex } from "./BlackHoleVortex";
 import type { BlackHoleOrbitState } from "./BlackHoleOrbitControls";
 import { solarPassageSample } from '../data/solarShowcaseMotion';
 import { readingOrbitAngle, readingOrbitPoint } from '../data/virgoExperienceMotion';
-import { StellarPlasma, VirgoSupernova } from './VirgoStellarEffects';
-import { STELLAR_NOISE_GLSL, stellarEmission } from '../data/virgoStellarEffects';
+import { StellarPlasma } from './VirgoStellarEffects';
+import { STELLAR_NOISE_GLSL } from '../data/virgoStellarEffects';
 
 export { VIRGO_STARS, VIRGO_SUPPORT_STARS } from "../data/virgoStations";
 
@@ -56,6 +56,7 @@ const STAR_FRAGMENT = `
   uniform sampler2D surface;
   uniform float stellarTime;
   uniform float presence;
+  uniform float coolStar;
   varying vec2 surfaceUv;
   varying vec3 surfaceNormal;
   varying vec3 viewDirection;
@@ -74,6 +75,10 @@ const STAR_FRAGMENT = `
     float filaments=pow(1.0-abs(sin(boiling*20.0+grain*2.5)),8.0);
     vec3 hot=mix(granules,vec3(1.0,.96,.84),.35);
     vec3 plasma=granules*mix(.3,1.35,smoothstep(.25,.78,boiling))+hot*filaments*.65;
+    if(coolStar>.5) {
+      vec3 coolHot=mix(granules,vec3(.65,.85,1.0),.25);
+      plasma=granules*mix(.18,1.25,smoothstep(.25,.78,boiling))+coolHot*filaments*.42;
+    }
     gl_FragColor = vec4(plasma * limb * mix(.6, 1.2, spots), presence);
     #include <colorspace_fragment>
   }
@@ -194,13 +199,13 @@ function VirgoNode({ index, flight, glow, support = false }: FlightProps & { ind
   const group = useRef<THREE.Group>(null);
   const { camera } = useThree();
   const radius = support ? 1.13 : VIRGO_STARS[index].radius;
-  const surface = useSurfaceTexture(star.color, index, true);
-  const uniforms = useMemo(() => ({ surface: { value: surface }, stellarTime: { value: 0 }, presence: { value: 1 } }), [surface]);
+  const coolStar = !support && index === 2;
+  const surface = useSurfaceTexture(coolStar ? '#add3ff' : star.color, index, true);
+  const uniforms = useMemo(() => ({ surface: { value: surface }, stellarTime: { value: 0 }, presence: { value: 1 }, coolStar: { value: Number(coolStar) } }), [surface, coolStar]);
   useFrame(() => {
     if (!group.current) return;
     uniforms.stellarTime.value = flight.time;
-    const emission = support ? 1 : stellarEmission(index, flight.position);
-    const presence = support ? 1 : starPresence(flight, index) * emission;
+    const presence = support ? 1 : starPresence(flight, index);
     uniforms.presence.value = presence;
     const fadeOutForBlackHole = index === 3 ? (1 - smooth(5.92, 5.97, flight.position)) : 1;
     const appearance = openingStarAppearance(support ? index + 4 : index, flight.reveal) * fadeOutForBlackHole;
@@ -211,8 +216,8 @@ function VirgoNode({ index, flight, glow, support = false }: FlightProps & { ind
     const sprite = group.current.children[0] as THREE.Sprite;
     const pulse = flight.reduced ? 0 : Math.sin(flight.time * (support ? 1.4 : 2) + index) * (support ? .045 : .08);
     const distance = camera.position.distanceTo(group.current.position);
-    sprite.scale.setScalar((support ? 7 + Math.min(28, distance * .04) : radius * (5.2 + focus * .35 + pulse * .2)) * appearance);
-    (sprite.material as THREE.SpriteMaterial).opacity = appearance * presence * (support ? .42 : .68 + focus * .26);
+    sprite.scale.setScalar((support ? 7 + Math.min(28, distance * .04) : radius * (coolStar ? 3.5 + pulse * .2 : 5.2 + focus * .35 + pulse * .2)) * appearance);
+    (sprite.material as THREE.SpriteMaterial).opacity = appearance * presence * (support ? .42 : coolStar ? .20 + focus * .08 : .68 + focus * .26);
     group.current.children[1].scale.setScalar(appearance);
     group.current.children[1].rotation.y = flight.time * .055;
     for (let i = 2; i < Math.min(4, group.current.children.length); i++) {
@@ -221,14 +226,14 @@ function VirgoNode({ index, flight, glow, support = false }: FlightProps & { ind
       if (!support) ring.rotateY(readingOrbitAngle(index, flight.position, flight.reduced));
       const phase = ((flight.position * 1.8 + flight.time * .42 + (i - 2) * .5) % 1 + 1) % 1;
       ring.scale.setScalar(1.05 + phase * .4);
-      (ring.material as THREE.MeshBasicMaterial).opacity = flight.reduced ? 0 : focus * appearance * (1 - phase) * .07 * emission;
+      (ring.material as THREE.MeshBasicMaterial).opacity = flight.reduced ? 0 : focus * appearance * (1 - phase) * .07;
     }
   });
   return <group ref={group} position={star.position}>
     <sprite><spriteMaterial map={glow} color={star.color} transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} /></sprite>
     <mesh onClick={event => event.stopPropagation()} onPointerOver={event => event.stopPropagation()}><sphereGeometry args={[radius, support ? 16 : 48, support ? 12 : 32]} /><shaderMaterial uniforms={uniforms} vertexShader={STAR_VERTEX} fragmentShader={STAR_FRAGMENT} transparent toneMapped={false} /></mesh>
     {!support && [0, 1].map(i => <mesh key={i}><ringGeometry args={[radius * 1.06, radius * 1.06 + .025, 80]} /><meshBasicMaterial color={star.color} transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} /></mesh>)}
-    {!support && <StellarPlasma index={index} radius={radius} color={star.color} flight={flight} glow={glow} />}
+    {!support && <StellarPlasma index={index} radius={radius} color={coolStar ? '#8caeff' : star.color} flight={flight} glow={glow} />}
   </group>;
 }
 
@@ -928,7 +933,6 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     <ambientLight intensity={.18} />
     {VIRGO_STARS.map(star => <pointLight key={star.name} position={star.position} intensity={2000} distance={120} color={star.color} />)}
     <VirgoTransit flight={flight} glow={glow} />
-    <VirgoSupernova flight={flight} />
     {VIRGO_STARS.map((star, index) => <FocusedSystem key={star.name} index={index} flight={flight}>
       {index !== 3 && <VirgoNode index={index} flight={flight} glow={glow} />}
       {index === 0 && <OriginForge flight={flight} glow={glow} selected={selectedOrigin ?? null} />}

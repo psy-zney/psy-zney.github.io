@@ -18,11 +18,12 @@ Các vòng plasma không phải đường trắng thường trực: trào từ b
 khí có mật độ mềm và giữ màu sao; điểm nóng chỉ sáng trong đợt trào. Reduced
 motion bỏ các đợt phun, không để lại dây tĩnh. `check-stellar-ui.mjs` lấy mẫu
 12 giây trên mỗi viewport, chụp lúc trào/lúc nghỉ và kiểm tra từng vòng tắt hẳn.
-`VirgoSupernova` là cảnh tiền cảnh riêng tại 5,30–5,62: lõi sao phân tán,
-sóng xung kích cyan sắc nét và ejecta 3D mở rộng theo cuộn, lùi khớp cùng
-trạng thái. Nó kết thúc trước Contact; không sửa BlackHoleVortex,
-blackHoleShader, blackHoleRendering hoặc BlackHoleOrbitControls hiện tại.
-Không đổi camera, độ dài cuộn hoặc pacing để thêm vụ nổ.
+Theo phản hồi mới nhất, đã bỏ hoàn toàn vụ nổ trước Contact, shader/ejecta
+và nhánh làm lõi sao cuối tan sớm. Vindemiatrix giữ bề mặt plasma xanh có
+vân rõ, quầng sáng nhỏ và nhẹ hơn; chỉ mờ cùng hệ sao khi bay rời trạm.
+Cảnh nổ ngẫu nhiên bên đường cũng được thay bằng bụi sao, không khôi phục
+chớp nổ. Không sửa BlackHoleVortex, blackHoleShader, blackHoleRendering hoặc
+BlackHoleOrbitControls; không đổi camera, độ dài cuộn hoặc pacing.
 
 Chữ intro xuất hiện trên thành trái trước, thành phải sau; luôn một dòng,
 có sẵn từ xa và sáng dần bằng ion scan/wave light. Các cặp câu đọc cũng
@@ -34,10 +35,15 @@ Home vẫn được che đến đoạn cửa ra dưới 650 đơn vị.
 Email, GitHub, LinkedIn, Web CV và Mobile CV giữ hiển thị/khả năng focus từ
 khi tới Contact đến vị trí 6, độc lập câu dẫn. Footer màn rộng chừa khoảng
 giữa cho nút workspace, giữ renderer và điều khiển hố đen. Kiểm tra shader,
-ảnh plasma đang sôi, mép xung kích, thứ tự chữ và Contact trên desktop,
+ảnh plasma đang sôi, bề mặt sao cuối, thứ tự chữ và Contact trên desktop,
 phone, landscape, reduced bằng
 `node scripts/check-stellar-ui.mjs http://127.0.0.1:5182/`;
 ảnh/report ở `artifacts/stellar-effects/`.
+
+Bản bỏ vụ nổ đã PASS `check`, ảnh sao cuối/Contact trên 4 chế độ và 12 lượt
+chuyển trạm thuận/ngược desktop/phone. Đã xem ảnh sao cuối khi đọc và khi rời
+trạm; bốn file hố đen và thân PortalGate giữ nguyên. UI tổng vẫn dừng ở assertion
+con trỏ baseline như ghi ở phần giới hạn bên dưới; chưa đo FPS trên máy thật.
 
 | Luồng | Hành vi cần giữ | Kiểm tra |
 | --- | --- | --- |
@@ -45,7 +51,7 @@ phone, landscape, reduced bằng
 | Cổng vòng xoáy và hầm khí (15/10/2026) | Cổng xuất hiện tại sao trung tâm; các dải khí quay theo vận tốc góc khác nhau, chòm sao và các đường nối bị vặn theo cùng trường lực. Cổng đạt kích thước vật lý tối đa rồi giữ nguyên; camera tiến qua mặt phẳng cửa tại z=500. Lưới 18×20 chỉ là hệ tọa độ ẩn, không vẽ wireframe. Khí và vệt sáng đi theo đường xoắn trên thành; mỗi câu là một dòng cố định dọc trục bay, không quấn quanh miệng hầm và không bật chữ theo timer. Cửa ra tại z=-4400 mở xuyên tới cảnh Home thật; camera Home tiến cùng độ sâu cửa, không dừng để fade toàn màn. Cuộn quyết định vị trí, dừng cuộn dừng tiến; viền khí vẫn quay. Giữ mute, reduced motion, hủy route, dừng tab ẩn và cuộn ngược có chủ ý ở Home. | Hình học cổng cố định, tốc độ quay khác nhau, chữ dọc trục và camera xuyên cửa trong check:experience; ảnh viền quay khi đứng yên, cửa vào/ra, nền Home thật và chiều về trên 5 viewport trong check-intro-ui.mjs |
 | Hành trình Virgo | Hiện từng câu theo scroll; góc nhìn quanh sao quay 180° khi đọc qua phép đổi hệ tọa độ cục bộ, mesh/label cùng quay. Camera tuyến bay luôn nhìn -Z, X/Y cố định; góc sao rời đi giữ nguyên, không unwind trước khi bay. Chữ đổi vị trí; cuộn ngược khôi phục góc/độ sâu/câu trước | `check:portfolio`, `check:experience`, `check-scroll-ui.mjs`, pose/câu thực trong `check:ui` và `check-transit-ui.mjs` |
 | Phòng chiếu cong | Scene Three.js + CSS3DRenderer với 9 mặt phẳng DOM trên cùng một hình trụ, camera chung; không chia ảnh thành dải CSS gây méo. Tiêu đề Outfit sans-serif; ẩn scrollbar của gallery. Ba preview Sentinel/Security/Backup giữ file gốc và chỉ cắt 16px mép phải chứa scrollbar khi hiển thị. Preview lớn, không có nút X thoát; tự mở sau câu cuối Porrima bằng wheel/touch; Trải nghiệm web → Ứng dụng & công cụ nối bằng ánh sáng; cuộn qua cuối gallery tiếp tục Skills, cuộn ngược trở lại Porrima; link trực tiếp vẫn hoạt động | `check:experience`, pose/matrix CSS3D, font, kích thước/ảnh/luồng thuận/ngược `check:ui` |
-| Bay giữa các trạm | Giữ đường thẳng theo video 17-42-22: không yaw/pitch/roll, không bay vòng hay reset hướng. Sao băng, thiên thạch, siêu tân tinh thay đổi cảnh quanh đường bay; xáo thứ tự một lần mỗi hành trình, lùi giữ cùng cảnh. Không phủ xanh đục. Cuộn ngược đi lại cùng đường. Tốc độ đọc/bay nối liên tục; URL về Home/Cosmos nhảy trực tiếp. Hố đen xuất hiện từ xa trong Skills → Contact; vào workspace tiếp tục cùng trục | Đường thẳng/độ sâu hai chiều và lựa chọn cảnh trong `check:experience`; camera thực, ba cảnh và ba đoạn hai chiều desktop/phone trong `check-transit-ui.mjs`; pose/ảnh tiếp cận và workspace trong `check:ui` |
+| Bay giữa các trạm | Giữ đường thẳng theo video 17-42-22: không yaw/pitch/roll, không bay vòng hay reset hướng. Sao băng, thiên thạch và bụi sao thay đổi cảnh quanh đường bay; xáo thứ tự một lần mỗi hành trình, lùi giữ cùng cảnh. Không phủ xanh đục. Cuộn ngược đi lại cùng đường. Tốc độ đọc/bay nối liên tục; URL về Home/Cosmos nhảy trực tiếp. Hố đen xuất hiện từ xa trong Skills → Contact; vào workspace tiếp tục cùng trục | Đường thẳng/độ sâu hai chiều và lựa chọn cảnh trong `check:experience`; camera thực, ba cảnh và ba đoạn hai chiều desktop/phone trong `check-transit-ui.mjs`; pose/ảnh tiếp cận và workspace trong `check:ui` |
 | Điều khiển gallery | Wheel ngang/dọc, kéo ngang/dọc, giữ quán tính; phím mũi tên, Home/End; đổi sản phẩm không remount gallery | `check:experience`, `check:ui` |
 | Vào/ra showcase | Câu “Each project…” bên trái trước, “Here is how…” bên phải sau; giữ cuộn ngược. Entry 4s: chuẩn bị 1.5s, quỹ đạo hành tinh tăng tới 4×, camera tiến thẳng xuyên lõi trong 1.1s, roll=0 theo quy tắc 15/10; flash vàng trắng 0.2s qua điểm nối renderer. Không khung chữ nhật. Sau 2.6s mới đổi hash/mount gallery; CSS3D nâng cụm từ y=-300, tilt=.4 rad lên y=0/tilt=0 và camera giảm tốc expo.out đáp z=-2500. Tab và caption/dots/actions hiện ở 3.4–4s; điều khiển mở sau đáp. Ra gallery nối lại cảnh model; reduced motion chuyển ngay, đổi route hủy passage cũ | `check:ui` đo hash/DOM/camera, flash, quỹ đạo hành tinh, heading và pose cylinder; xem ảnh trước/trong/sau entry |
 | Con trỏ | Cặp ảnh gốc Deep Space Gradient lưu local: mũi tên khi di chuyển, bàn tay trên link/nút; giữ I-beam trong ô nhập và pointer lock workspace | `check:experience`, cursor CSS thực trong browser |
@@ -206,7 +212,7 @@ chưa hết lead, orbit đọc 180° (reduced tắt orbit) và đuôi cuộn Con
 Intro được kiểm tra lại 5 chế độ; 4 chế độ có animation giữ pixel tâm đen kín
 lúc vào/đọc/gần cửa, rồi mở trong đoạn cuối; reduced chuyển ngay theo input.
 Đã xem ảnh đọc thuận/ngược, tâm hầm kín và cửa mở sau khi chỉnh mép tối.
-Bản plasma/siêu tân tinh và bố cục trái trước đã PASS `check`, VFX trên
+Bản plasma/siêu tân tinh cũ (trước yêu cầu bỏ vụ nổ) và bố cục trái trước đã PASS `check`, VFX trên
 desktop/phone/landscape/reduced, intro 5 viewport, 84 nhịp wheel nhỏ và ba
 đoạn bay hai chiều. Đã xem ảnh plasma trước/sau, sóng nổ, chữ trên thành trái,
 footer và màn hình ngang. VFX report ghi hash nguồn và từ chối PASS nếu nguồn

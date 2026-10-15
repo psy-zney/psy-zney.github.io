@@ -12,8 +12,6 @@ export const STELLAR_NOISE_GLSL = `
   }
 `;
 
-export const stellarEmission = (index: number, position: number) => index === 2 ? 1 - smooth(5.30, 5.355, position) : 1;
-
 export const prominenceTiming = (seed: number) => ({ period: 8 + (seed * 1.73) % 4, duration: 3.2 + (seed * .37) % 1.2, offset: seed * 2.17 });
 
 /** Short, staggered eruptions with a fully dark rest between them. */
@@ -34,12 +32,4 @@ export function stellarProminence(index: number, radius: number) {
     const r = radius * (1.015 + Math.sin(Math.PI * t) * (.22 + index % 3 * .045));
     return normal.map((n, axis) => (n * Math.cos(angle) + tangent[axis] * Math.sin(angle)) * r) as [number, number, number];
   });
-}
-
-/** The foreground explosion precedes the existing black-hole arrival. No camera controls. */
-export function supernovaSample(position: number, reduced = false) {
-  const progress = clamp((position - 5.30) / .32);
-  return { progress, radius: 12 + 72 * (1 - (1 - progress) ** 2),
-    opacity: reduced ? 0 : smooth(5.30, 5.33, position) * (1 - smooth(5.49, 5.62, position)),
-    flash: smooth(0, .10, progress) * (1 - smooth(.15, .48, progress)) };
 }
