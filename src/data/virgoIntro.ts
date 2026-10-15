@@ -37,13 +37,28 @@ export function introFrame(seconds: number) {
     phase: t < 2.75 ? 'opening' : cameraZ(t) > INTRO_ENTRANCE_Z ? 'entering' : cameraZ(t) - INTRO_EXIT_Z > 1000 ? 'flying' : 'exiting' };
 }
 
+/** Fine opening/entry control blends continuously into the existing tunnel pace. */
+export function introScrollResponse(seconds: number) {
+  const flight = smooth(2.75, 4.4, seconds);
+  return { gain: .32 + .68 * flight, step: .16 + .26 * flight,
+    lead: .22 + .38 * flight, speed: .7 + 1.3 * flight, acceleration: 2.4 + 3.6 * flight };
+}
+
+export function introInputTarget(seconds: number, target: number, amount: number) {
+  const response = introScrollResponse(seconds);
+  const origin = Math.sign(amount) !== Math.sign(target - seconds) ? seconds : target;
+  return clamp(origin + clamp(amount * response.gain, -response.step, response.step),
+    Math.max(0, seconds - response.lead), Math.min(INTRO_DURATION, seconds + response.lead));
+}
+
 /** Follow the scroll destination, then stop; no automatic cruise velocity. */
 export function advanceIntroScroll(seconds: number, velocity: number, target: number, delta: number) {
   const dt = clamp(delta, 0, .05), distance = target - seconds;
   // Reversal cancels residual forward momentum on the very first frame.
   if (Math.sign(velocity) !== Math.sign(distance)) velocity = 0;
-  const desired = clamp(distance * 10, -2, 2);
-  const nextVelocity = velocity + clamp(desired - velocity, -6 * dt, 6 * dt);
+  const response = introScrollResponse(seconds);
+  const desired = clamp(distance * 10, -response.speed, response.speed);
+  const nextVelocity = velocity + clamp(desired - velocity, -response.acceleration * dt, response.acceleration * dt);
   const step = (velocity + nextVelocity) * .5 * dt;
   if (Math.abs(distance) < .0001 || Math.sign(step) === Math.sign(distance) && Math.abs(step) >= Math.abs(distance)) return { seconds: target, velocity: 0 };
   return { seconds: clamp(seconds + step, 0, INTRO_DURATION), velocity: nextVelocity };

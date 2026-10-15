@@ -259,7 +259,9 @@ try {
         for (let attempt = 0; attempt < 40; attempt++) {
           const current = Number(await intro.getAttribute('data-seconds'));
           if (Math.abs(current - target) < .002) return;
-          await page.mouse.wheel(0, (target - current) / .0045);
+          const gain = Number(await intro.getAttribute('data-input-gain'));
+          assert(gain > 0, 'The intro exposes its current scroll sensitivity');
+          await page.mouse.wheel(0, (target - current) / gain);
           await page.clock.runFor(900);
         }
         assert.fail('Intro must follow scroll target ' + target);

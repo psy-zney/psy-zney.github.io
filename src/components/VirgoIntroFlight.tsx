@@ -1,8 +1,7 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import type { Language } from '../data/portfolio';
-import { clamp } from '../data/virgoFlight';
 import { OPENING_STARS } from '../data/virgoOpening';
-import { INTRO_ARRIVAL, INTRO_ASSEMBLY_DURATION, INTRO_CONSTELLATION_COMPLETE, INTRO_CAPTIONS, INTRO_DURATION, advanceIntroScroll, introConstellationFrame, introFrame } from '../data/virgoIntro';
+import { INTRO_ARRIVAL, INTRO_ASSEMBLY_DURATION, INTRO_CONSTELLATION_COMPLETE, INTRO_CAPTIONS, INTRO_DURATION, advanceIntroScroll, introInputTarget, introScrollResponse, introConstellationFrame, introFrame } from '../data/virgoIntro';
 import { drawIntro } from './virgoIntroRenderer';
 import { createIntroCaptionTextures, drawIntroCaptions } from './virgoIntroCaptions';
 import { drawIntroExit, introAperture } from './virgoIntroTunnel';
@@ -27,8 +26,7 @@ export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFin
       return;
     }
     started.current = true;
-    const origin = Math.sign(amount) !== Math.sign(target.current - playback.current.seconds) ? playback.current.seconds : target.current;
-    target.current = clamp(origin + clamp(amount, -.42, .42), Math.max(0, playback.current.seconds - .60), Math.min(INTRO_DURATION, playback.current.seconds + .60));
+    target.current = introInputTarget(playback.current.seconds, target.current, amount);
   };
 
   useEffect(() => {
@@ -88,6 +86,7 @@ export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFin
       root.dataset.constellationStars = String(constellation.stars.filter(amount => amount > .1).length);
       root.dataset.constellationEdges = String(constellation.edges.filter(([a, b]) => a + b >= 1 - 1e-9).length);
       root.dataset.seconds = elapsed.toFixed(3); root.dataset.scrollTarget = target.current.toFixed(3);
+      root.dataset.inputGain = (introScrollResponse(elapsed).gain * .0045).toFixed(7);
       root.dataset.velocity = playback.current.velocity.toFixed(3);
       root.dataset.virtualGrid = 'hidden';
       root.dataset.entranceWorldRadius = aperture.worldRadius.toFixed(3);

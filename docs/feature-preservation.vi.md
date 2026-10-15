@@ -39,6 +39,13 @@ trái → phải; wipe, focus, word cascade và rise đều lấy cùng tiến �
 không timer/autoplay. Reduced motion hiển thị ink rõ ngay. Lòng hầm chỉ
 dùng sương chiều sâu với mép mềm; không vẽ đĩa đen kín phình lớn gần cửa.
 Home vẫn được che đến đoạn cửa ra dưới 650 đơn vị.
+Mở cổng dùng độ nhạy 32% so với lúc bay, giới hạn mỗi input 0,16 đơn vị,
+đích cuộn chỉ dẫn trước 0,22 và tốc độ mở tối đa 0,7 đơn vị/giây. Từ 2,75
+đến 4,4 các giới hạn tăng liên tục về nhịp bay hiện có. Cuộn nhẹ phải mở ít,
+đợt wheel dồn không được đẩy thẳng vào hầm; dừng tay dừng tiến, lùi hủy đích
+xuôi ngay. Wheel/touch/phím cùng dùng một hàm; reduced motion giữ lối tắt.
+Đã kiểm tra cuộn 12px, 8 nhịp wheel dồn, dừng tay và quay về chòm sao trên
+cả 5 viewport trong `check-intro-ui.mjs`; xem ảnh `*-gentle-opening.png`.
 
 Email, GitHub, LinkedIn, Web CV và Mobile CV giữ hiển thị/khả năng focus từ
 khi tới Contact đến vị trí 6, độc lập câu dẫn. Footer màn rộng chừa khoảng

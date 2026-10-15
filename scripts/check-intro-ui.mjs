@@ -35,13 +35,31 @@ try {
     const scrollTo = async target => {
       for (let attempt = 0; attempt < 40; attempt++) {
         const current = Number(await intro.getAttribute('data-seconds'));
-        if (Math.abs(current - target) < .002) return;
-        await page.mouse.wheel(0, (target - current) / .0045);
+        if (Math.abs(current - target) < .002) {
+          // The displayed coordinate is rounded; a final physical gesture hits
+          // the real zero clamp instead of leaving a tiny positive destination.
+          if (target === 0) { await page.mouse.wheel(0, -12); await page.clock.runFor(1000); }
+          return;
+        }
+        const gain = Number(await intro.getAttribute('data-input-gain'));
+        assert(gain > 0, 'The rendered input gain is available');
+        await page.mouse.wheel(0, (target - current) / gain);
         await page.clock.runFor(900);
       }
       assert.fail('Scroll must reach intro position ' + target);
     };
     if (name !== 'reduced') {
+      await page.mouse.wheel(0, 12); await page.clock.runFor(1000);
+      const light = Number(await intro.getAttribute('data-seconds'));
+      assert(light > .001 && light < .025, 'A light wheel barely opens the portal');
+      await page.clock.runFor(1500);
+      assert(Math.abs(Number(await intro.getAttribute('data-seconds')) - light) < .001, 'A light wheel does not trigger automatic opening');
+      await page.mouse.wheel(0, -12); await page.clock.runFor(1000);
+      for (let pulse = 0; pulse < 8; pulse++) { await page.mouse.wheel(0, 120); await page.waitForTimeout(20); await page.clock.runFor(50); }
+      await page.clock.runFor(1000);
+      assert(Number(await intro.getAttribute('data-seconds')) < .7, 'A quick wheel burst cannot throw the viewer straight into the tunnel');
+      await page.screenshot({ path: output + '/' + name + '-gentle-opening.png' });
+      await scrollTo(0);
       await scrollTo(1);
       assert.equal(await intro.getAttribute('data-camera'), '0.000,0.000,1000.000');
       await page.screenshot({ path: output + '/' + name + '-vortex-small.png' });

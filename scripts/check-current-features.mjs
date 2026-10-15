@@ -7,7 +7,7 @@ import ts from 'typescript';
 
 // Behavior and integration checks for the current build. Visual QA lives in check-ui.mjs.
 export async function checkCurrentFeatures(server) {
-  const { introFrame, INTRO_CAPTIONS, INTRO_DURATION, INTRO_ASSEMBLY_DURATION, introConstellationFrame, advanceIntroScroll, introCaptionInk, introCaptionPoint, introTunnelView, introWarpPoint, introVortexAngle, INTRO_TUNNEL_GRID, INTRO_EXIT_Z } = await server.ssrLoadModule('/src/data/virgoIntro.ts');
+  const { introFrame, INTRO_CAPTIONS, INTRO_DURATION, INTRO_ASSEMBLY_DURATION, introConstellationFrame, advanceIntroScroll, introInputTarget, introScrollResponse, introCaptionInk, introCaptionPoint, introTunnelView, introWarpPoint, introVortexAngle, INTRO_TUNNEL_GRID, INTRO_EXIT_Z } = await server.ssrLoadModule('/src/data/virgoIntro.ts');
   assert.equal(introConstellationFrame(0).stars[1], 1, 'The constellation starts from the central yellow star');
   assert.equal(introConstellationFrame(0).stars.filter(amount => amount > .1).length, 1, 'Only the central star is visible before connections spread');
   assert(introConstellationFrame(0).edges.every(([a, b]) => a + b === 0), 'Connections are drawn progressively instead of appearing fully connected');
@@ -64,7 +64,19 @@ export async function checkCurrentFeatures(server) {
     }
     previousIntroZ = frame.z;
   }
+  assert(introInputTarget(0, 0, 12 * .0045) > 0 && introInputTarget(0, 0, 12 * .0045) < .025, 'A light wheel opens only a small amount');
+  assert(introInputTarget(0, .2, 100) <= .22, 'Wheel bursts cannot queue a large automatic opening');
+  assert(introInputTarget(1, 1.2, -.05) < 1, 'Reverse input drops the pending forward lead');
+  assert(Math.abs((introInputTarget(1, 1, .05) - 1) + (introInputTarget(1, 1, -.05) - 1)) < 1e-9, 'Opening input has identical sensitivity in both directions');
+  for (const p of [2.75, 4.4]) assert(Math.abs(introScrollResponse(p - .00001).speed - introScrollResponse(p + .00001).speed) < .00001, 'Opening and tunnel speeds blend without a sudden step');
   for (const fps of [30, 60, 120]) {
+    let opening = { seconds: 0, velocity: 0 };
+    for (let frame = 0; frame < fps; frame++) {
+      const destination = introInputTarget(opening.seconds, opening.seconds, 100);
+      opening = advanceIntroScroll(opening.seconds, opening.velocity, destination, 1 / fps);
+      assert(opening.velocity <= .7 + 1e-9, 'Even continuous wheel input cannot rush the opening');
+    }
+    assert(opening.seconds < .7, 'The opening takes several deliberate wheel gestures');
     let playback = { seconds: 4, velocity: 0 };
     for (let i = 0; i < fps; i++) {
       const next = advanceIntroScroll(playback.seconds, playback.velocity, 3.6, 1 / fps);
