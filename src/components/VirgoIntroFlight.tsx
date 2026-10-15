@@ -5,7 +5,7 @@ import { OPENING_STARS } from '../data/virgoOpening';
 import { INTRO_ARRIVAL, INTRO_ASSEMBLY_DURATION, INTRO_CONSTELLATION_COMPLETE, INTRO_CAPTIONS, INTRO_DURATION, advanceIntroScroll, introConstellationFrame, introFrame } from '../data/virgoIntro';
 import { drawIntro } from './virgoIntroRenderer';
 import { createIntroCaptionTextures, drawIntroCaptions } from './virgoIntroCaptions';
-import { introAperture } from './virgoIntroTunnel';
+import { drawIntroExit, introAperture } from './virgoIntroTunnel';
 import './VirgoIntroFlight.css';
 
 export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFinish, onReturn, initialDirection = 1, initialAssemblyComplete = false }: {
@@ -66,7 +66,7 @@ export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFin
   useEffect(() => {
     const surface = canvas.current, root = layer.current, page = pageRef.current;
     const ctx = surface?.getContext('2d'); if (!surface || !root || !ctx || !page) return;
-    let width = 1, height = 1, raf = 0, idleTime = 0, previous = performance.now(), disposed = false;
+    let width = 1, height = 1, raf = 0, idleTime = 0, previous = performance.now(), disposed = false, lastPreview = -1;
     let textures = createIntroCaptionTextures(lang), loaderActive = !!document.querySelector('[data-page-loader]');
     const loader = new MutationObserver(() => {
       if (!document.querySelector('[data-page-loader]')) { loaderActive = false; loader.disconnect(); }
@@ -81,15 +81,29 @@ export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFin
       const core = { x: width * .5 + OPENING_STARS[1].position[0] * scale, y: height * .45 - OPENING_STARS[1].position[1] * scale };
       const aperture = introAperture(width, height, elapsed, core);
       ctx.save(); ctx.beginPath(); ctx.ellipse(aperture.x, aperture.y, aperture.radius, aperture.radius * .90, 0, 0, Math.PI * 2); ctx.clip();
-      const surfaces = drawIntroCaptions(ctx, width, height, elapsed, textures); ctx.restore();
+      const surfaces = drawIntroCaptions(ctx, width, height, elapsed, textures);
+      const exit = drawIntroExit(ctx, width, height, elapsed, idleTime); ctx.restore();
       root.dataset.phase = constellation.reveal < 1 ? 'connecting' : elapsed === 0 ? 'idle' : frame.phase;
       root.dataset.running = String(started.current);
       root.dataset.constellationStars = String(constellation.stars.filter(amount => amount > .1).length);
       root.dataset.constellationEdges = String(constellation.edges.filter(([a, b]) => a + b >= 1 - 1e-9).length);
       root.dataset.seconds = elapsed.toFixed(3); root.dataset.scrollTarget = target.current.toFixed(3);
       root.dataset.velocity = playback.current.velocity.toFixed(3);
+      root.dataset.virtualGrid = 'hidden';
+      root.dataset.entranceWorldRadius = aperture.worldRadius.toFixed(3);
+      root.dataset.entranceDepth = aperture.depth.toFixed(3);
+      root.dataset.exitRadius = exit.radius.toFixed(3);
+      root.dataset.exitDepth = frame.exitDepth.toFixed(3);
+      root.dataset.vortexTime = idleTime.toFixed(3);
+      root.dataset.entranceRadius = aperture.outerRadius.toFixed(3);
+      root.dataset.entranceCenter = [aperture.x, aperture.y].map(v => v.toFixed(3)).join(',');
       root.dataset.camera = [frame.x, frame.y, frame.z].map(v => v.toFixed(3)).join(',');
-      root.style.opacity = String(frame.opacity); page.dataset.openingFlight = started.current ? 'running' : 'idle';
+      root.style.opacity = '1'; root.style.background = 'transparent';
+      page.dataset.introExitDepth = frame.exitDepth.toFixed(3);
+      if (elapsed >= INTRO_ARRIVAL && elapsed !== lastPreview) {
+        lastPreview = elapsed; page.dispatchEvent(new Event('virgo-intro-preview'));
+      }
+      page.dataset.openingFlight = started.current ? 'running' : 'idle';
       surfaces.forEach((patch, i) => {
         const el = captions.current?.children[i] as HTMLElement | undefined; if (!el) return;
         el.style.opacity = String(patch.opacity); el.dataset.lines = '1';
@@ -121,7 +135,7 @@ export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFin
     raf = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(raf); disposed = true; resize.disconnect(); loader.disconnect();
-      document.removeEventListener('visibilitychange', visibility); delete page.dataset.openingFlight;
+      document.removeEventListener('visibilitychange', visibility); delete page.dataset.openingFlight; delete page.dataset.introExitDepth;
     };
   }, [reducedMotion, pageRef, lang]);
 

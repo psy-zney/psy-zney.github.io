@@ -27,6 +27,9 @@
 }
 .virgo-page .virgo-intro-captions p { margin: 0; }
 .virgo-page:has(.virgo-intro-flight) > .virgo-opening-cue,
+.virgo-page:has(.virgo-intro-flight) > .virgo-chapters,
+.virgo-page:has(.virgo-intro-flight) > .virgo-index,
+.virgo-page:has(.virgo-intro-flight) > .virgo-flight-progress,
 .virgo-page:has(.virgo-intro-flight) > .virgo-constellation-map {
   visibility: hidden;
   pointer-events: none;

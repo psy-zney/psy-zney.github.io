@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
+import sharp from 'sharp';
 const output = 'artifacts/intro-flight'; await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ headless: true, executablePath: process.env.UI_CHROME_PATH });
 const results = [];
@@ -46,11 +47,29 @@ try {
       await page.screenshot({ path: output + '/' + name + '-vortex-small.png' });
       await scrollTo(2.75);
       assert.equal(await intro.getAttribute('data-camera'), '0.000,0.000,1000.000');
-      await page.screenshot({ path: output + '/' + name + '-vortex-open.png' });
+      const beforeRotation = await page.screenshot({ path: output + '/' + name + '-vortex-open.png' });
+      const matureWorldRadius = await intro.getAttribute('data-entrance-world-radius');
       const paused = Number(await intro.getAttribute('data-seconds'));
       await page.clock.runFor(3000);
       assert(Math.abs(Number(await intro.getAttribute('data-seconds')) - paused) < .002, 'Opening waits for more scroll before entry');
+      const afterRotation = await page.screenshot({ path: output + '/' + name + '-vortex-rotating.png' });
+      const beforePixels = await sharp(beforeRotation).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+      const afterPixels = await sharp(afterRotation).removeAlpha().raw().toBuffer();
+      const [cx, cy] = (await intro.getAttribute('data-entrance-center')).split(',').map(Number);
+      const radius = Number(await intro.getAttribute('data-entrance-radius'));
+      let ringPixels = 0, changedPixels = 0;
+      for (let y = 0; y < viewport.height; y += 2) for (let x = 0; x < viewport.width; x += 2) {
+        const r = Math.hypot((x - cx) / radius, (y - cy) / (radius * .9));
+        if (r < .45 || r > .85) continue;
+        const offset = (y * beforePixels.info.width + x) * 3;
+        ringPixels++;
+        if (Math.abs(beforePixels.data[offset] - afterPixels[offset]) + Math.abs(beforePixels.data[offset + 1] - afterPixels[offset + 1]) + Math.abs(beforePixels.data[offset + 2] - afterPixels[offset + 2]) > 20) changedPixels++;
+      }
+      assert(changedPixels > ringPixels * .08, 'The portal gas actually rotates while scroll position is held');
       await scrollTo(3.9);
+      assert.equal(await intro.getAttribute('data-entrance-world-radius'), matureWorldRadius, 'Entry translates the camera through a fixed-size portal');
+      assert(Number(await intro.getAttribute('data-entrance-depth')) < 0, 'The camera crosses the entrance plane');
+      assert.equal(await intro.getAttribute('data-virtual-grid'), 'hidden');
       const lines = intro.locator('.virgo-intro-captions p');
       for (let i = 0; i < 2; i++) {
         assert.equal(await lines.nth(i).getAttribute('data-lines'), '1', 'Each fixed wall sentence is a single line');
@@ -66,7 +85,19 @@ try {
       await page.screenshot({ path: output + '/' + name + '-greeting-2.png' });
       await scrollTo(4.7);
       assert.deepEqual((await lines.nth(0).getAttribute('data-projected-bounds')).split(',').map(Number), near, 'Reversing restores the same physical wall patch');
+      const farExit = Number(await intro.getAttribute('data-exit-radius'));
+      const farHomePose = (await page.locator('.virgo-page').getAttribute('data-camera-pose')).split(',').map(Number);
       await scrollTo(7.1);
+      const nearHomePose = (await page.locator('.virgo-page').getAttribute('data-camera-pose')).split(',').map(Number);
+      assert(nearHomePose[2] < farHomePose[2] - 100, 'The real Home camera also advances behind the exit opening');
+      assert(Number(await intro.getAttribute('data-exit-radius')) > farExit, 'A visible exit grows as the camera approaches it');
+      assert.equal(await intro.evaluate(el => el.style.opacity), '1', 'There is no full-screen scene fade');
+      const openingAlpha = await intro.locator('canvas').evaluate(canvas => {
+        const ctx = canvas.getContext('2d');
+        return ctx.getImageData(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 1, 1).data[3];
+      });
+      assert.equal(openingAlpha, 0, 'The exit is a real opening onto Home, not painted black');
+      await page.screenshot({ path: output + '/' + name + '-exit-opening.png' });
       // The last input reaches the endpoint and unmounts the intro.
       await page.mouse.wheel(0, 120); await page.clock.runFor(900);
       await page.mouse.wheel(0, 120); await page.clock.runFor(1200);

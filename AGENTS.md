@@ -11,9 +11,12 @@ If it does not exist, skip CodeGraph; do not create an index automatically.
 Read `docs/feature-preservation.vi.md` before changing this portfolio. The
 current working tree is the user's baseline, including unfinished and
 uncommitted features. Preserve it when refining appearance or refactoring.
+Read `docs/straight-flight-contract.vi.md` before changing any journey or
+transition. The owner's 15/10/2026 video locks straight forward flight with
+no automatic camera rotation; it supersedes earlier orbit/fly-by requirements.
 
 - Keep the Virgo journey, wave page loader, black-hole workspace entry,
-  one scroll-driven sentence per angle, a true 180-degree camera orbit/reversal,
+  one scroll-driven sentence at a time, straight flight and reversible depth,
   varied sentence positions and automatic scroll entry/exit for the showcase,
   curved product gallery, continuous Web experiences → Apps & tools chapters,
   optional chapter shortcuts, live preview, case-study

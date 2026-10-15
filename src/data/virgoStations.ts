@@ -2,9 +2,9 @@ import { SPACE_LAYOUT } from "./virgoSpace";
 
 // Stylized positions for the portfolio flight; these are not astronomical coordinates.
 const world = (x: number, y: number) => [x * SPACE_LAYOUT.interstellar, y * SPACE_LAYOUT.interstellar, 0] as const;
-// Offset neighboring systems so the flight passes beside them, not through a line of cores.
+// The reference journey follows a single forward axis; framing uses projection only.
 export const STAR_ROUTE_GAP = 480;
-const station = (index: number) => [[0, -90, 85, 0][index], 0, -index * STAR_ROUTE_GAP] as const;
+const station = (index: number) => [0, 0, -index * STAR_ROUTE_GAP] as const;
 export const VIRGO_STARS = [
   { name: "Spica", position: station(0), color: "#acd6ff", radius: 11.8 },
   { name: "Porrima", position: station(1), color: "#F4A261", radius: 10.4 },

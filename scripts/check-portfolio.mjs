@@ -231,7 +231,7 @@ try {
       if (focused !== null) assert(cameraPoint.z > VIRGO_STARS[focused].position[2], "A reading system must stay ahead of the camera while its panel is visible");
       previousZ = cameraPoint.z;
     }
-    assert.deepEqual(VIRGO_STARS.map(star => star.position[0]), [0, -90, 85, 0], 'Systems sit on alternating sides of the fly-by');
+    assert.deepEqual(VIRGO_STARS.map(star => star.position[0]), [0, 0, 0, 0], 'Reference stations share the straight flight axis');
     VIRGO_STARS.forEach(star => { assert.equal(star.position[1],0);assert(star.radius>=10); });
     const { targets, framing, direction } = createCameraComposition(mobile);
     for (let step = 0; step <= 1200; step++) {

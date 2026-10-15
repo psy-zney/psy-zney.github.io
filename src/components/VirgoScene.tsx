@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { VIRGO_STARS, VIRGO_SUPPORT_STARS } from "../data/virgoStations";
 import { capabilities, projects } from "../data/portfolio";
 import { clamp, flightFieldOfView, flightPositionForScroll, flightSample, focusedStarForPosition, FLIGHT_MOTION, orbitPosition, panelVisibility, smooth, type FlightSample } from "../data/virgoFlight";
-import { journeyCameraZ, systemPresence, transitSample, TRANSIT_LEGS } from "../data/virgoTransit";
+import { straightFlightPose, systemPresence, transitSample, TRANSIT_LEGS } from "../data/virgoTransit";
 import { VirgoTransit } from "./VirgoTransit";
 import { advancePacedFlightPosition } from "../data/virgoPacing";
 import { asteroidLayout, BLACK_HOLE_SCALE, ORBIT_PLANE, orbitRadii, planetRadius, SPACE_LAYOUT } from "../data/virgoSpace";
@@ -19,7 +19,6 @@ import { celestialSlot } from '../data/celestialRegistry';
 import { useQualityTier, type QualityTier } from './workspace/useQualityTier';
 import { BlackHoleVortex } from "./BlackHoleVortex";
 import type { BlackHoleOrbitState } from "./BlackHoleOrbitControls";
-import { spatialGaze, narrativeOrbitPose } from '../data/virgoExperienceMotion';
 import { solarPassageSample } from '../data/solarShowcaseMotion';
 
 export { VIRGO_STARS, VIRGO_SUPPORT_STARS } from "../data/virgoStations";
@@ -535,7 +534,10 @@ export function createFlightPaths(mobile = false) {
   return Array.from({ length: 6 }, (_, leg) => {
     class Corridor extends THREE.Curve<THREE.Vector3> {
       constructor() { super(); }
-      getPoint(t: number, result = new THREE.Vector3()) { return result.set(0, 0, journeyCameraZ(leg + t, mobile)); }
+      getPoint(t: number, result = new THREE.Vector3()) {
+        const pose = straightFlightPose(leg + t, mobile);
+        return result.set(pose.x, pose.y, pose.z);
+      }
       getPointAt(t: number, result = new THREE.Vector3()) { return this.getPoint(t, result); }
     }
     return new Corridor();
@@ -552,11 +554,10 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
   const exit = useRef({ value: 0 });
   const previousZ = useRef(Number.NaN);
   const lastChapter = useRef(-1);
-  const presentation = useRef({ position: -1, exit: -1, paused, entering, reducedMotion });
+  const presentation = useRef({ position: -1, exit: -1, previewDepth: -1, paused, entering, reducedMotion });
   const frozenPosition = useRef<number | null>(null);
   const point = useMemo(() => new THREE.Vector3(), []);
   const look = useMemo(() => new THREE.Vector3(), []);
-  const orbitHeading = useMemo(() => new THREE.Vector3(), []);
   const projection = useMemo(() => new THREE.Vector3(), []);
   const gate = useMemo(() => new THREE.Vector3(...VIRGO_STARS[3].position).setZ(VIRGO_STARS[3].position[2] + VIRGO_STARS[3].radius + 2), []);
   const exitPoint = useMemo(() => gate.clone().add(new THREE.Vector3(0, 0, .28)), [gate]);
@@ -568,6 +569,11 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
   const panels = useMemo(() => Array.from(overlay.querySelectorAll<HTMLElement>(".virgo-overlay-panel")), [overlay]);
   const narration = useMemo(() => NARRATIVE_BEATS.map((_, i) => overlay.querySelector<HTMLElement>('[data-narrative-index="' + i + '"]')), [overlay]);
   const narrativeRendered = useRef({ shown: -2, amount: -1 });
+  useEffect(() => {
+    const page = overlay.parentElement!, update = () => invalidate();
+    page.addEventListener('virgo-intro-preview', update);
+    return () => page.removeEventListener('virgo-intro-preview', update);
+  }, [overlay, invalidate]);
   const skillSignal = useRef({ selected: -1 as number | null, at: -Infinity });
   const narrativeBounds = useRef({ shown: -2, width: 0, height: 0, lineHeight: 0, inkHeight: 0, lineWidth: 0, x: 0, y: 0, text: "" });
   useEffect(() => {
@@ -661,26 +667,20 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     Object.assign(flight, flightSample(position, reducedMotion, flight.time));
     flight.exit = exit.current.value;
     paths[flight.leg].getPointAt(flight.travel, point);
-    const gaze = spatialGaze(position, reducedMotion);
-    const orbitAmount = 1 - flight.exit;
-    orbitHeading.copy(direction);
-    // Rotate the viewer around the station and rotate the heading with it.
-    // A yaw alone would pan the star out of the frame rather than orbit it.
-    const orbit = narrativeOrbitPose(position, mobile ? SPACE_LAYOUT.mobileCamera.distance : SPACE_LAYOUT.desktopCamera.distance, -VIRGO_STARS[1].position[2], reducedMotion);
-    if (orbit) {
-      point.set(orbit.x, orbit.y, orbit.z);
-      orbitHeading.set(-Math.sin(orbit.angle) * 200, 0, -Math.cos(orbit.angle) * 200);
-    }
+    // Keep the approved straight flight through reading and transit boundaries.
+    // Scenery may rotate; the camera must not orbit or reset its heading.
+    // Through the exit, Home approaches continuously with the tunnel camera.
+    // Its final pose is the normal arrival pose, so unmounting the portal cannot jump.
+    const exitPreview = overlay.parentElement!.dataset.introExitDepth;
+    const previewDepth = paused && position >= 1.919 && position <= 1.921 && exitPreview !== undefined
+      ? Math.max(0, Number(exitPreview)) : 0;
+    point.z += previewDepth * .18;
     const approach = showcaseApproach ? solar.center : 0;
     if (showcaseApproach) {
       const star = VIRGO_STARS[focusedStarForPosition(position) ?? 1];
-      look.set(...star.position);
-      // Keep the current semicircle endpoint, arc left, then pass THROUGH the
-      // core. Continue the heading beyond the star so it never flips at zero.
-      point.sub(look).applyAxisAngle(camera.up, solar.arc);
-      orbitHeading.copy(point).normalize().multiplyScalar(-200);
-      point.multiplyScalar(1 - solar.dive * 1.30).add(look);
-      overlay.parentElement!.dataset.solarPassage = [passageSeconds, solar.orbitSpeed, solar.roll, point.distanceTo(look)].join(',');
+      // The core handoff continues along -Z, with the same heading before and after.
+      point.z -= (point.z - star.position[2]) * solar.dive * 1.30;
+      overlay.parentElement!.dataset.solarPassage = [passageSeconds, solar.orbitSpeed, solar.roll, Math.abs(point.z - star.position[2])].join(',');
       invalidate();
     }
     const worldSpeed = Number.isFinite(previousZ.current) ? Math.abs(point.z - previousZ.current) / Math.max(delta, .016) : 0;
@@ -692,14 +692,9 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     exitPoint.copy(gate).addScaledVector(gateDirection, .28);
     // The look point travels with the camera. Interpolating station targets
     // can put the target behind the camera halfway through a long passage.
-    look.copy(point).add(orbitHeading);
+    look.copy(point).add(direction);
     if (entering) { camera.position.lerp(exitPoint, flight.exit); look.lerp(gate, flight.exit); }
     camera.lookAt(look);
-    if (showcaseApproach) camera.rotateZ(solar.roll);
-    else if (gaze.station >= 0) {
-      camera.rotateX(gaze.pitch * orbitAmount);
-      camera.rotateZ(gaze.roll * orbitAmount);
-    }
     const perspective = camera as THREE.PerspectiveCamera;
     const fov = flightFieldOfView(position, mobile, reducedMotion, flight.exit);
     const passage = transitSample(position);
@@ -727,6 +722,7 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     if (position >= 5.82) frameOffset.set(0, 0);
     frameOffset.multiplyScalar(1 - approach);
     frameOffset.multiplyScalar((1 - flight.exit) * (1 - passage.envelope));
+    frameOffset.multiplyScalar(1 - smooth(0, 600, previewDepth));
     const offsetX = -frameOffset.x * size.width / 2;
     const offsetY = frameOffset.y * size.height / 2;
     overlay.parentElement!.dataset.cameraFraming = [frameOffset.x, frameOffset.y].map(value => value.toFixed(5)).join(',');
@@ -738,7 +734,7 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     camera.updateMatrixWorld();
     if (lastChapter.current !== flight.chapter) { lastChapter.current = flight.chapter; onChapter(flight.chapter); }
     const previousPresentation = presentation.current;
-    if (showcaseApproach || previousPresentation.position !== position || previousPresentation.exit !== flight.exit || previousPresentation.paused !== paused || previousPresentation.entering !== entering || previousPresentation.reducedMotion !== reducedMotion) {
+    if (showcaseApproach || previousPresentation.position !== position || previousPresentation.exit !== flight.exit || previousPresentation.previewDepth !== previewDepth || previousPresentation.paused !== paused || previousPresentation.entering !== entering || previousPresentation.reducedMotion !== reducedMotion) {
       const transition = openingTransition(position, reducedMotion);
       panels.forEach((panel, i) => {
         const reading = narrativeSample(position, reducedMotion);
@@ -753,14 +749,12 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
       });
       overlay.parentElement?.style.setProperty("--flight-progress", String(position / 6));
       overlay.parentElement?.style.setProperty('--black-hole-view', String(smooth(5.30, 5.40, position)));
-      overlay.parentElement?.style.setProperty('--story-orbit-x', `${gaze.station >= 0 ? Math.sin(gaze.yaw) * 8 * orbitAmount : 0}px`);
-      overlay.parentElement?.style.setProperty('--story-orbit-y', `${gaze.station >= 0 ? gaze.pitch * 45 * orbitAmount : 0}px`);
       overlay.parentElement!.dataset.cameraPose = [...camera.position.toArray(), ...camera.quaternion.toArray()].map(value => value.toFixed(5)).join(',');
       overlay.parentElement?.style.setProperty("--flight-thrust", String(flight.thrust));
       overlay.parentElement?.style.setProperty("--intro-cover", String(transition.cover));
       overlay.parentElement?.style.setProperty("--intro-caption-lift", String(transition.lift));
       overlay.parentElement?.style.setProperty("--intro-flare", String(transition.flare));
-      Object.assign(previousPresentation, { position, exit: flight.exit, paused, entering, reducedMotion });
+      Object.assign(previousPresentation, { position, exit: flight.exit, previewDepth, paused, entering, reducedMotion });
     }
     const narrative = narrativeSample(entering ? -1 : position, reducedMotion);
     const story = { shown: narrative.index >= 3 && narrative.index < 8 ? narrative.index : -1 };

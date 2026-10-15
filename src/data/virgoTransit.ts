@@ -16,6 +16,19 @@ export const TRANSIT_LEGS = [
   { from: 5.30, to: 5.82, origin: 2, destination: 3 },
 ] as const;
 
+export const TRANSIT_SCENARIOS = ['asteroids', 'meteors', 'supernova'] as const;
+export type TransitScenario = typeof TRANSIT_SCENARIOS[number];
+
+/** Choose scenery once per journey. Reversing a leg keeps its original scene. */
+export function createTransitScenarios(random: () => number = Math.random): TransitScenario[] {
+  const scenes: TransitScenario[] = [...TRANSIT_SCENARIOS];
+  for (let i = scenes.length - 1; i > 0; i--) {
+    const j = Math.min(i, Math.max(0, Math.floor(random() * (i + 1))));
+    [scenes[i], scenes[j]] = [scenes[j], scenes[i]];
+  }
+  return ['asteroids', ...scenes];
+}
+
 export function transitSample(position: number) {
   const index = TRANSIT_LEGS.findIndex(leg => position >= leg.from && position <= leg.to);
   if (index < 0) return { index: -1, progress: 0, envelope: 0, cruise: 0 };
@@ -51,6 +64,11 @@ export function journeyCameraZ(position: number, mobile = false) {
   const i = anchors.findIndex((_, index) => index < anchors.length - 1 && p <= anchors[index + 1].p);
   const a = anchors[i], b = anchors[i + 1];
   return a.z + (b.z - a.z) * ramp(a.p, b.p, p);
+}
+
+/** Owner-approved reference: docs/straight-flight-contract.vi.md. */
+export function straightFlightPose(position: number, mobile = false) {
+  return { x: 0, y: 0, z: journeyCameraZ(position, mobile) };
 }
 
 /** Fixed objects create true perspective parallax as the camera passes them. */

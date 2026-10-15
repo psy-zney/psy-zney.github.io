@@ -8,9 +8,8 @@ export function solarPassageSample(seconds: number) {
   const dive = clamp((seconds - SOLAR_PASSAGE.prepare) / (SOLAR_PASSAGE.handoff - SOLAR_PASSAGE.prepare));
   return {
     prepare, dive: dive ** 3,
-    arc: Math.sin(prepare * Math.PI) * .18,
     center: smooth(.35, SOLAR_PASSAGE.prepare, seconds),
-    roll: smooth(1.5, 2.3, seconds) * Math.PI / 18,
+    roll: 0,
     flash: smooth(2.30, 2.50, seconds),
     narration: 1 - smooth(.65, 1.5, seconds),
     orbitSpeed: 1 + 3 * prepare,

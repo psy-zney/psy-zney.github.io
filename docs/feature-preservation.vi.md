@@ -4,17 +4,21 @@ Cập nhật ngày 15/10/2026. Đây là baseline của bản build hiện tại
 Codex, Gemini và model khác. Các thay đổi đang nằm trong working tree cũng là
 công việc của chủ repo; không quay về bản Git cũ để làm check chạy qua.
 
+**Chuyển cảnh đã chốt theo video ngày 15/10:** đọc
+[quy tắc bay thẳng](straight-flight-contract.vi.md) trước khi sửa. Camera
+chỉ tiến/lùi theo Z, không tự xoay. Quy tắc này thay yêu cầu orbit/bay vòng cũ.
+
 ## Những gì cần giữ
 
 | Luồng | Hành vi cần giữ | Kiểm tra |
 | --- | --- | --- |
 | Mở trang | Bộ tải dạng sóng, tiến trình dễ đọc; reduced motion bỏ thời gian chờ; dọn timer/listener khi rời trang | `check:experience`, `check:ui` |
-| Cổng vòng xoáy và hầm lưới (15/10/2026) | Chòm sao nối từ tâm giữ nguyên vị trí. Cuộn mở xoáy khí xanh với lõi đen ngay tại sao vàng; hết giai đoạn mở mới cuộn tiếp để vào hầm. Tiến độ 0–7,8 là tọa độ cuộn, không phải tự phát theo giây. Dừng cuộn thì dừng tiến, cuộn ngược lùi cùng đường. Lưới 18 vòng/20 đường dọc có các dải khí xoắn trên thành. Hai câu mỗi câu một dòng, cố định trên mặt trụ, luôn chiếu từ xa theo khoảng cách; không fade vào theo timer. Chữ, khí và lưới dùng cùng phép chiếu; cắt qua cửa cổng. Giữ wheel/touch/phím/chạm, mute, reduced motion, hủy route và dừng tab ẩn; Home chỉ trở về hầm khi có cuộn ngược có chủ ý; không tự chạy lùi. | Kiểm tra hình học và điều khiển trong check:experience; ảnh vòng xoáy, vào hầm, chữ từ xa, dừng cuộn và đến Home trên 5 viewport trong check-intro-ui.mjs |
-| Hành trình Virgo | Hiện từng câu theo scroll; camera đi nửa vòng tròn 180° quanh mô hình, giữ bán kính, hai câu Porrima ở đầu/cuối nửa vòng; chữ đổi góc trên/trái sang dưới/phải; cuộn ngược khôi phục góc/câu trước | `check:portfolio`, `check:experience`, pose/câu thực trong `check:ui` |
+| Cổng vòng xoáy và hầm khí (15/10/2026) | Cổng xuất hiện tại sao trung tâm; các dải khí quay theo vận tốc góc khác nhau, chòm sao và các đường nối bị vặn theo cùng trường lực. Cổng đạt kích thước vật lý tối đa rồi giữ nguyên; camera tiến qua mặt phẳng cửa tại z=500. Lưới 18×20 chỉ là hệ tọa độ ẩn, không vẽ wireframe. Khí và vệt sáng đi theo đường xoắn trên thành; mỗi câu là một dòng cố định dọc trục bay, không quấn quanh miệng hầm và không bật chữ theo timer. Cửa ra tại z=-4400 mở xuyên tới cảnh Home thật; camera Home tiến cùng độ sâu cửa, không dừng để fade toàn màn. Cuộn quyết định vị trí, dừng cuộn dừng tiến; viền khí vẫn quay. Giữ mute, reduced motion, hủy route, dừng tab ẩn và cuộn ngược có chủ ý ở Home. | Hình học cổng cố định, tốc độ quay khác nhau, chữ dọc trục và camera xuyên cửa trong check:experience; ảnh viền quay khi đứng yên, cửa vào/ra, nền Home thật và chiều về trên 5 viewport trong check-intro-ui.mjs |
+| Hành trình Virgo | Hiện từng câu theo scroll; camera luôn nhìn -Z, X/Y cố định cả lúc đọc và bay; chữ đổi vị trí trên/trái sang dưới/phải bằng bố cục; cuộn ngược khôi phục đúng độ sâu/câu trước | `check:portfolio`, `check:experience`, pose/câu thực trong `check:ui` và `check-transit-ui.mjs` |
 | Phòng chiếu cong | Scene Three.js + CSS3DRenderer với 9 mặt phẳng DOM trên cùng một hình trụ, camera chung; không chia ảnh thành dải CSS gây méo. Tiêu đề Outfit sans-serif; ẩn scrollbar của gallery. Ba preview Sentinel/Security/Backup giữ file gốc và chỉ cắt 16px mép phải chứa scrollbar khi hiển thị. Preview lớn, không có nút X thoát; tự mở sau câu cuối Porrima bằng wheel/touch; Trải nghiệm web → Ứng dụng & công cụ nối bằng ánh sáng; cuộn qua cuối gallery tiếp tục Skills, cuộn ngược trở lại Porrima; link trực tiếp vẫn hoạt động | `check:experience`, pose/matrix CSS3D, font, kích thước/ảnh/luồng thuận/ngược `check:ui` |
-| Bay giữa các trạm | Giữ nửa vòng đọc 180°; các hệ sao lệch ngang, sau câu cuối bay vòng qua bên cạnh với độ lệch x/y liên tục và tiến về Z âm, không giữ camera rồi giật đổi 180°. Bỏ lớp phủ xanh đục; khung hình chuyển lệch trái/phải bằng nội suy liên tục qua toàn đoạn bay. Cuộn ngược đi lại cùng đường. Tốc độ đọc/bay nối qua vùng giảm/tăng tốc liên tục, không nhảy giữa các rate hằng. URL về Home/Cosmos nhảy trực tiếp, đồng bộ tọa độ và target ngay cùng frame. Hố đen xuất hiện từ xa trong đoạn Skills → Contact; bấm vào workspace tiếp tục cùng trục | Lấy mẫu ba transit theo hai bán kính, kiểm tra heading liên tục, cùng chiều xoay và không giữ vị trí để reset trong `check:experience`; pose/ảnh ở 5.42 và 5.68, pose liên tục khi vào workspace trong `check:ui`; URL và đi ngược trong `check-intro-ui.mjs` |
+| Bay giữa các trạm | Giữ đường thẳng theo video 17-42-22: không yaw/pitch/roll, không bay vòng hay reset hướng. Sao băng, thiên thạch, siêu tân tinh thay đổi cảnh quanh đường bay; xáo thứ tự một lần mỗi hành trình, lùi giữ cùng cảnh. Không phủ xanh đục. Cuộn ngược đi lại cùng đường. Tốc độ đọc/bay nối liên tục; URL về Home/Cosmos nhảy trực tiếp. Hố đen xuất hiện từ xa trong Skills → Contact; vào workspace tiếp tục cùng trục | Đường thẳng/độ sâu hai chiều và lựa chọn cảnh trong `check:experience`; camera thực, ba cảnh và ba đoạn hai chiều desktop/phone trong `check-transit-ui.mjs`; pose/ảnh tiếp cận và workspace trong `check:ui` |
 | Điều khiển gallery | Wheel ngang/dọc, kéo ngang/dọc, giữ quán tính; phím mũi tên, Home/End; đổi sản phẩm không remount gallery | `check:experience`, `check:ui` |
-| Vào/ra showcase | Theo yêu cầu core dive ngày 14/10: câu “Each project…” bên phải trước, “Here is how…” bên trái sau; vẫn đọc theo orbit 180° và cuộn ngược. Entry 4s: chuẩn bị 1.5s, quỹ đạo tăng tới 4×, camera roll 10° lao xuyên lõi trong 1.1s, flash vàng trắng 0.2s qua điểm nối renderer. Bỏ hoàn toàn khung chữ nhật chuyển cảnh. Sau 2.6s mới đổi hash/mount gallery; CSS3D nâng cụm từ y=-300, tilt=.4 rad lên y=0/tilt=0 và camera giảm tốc expo.out đáp z=-2500. Tab và caption/dots/actions hiện ở 3.4–4s; điều khiển mở sau đáp. Ra gallery dùng ánh sáng rồi nối lại cảnh model; reduced motion chuyển ngay, đổi route hủy passage cũ | `check:ui` đo hash/DOM/camera, flash, tốc độ orbit, roll và pose cylinder; xem ảnh trước/trong/sau entry |
+| Vào/ra showcase | Câu “Each project…” bên phải trước, “Here is how…” bên trái sau; giữ cuộn ngược. Entry 4s: chuẩn bị 1.5s, quỹ đạo hành tinh tăng tới 4×, camera tiến thẳng xuyên lõi trong 1.1s, roll=0 theo quy tắc 15/10; flash vàng trắng 0.2s qua điểm nối renderer. Không khung chữ nhật. Sau 2.6s mới đổi hash/mount gallery; CSS3D nâng cụm từ y=-300, tilt=.4 rad lên y=0/tilt=0 và camera giảm tốc expo.out đáp z=-2500. Tab và caption/dots/actions hiện ở 3.4–4s; điều khiển mở sau đáp. Ra gallery nối lại cảnh model; reduced motion chuyển ngay, đổi route hủy passage cũ | `check:ui` đo hash/DOM/camera, flash, quỹ đạo hành tinh, heading và pose cylinder; xem ảnh trước/trong/sau entry |
 | Con trỏ | Cặp ảnh gốc Deep Space Gradient lưu local: mũi tên khi di chuyển, bàn tay trên link/nút; giữ I-beam trong ô nhập và pointer lock workspace | `check:experience`, cursor CSS thực trong browser |
 | Hành động sản phẩm | Link website và “Khám phá ứng dụng” đúng địa chỉ giới thiệu/tải; live preview tùy chọn dùng iframe DOM trên mặt phẳng CSS3D, giữ click/nhập phím/wheel gốc; che thanh cuộn của iframe bằng viewport mở rộng 16px, không chặn cuộn. Mở case study rồi đóng trở về đúng sản phẩm | `check:experience`, click/nhập/cuộn iframe fixture và return routes trong `check:ui` |
 | Trạng thái lỗi | Không có cụm icon/tên/placeholder giữa màn hình Manager theo yêu cầu mới; trạng thái thiếu ảnh dành cho screen reader, tên và link nằm dưới màn hình; ảnh lỗi vẫn giữ link; hash sai có nút phục hồi | `check:experience`, `check:ui` |
@@ -31,17 +35,17 @@ Download mở trang tải do chủ repo cung cấp. Không tự tải installer.
 Theo yêu cầu ngày 15/10, bỏ nút và dòng “Scroll or tap to begin”; chạm vùng
 intro và phím tiến một bước; cuộn và vuốt điều khiển trực tiếp tiến độ.
 
-Sửa chuyển trạm ngày 15/10: bỏ `virgo-transit-veil`, không đổi heading bằng
-bước nhảy π → 0 và không giữ vị trí 20% đầu đoạn để reset. Hướng nhìn tiếp
-tục cùng chiều xoay trong lúc di chuyển; vị trí khung hình khớp câu cuối và
-câu đầu của hai trạm. `node scripts/check-transit-ui.mjs http://127.0.0.1:5182/`
-đo quaternion/vị trí/phép chiếu của camera thực trên desktop 1242×715 và phone,
-kiểm tra cả ba đoạn bay và lưu ảnh trong `artifacts/transit-motion/`.
+Sửa chuyển trạm theo video ngày 15/10: bỏ `virgo-transit-veil`, bỏ orbit và
+đường bay cong. Camera giữ X/Y=0 và quaternion (0,0,0,1), không cần reset hướng.
+`node scripts/check-transit-ui.mjs http://127.0.0.1:5182/` đo camera thực trên
+desktop 1242×715 và phone, ba đoạn bay cả hai chiều cùng các pose đọc; kiểm tra
+cảnh nền ổn định và lưu ảnh trong `artifacts/transit-motion/`.
 
-Intro nối sao bắt đầu từ sao vàng trung tâm (index 1), lan đồng thời qua
+Khi chưa mở cổng, intro nối sao bắt đầu từ sao vàng trung tâm (index 1), lan đồng thời qua
 năm nhánh rồi nối đủ 14 sao và 16 cạnh trong 4,9 giây sau loader. Camera
 đứng yên trong lúc nối; thao tác bắt đầu sớm được chờ đến khi nối xong.
-Nét nối Canvas rộng 0,45px, alpha 0,34; giữ nguyên bố cục chòm sao.
+Nét nối Canvas rộng 0,45px, alpha 0,34. Khi cổng mở, sao và nét nối cùng
+chịu lực vặn; đóng cổng trả về bố cục ban đầu.
 Chiều về giữ chòm sao đã nối xong. Kiểm tra điểm xuất phát, phân nhánh và
 ảnh `*-constellation-*.png` bằng `check:portfolio` và `check-intro-ui.mjs`.
 
@@ -54,9 +58,8 @@ VirgoIntroFracture và bộ render/audio fracture cũ khỏi scene; không mount
 ba câu intro đen cũ hoặc câu dẫn ở hố đen. Cảnh hố đen chỉ còn nút biểu tượng
 vào workspace, có aria-label; không có dòng hướng dẫn kéo chuột. Hố đen
 được tăng scale desktop .78 → .87 và phone .62 → .67, giữ điều khiển xoay.
-Hai hệ sao giữa lệch x=-90/+85; đường bay có độ lệch ngang và đứng, cách
-mọi lõi sao tối thiểu 45 đơn vị. Giữ quỹ đạo đọc nửa vòng 180°, lùi đi cùng
-đường và không có lớp che đục. Wheel tiếp tục dùng delta thật với lead
+Các hệ sao trở về cùng trục Z theo video tham chiếu; đường bay và hướng nhìn
+luôn thẳng, lùi đi cùng đường và không có lớp che đục. Wheel dùng delta thật với lead
 0,16 viewport, mỗi sự kiện tối đa 0,12 viewport, bỏ hàng đợi cũ khi đổi chiều.
 Gallery bắt đầu sau câu cuối. Các kiểm tra tương ứng nằm trong
 check-intro-ui.mjs, check-transit-ui.mjs và check-black-hole-ui.mjs.
@@ -93,7 +96,7 @@ trình duyệt. Xác nhận component còn được gắn trong ứng dụng và
 ## Lệnh kiểm tra
 
 Core dive dùng tâm Porrima của hành trình làm gốc cục bộ (world z=-480).
-Giữ trạm và orbit đọc hiện có; lúc flash, CSS3D dùng không gian showcase riêng
+Giữ trạm và hướng nhìn thẳng hiện có; lúc flash, CSS3D dùng không gian showcase riêng
 với tâm vòng trụ/camera ở (0,0,-2500). Bán kính trụ theo viewport để giữ nguyên
 kích thước preview. Hai renderer nối bằng flash #FFF8E7; sao #F4A261,
 quầng chuyển cảnh #E76F51 và nền gallery #05050A. Preview vẫn là file thật của
@@ -155,8 +158,12 @@ cuộn, chữ một dòng có sẵn trên thành và Home trở về hầm theo 
 59,6 FPS, p95 21,1 ms thuộc phiên bản intro trước thay đổi vòng xoáy, không
 đại diện cho bản hiện tại. Chưa đo lại FPS hoặc xác nhận màn hình 120 Hz,
 âm thanh/touch trên máy thật.
+Quy tắc bay thẳng theo video 17-42-22 đã được kiểm tra trên camera thực:
+ba đoạn bay hai chiều, ba cảnh nền, pose đọc và toàn bộ đoạn vào gallery trên
+desktop/phone đều PASS; góc xoay giữa các frame chuyển trạm đo được bằng 0.
+Ảnh bố cục đọc, cảnh nền và cửa ra Home đã được xem lại.
 `check:ui` tổng dừng ở assertion con trỏ custom (CSS baseline đang dùng con
-trỏ hệ thống). Chạy riêng tablet đi qua intro/gallery/orbit/transit nhưng dừng
+trỏ hệ thống). Lần đối chiếu trước quy tắc bay thẳng: tablet qua intro/gallery/orbit/transit nhưng dừng
 ở ngưỡng pixel vùng tối hố đen. Đã chạy lại mã HEAD gốc qua máy chủ đối chiếu,
 không đổi working tree, và gặp cùng lỗi hố đen; báo cáo ở
 `artifacts/feature-preservation/baseline/`. Giữ nguyên các assertion này,

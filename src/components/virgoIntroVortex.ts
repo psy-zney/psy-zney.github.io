@@ -1,3 +1,4 @@
+import { introVortexAngle } from '../data/virgoIntro';
 // A reusable gas texture: noise is rasterized once, never in the animation loop.
 let texture: HTMLCanvasElement | undefined;
 let cloud: HTMLCanvasElement | undefined;
@@ -37,10 +38,18 @@ function vortexTexture() {
   ctx.putImageData(pixels, 0, 0); texture = canvas; return canvas;
 }
 
-export function drawIntroVortex(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, rotation: number) {
+export function drawIntroVortex(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, time: number) {
   if (radius < 1) return;
-  ctx.save(); ctx.translate(x, y); ctx.scale(1, .90); ctx.rotate(rotation);
-  ctx.drawImage(vortexTexture(), -radius, -radius, radius * 2, radius * 2);
+  if (radius * .33 > Math.hypot(ctx.canvas.width, ctx.canvas.height) * 1.2) return;
+  ctx.save(); ctx.translate(x, y); ctx.scale(1, .90);
+  const gas = vortexTexture(), bands = 14;
+  for (let i = 0; i < bands; i++) {
+    const inner = .335 + i / bands * .665, outer = .335 + (i + 1) / bands * .665;
+    ctx.save(); ctx.beginPath(); ctx.arc(0, 0, radius * outer, 0, Math.PI * 2);
+    ctx.arc(0, 0, Math.max(0, radius * inner - .6), 0, Math.PI * 2, true); ctx.clip('evenodd');
+    ctx.rotate(introVortexAngle((inner + outer) / 2, time));
+    ctx.drawImage(gas, -radius, -radius, radius * 2, radius * 2); ctx.restore();
+  }
   ctx.restore();
 }
 

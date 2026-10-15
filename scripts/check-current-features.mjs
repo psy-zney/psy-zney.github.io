@@ -7,7 +7,7 @@ import ts from 'typescript';
 
 // Behavior and integration checks for the current build. Visual QA lives in check-ui.mjs.
 export async function checkCurrentFeatures(server) {
-  const { introFrame, INTRO_CAPTIONS, INTRO_DURATION, INTRO_ASSEMBLY_DURATION, introConstellationFrame, advanceIntroScroll } = await server.ssrLoadModule('/src/data/virgoIntro.ts');
+  const { introFrame, INTRO_CAPTIONS, INTRO_DURATION, INTRO_ASSEMBLY_DURATION, introConstellationFrame, advanceIntroScroll, introCaptionPoint, introTunnelView, introWarpPoint, introVortexAngle, INTRO_TUNNEL_GRID, INTRO_EXIT_Z } = await server.ssrLoadModule('/src/data/virgoIntro.ts');
   assert.equal(introConstellationFrame(0).stars[1], 1, 'The constellation starts from the central yellow star');
   assert.equal(introConstellationFrame(0).stars.filter(amount => amount > .1).length, 1, 'Only the central star is visible before connections spread');
   assert(introConstellationFrame(0).edges.every(([a, b]) => a + b === 0), 'Connections are drawn progressively instead of appearing fully connected');
@@ -17,24 +17,42 @@ export async function checkCurrentFeatures(server) {
   assert.equal(INTRO_DURATION, 7.8, 'The intro scroll coordinate spans opening, entry and wall reading; it is not an autoplay duration');
   assert.equal(introFrame(0).z, 1000);
   for (const caption of INTRO_CAPTIONS) assert.equal(introFrame(caption.pass).z, caption.z, 'Wall lettering has a fixed physical position along the flight');
-  assert.equal(introFrame(INTRO_DURATION).z, -3000);
+  assert.equal(introFrame(INTRO_DURATION).z, -4401);
+  assert(introFrame(INTRO_DURATION).exitDepth < 0, 'The camera crosses the exit plane before the overlay unmounts');
+  assert.equal(INTRO_TUNNEL_GRID.visible, false, 'The cylinder grid is a placement guide, not a visible wireframe');
+  assert(introVortexAngle(.4, 2) > introVortexAngle(.9, 2), 'Inner gas rotates faster than the outer rim');
+  const warped = introWarpPoint(100, 0, { x: 0, y: 0 }, 200, 1, 2);
+  assert(Math.abs(warped.y) > 20 && Math.hypot(warped.x, warped.y) > 90, 'Intro objects twist around the portal instead of collapsing into the center');
+  assert(Math.abs(introWarpPoint(100, 0, { x: 0, y: 0 }, 200, 0, 2).x - 100) < 1e-9);
+  const { introAperture } = await server.ssrLoadModule('/src/components/virgoIntroTunnel.ts');
+  const maturePortal = introAperture(1242, 715, 2.75, { x: 600, y: 300 });
+  const approachingPortal = introAperture(1242, 715, 3.1, { x: 600, y: 300 });
+  assert.equal(maturePortal.worldRadius, approachingPortal.worldRadius, 'The mature entrance keeps its physical size while the camera advances');
+  assert(approachingPortal.depth < maturePortal.depth);
+  const view = introTunnelView(1242, 715), patchFrame = introFrame(4);
+  for (let index = 0; index < INTRO_CAPTIONS.length; index++) {
+    const first = introCaptionPoint(view, patchFrame, index, 0, .5), last = introCaptionPoint(view, patchFrame, index, 1, .5);
+    assert(Math.abs(Math.abs(first.depth - last.depth) - 1500) < 1e-8, 'Every word baseline follows the flight direction, not a circumferential ring');
+  }
   assert.equal(introFrame(1).charge, 0, 'The constellation never contracts into the core');
   assert.equal(introFrame(2.75).z, 1000, 'The vortex opens before the next scroll enters it');
   assert.equal(introFrame(2.75).tear, 1);
   assert.equal(introFrame(4).streak, 0, 'The tunnel contains wall dust rather than star streaks');
   let previousIntroZ = 1000;
-  let previousArrivalSpeed = Infinity;
+  let previousArrivalSpeed = 0;
   let previousVelocity = 0;
   for (let i = 0; i <= INTRO_DURATION * 1000; i++) {
     const frame = introFrame(i / 1000);
     assert(frame.z <= previousIntroZ + 1e-6, 'The camera always flies forward through the tear');
     assert.equal(frame.x, 0); assert.equal(frame.y, 0, 'The intro never swerves or reverses its heading');
     const velocity = (previousIntroZ - frame.z) * 1000;
-    assert(velocity < 1500 && Math.abs(velocity - previousVelocity) < 1, 'Camera displacement changes smoothly along the scroll coordinate');
+    assert(velocity < 1200 && Math.abs(velocity - previousVelocity) < 5, 'Camera displacement changes smoothly along the scroll coordinate');
     previousVelocity = velocity;
     if (i > 7250) {
       const speed = previousIntroZ - frame.z;
-      assert(speed <= previousArrivalSpeed + 1e-6, 'Camera displacement tapers continuously near the arrival endpoint');
+      assert(speed * 1000 > 1000 && speed >= previousArrivalSpeed - 1e-6, 'The camera continues through the exit without stopping for a scene fade');
+      assert.equal(frame.opacity, 1, 'Only the exit opening reveals Home; the full screen never fades');
+      assert(frame.z - INTRO_EXIT_Z < 650, 'The exit plane is close during the final approach');
       previousArrivalSpeed = speed;
     }
     previousIntroZ = frame.z;
@@ -57,7 +75,9 @@ export async function checkCurrentFeatures(server) {
   const { VirgoPortfolio } = await server.ssrLoadModule('/src/components/VirgoPortfolio.tsx');
   const { WavePageLoader } = await server.ssrLoadModule('/src/components/WavePageLoader.tsx');
   const { VirgoSceneBoundary } = await server.ssrLoadModule('/src/components/VirgoSceneFallback.tsx');
-  const { advanceShowcaseMotion, showcaseChapterTransition, spatialGaze, narrativeOrbitPose } = await server.ssrLoadModule('/src/data/virgoExperienceMotion.ts');
+  const { advanceShowcaseMotion, showcaseChapterTransition } = await server.ssrLoadModule('/src/data/virgoExperienceMotion.ts');
+  const { straightFlightPose, TRANSIT_LEGS, TRANSIT_SCENARIOS, createTransitScenarios } = await server.ssrLoadModule('/src/data/virgoTransit.ts');
+  const { solarPassageSample } = await server.ssrLoadModule('/src/data/solarShowcaseMotion.ts');
   const { chapterReadingPosition, narrativeSample, NARRATIVE_BEATS } = await server.ssrLoadModule('/src/data/virgoNarrative.ts');
   const destinations = [
     ['mpoly', 'https://mpoly.zney295.id.vn/'],
@@ -160,40 +180,29 @@ export async function checkCurrentFeatures(server) {
   assert.equal(narrativeSample(secondView).index, 5);
   assert.equal(narrativeSample(firstView).reveal, 1);
   assert.equal(narrativeSample(secondView).reveal, 1);
-  assert(Math.abs(spatialGaze(secondView).yaw - spatialGaze(firstView).yaw - Math.PI) < 1e-9, 'Successive project sentences span the full 180 degree half orbit');
-  assert.equal(spatialGaze(2.94).yaw, 0);
-  assert.equal(spatialGaze(4.25).yaw, Math.PI, 'The project camera completes a real 180 degree semicircle');
-  const { VIRGO_STARS } = await server.ssrLoadModule('/src/data/virgoStations.ts');
-  assert(new Set(VIRGO_STARS.map(star => star.position[0])).size >= 3, 'Neighboring stars are laterally staggered');
-  for (const radius of [125, 180]) {
-    for (const [from, to] of [[2.32, 2.94], [4.25, 4.80], [5.30, 5.82]]) {
-      let previous = narrativeOrbitPose(from, radius, 480);
-      for (let step = 1; step <= 200; step++) {
-        const pose = narrativeOrbitPose(from + (to - from) * step / 200, radius, 480);
-        assert(VIRGO_STARS.every(star => Math.hypot(pose.x - star.position[0], pose.y, pose.z - star.position[2]) > 45), 'The fly-by clears every stellar core instead of diving through it');
-        assert(pose.z <= previous.z + 1e-9, 'Forward travel never retreats');
-        const angularStep = Math.atan2(Math.sin(pose.angle - previous.angle), Math.cos(pose.angle - previous.angle));
-        assert(angularStep >= -1e-9 && angularStep < .04, 'Transit continues the same turn smoothly, without a snapped heading reset');
-        if (step < 200) assert(pose.z < previous.z, 'The transfer moves immediately instead of holding still for a heading reset');
-        previous = pose;
-      }
+  // Owner's 15/10 video supersedes the previous 180-degree orbit/fly-by checks.
+  for (const mobile of [false, true]) {
+    let previous = straightFlightPose(1.92, mobile);
+    const forward = [];
+    for (let step = 1920; step <= 6000; step++) {
+      const pose = straightFlightPose(step / 1000, mobile);
+      assert.equal(pose.x, 0); assert.equal(pose.y, 0, 'Reading and transit share one straight axis');
+      assert(pose.z <= previous.z, 'Forward travel never retreats');
+      forward.push(pose); previous = pose;
     }
-    for (let p = 2.94; p <= 4.25; p += .01) {
-      const pose = narrativeOrbitPose(p, radius, 480);
-      assert(Math.abs(Math.hypot(pose.x - VIRGO_STARS[1].position[0], pose.z + 480) - radius) < 1e-9, 'The camera orbits at constant distance');
-    }
-    for (const edge of [2.32, 2.94, 4.25, 4.80, 5.30, 5.82]) {
-      const before = narrativeOrbitPose(edge - 1e-6, radius, 480);
-      const after = narrativeOrbitPose(edge + 1e-6, radius, 480);
-      if (before && after) {
-        assert(Math.hypot(before.x - after.x, before.z - after.z) < .01, 'Orbit and transit meet without a camera jump');
-        assert(Math.abs(Math.atan2(Math.sin(after.angle - before.angle), Math.cos(after.angle - before.angle))) < .001, 'The view direction is continuous at each station boundary');
-      }
+    for (let step = 6000; step >= 1920; step--) assert.deepEqual(straightFlightPose(step / 1000, mobile), forward[step - 1920], 'Reverse scroll retraces the exact same path');
+    for (const { from, to } of TRANSIT_LEGS) for (const edge of [from, to]) {
+      assert(Math.abs(straightFlightPose(edge - 1e-6, mobile).z - straightFlightPose(edge + 1e-6, mobile).z) < .001, 'Reading and transit meet without a reset');
     }
   }
+  for (let i = 0; i <= 400; i++) assert.equal(solarPassageSample(i / 100).roll, 0, 'Showcase entry keeps the straight heading too');
+  const a = createTransitScenarios(() => 0), b = createTransitScenarios(() => .99);
+  for (const scenes of [a, b]) assert.deepEqual([...scenes.slice(1)].sort(), [...TRANSIT_SCENARIOS].sort(), 'Each journey uses all three scenery variants without repeats');
+  assert.notDeepEqual(a, b, 'New journeys can vary the scene order');
+  assert.deepEqual(a, createTransitScenarios(() => 0), 'Scene selection is independent of frame timing');
+  assert((await readFile('AGENTS.md', 'utf8')).includes('docs/straight-flight-contract.vi.md'), 'Future edits must read the owner-approved flight contract');
+  assert((await readFile('docs/straight-flight-contract.vi.md', 'utf8')).includes('17-42-22.mp4'), 'Identify the exact reference video');
   assert.notEqual(NARRATIVE_BEATS[4].placement, NARRATIVE_BEATS[5].placement, 'Successive project sentences change their layout');
-  assert.equal(spatialGaze(firstView).station, 1);
-  assert.deepEqual(spatialGaze(firstView, true), { yaw: 0, pitch: 0, roll: 0, station: -1 });
 
   // Wiring checks catch disconnected new components; geometry/style may evolve.
   const jsxNames = async path => {
@@ -224,7 +233,7 @@ export async function checkCurrentFeatures(server) {
   ]) {
     const { names, calls, attributes } = await jsxNames(path);
     for (const component of components) assert(names.has(component), `${path} must still render ${component}`);
-    if (path.endsWith('VirgoScene.tsx')) assert(calls.has('narrativeOrbitPose'), 'The real orbit must remain connected to the rendered camera');
+    if (path.endsWith('VirgoScene.tsx')) assert(calls.has('straightFlightPose'), 'The straight path must remain connected to the rendered camera');
     if (path.endsWith('VirgoPortfolio.tsx')) {
       assert((calls.get('openFlowShowcase') ?? 0) >= 3, 'Wheel and native-scroll paths must still enter the showcase automatically');
       assert(attributes.get('ProductShowcase')?.has('onExit'), 'The gallery must still continue to the neighboring story chapter');
@@ -246,5 +255,5 @@ export async function checkCurrentFeatures(server) {
   assert(vortexSource.includes('rayResolution = resolution'), 'Ray resolution strictly matches shade resolution to prevent 2x2 artifacts');
   assert(vortexSource.includes('scale > .75'), 'Cadence scale preserves high minimum render quality');
 
-  console.log('PASS: nine product destinations/previews, bilingual showcase routes/actions, automatic gallery entry/exit wiring, a connected 180-degree camera orbit, invalid-route recovery, wave loader, WebGL recovery, black-hole wiring, and reversible/refresh-rate-independent gallery motion.');
+  console.log('PASS: nine product destinations/previews, bilingual showcase routes/actions, automatic gallery entry/exit wiring, connected straight flight and scenery variants, invalid-route recovery, wave loader, WebGL recovery, black-hole wiring, and reversible/refresh-rate-independent gallery motion.');
 }

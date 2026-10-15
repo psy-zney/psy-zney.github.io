@@ -1,5 +1,4 @@
 import { clamp, smooth } from './virgoFlight';
-import { VIRGO_STARS } from './virgoStations';
 
 export type ShowcaseMotionMode = 'target' | 'inertia';
 
@@ -30,47 +29,6 @@ export function advanceShowcaseMotion(x: number, target: number, velocity: numbe
   velocity = (velocity - omega * impulse * dt) * decay;
   const settled = Math.abs(x - target) < .15 && Math.abs(velocity) < 2;
   return { x: settled ? target : x, target, velocity: settled ? 0 : velocity, settled };
-}
-
-const READING_ORBITS = [[1.92, 2.32, 2.22, 2.32], [2.94, 4.25, 3.23, 3.95], [4.80, 5.30, 4.92, 5.17]];
-
-/** A reversible orbit driven by the rendered scroll position, without idle drift. */
-export function spatialGaze(position: number, reduced = false) {
-  if (reduced) return { yaw: 0, pitch: 0, roll: 0, station: -1 };
-  const station = READING_ORBITS.findIndex(([from, to]) => position >= from && position <= to);
-  const window = READING_ORBITS[station];
-  if (!window) return { yaw: Math.sin(position * Math.PI) * .12 * (1 - smooth(1.50, 1.82, position)), pitch: 0, roll: 0, station: -1 };
-  const [, , from, to] = window;
-  const yaw = Math.PI * smooth(from, to, position);
-  return { yaw, pitch: 0, roll: 0, station };
-}
-
-/** A true semicircle, followed by a continuous flight to the next station.
- * Radius and heading share the same angle; reversing scroll retraces the path.
- * Contact keeps its front view so the black-hole billboard remains undistorted.
- */
-export function narrativeOrbitPose(position: number, radius: number, spacing: number, reduced = false) {
-  if (position < 1.92 || position > 5.82) return null;
-  const windows = [[1.92, 2.32], [2.94, 4.25], [4.80, 5.30], [5.82, 5.82]];
-  for (let station = 0; station < 3; station++) {
-    const [, to] = windows[station];
-    if (position <= to) {
-      const angle = reduced ? 0 : Math.PI * smooth(READING_ORBITS[station][2], READING_ORBITS[station][3], position);
-      return { x: VIRGO_STARS[station].position[0] + Math.sin(angle) * radius, y: 0, z: -station * spacing + Math.cos(angle) * radius, angle };
-    }
-    const next = windows[station + 1][0];
-    if (position < next) {
-      // Keep turning in the reading orbit's direction while travelling.
-      // A full continuous half-turn replaces the stationary heading reset.
-      const progress = (position - to) / (next - to);
-      const t = smooth(0, 1, progress);
-      return { x: VIRGO_STARS[station].position[0] * (1 - t) + VIRGO_STARS[station + 1].position[0] * t + (reduced ? 0 : Math.sin(Math.PI * t) * 110),
-        y: reduced ? 0 : Math.sin(Math.PI * t) * 20,
-        z: (-station * spacing + (reduced ? radius : -radius)) * (1 - t) + (-(station + 1) * spacing + radius) * t,
-        angle: reduced ? 0 : Math.PI * (1 + t) };
-    }
-  }
-  return { x: 0, y: 0, z: -3 * spacing + radius, angle: 0 };
 }
 
 /** Neighboring screens share a cylinder: scrolling changes its angle continuously. */

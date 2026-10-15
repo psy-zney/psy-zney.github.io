@@ -276,6 +276,9 @@ try {
         await page.screenshot({ path: output + '/' + name + '-intro-greeting-' + (index + 1) + '.png' });
       }
       await introScrollTo(7.1);
+      assert.equal(await intro.getAttribute('data-virtual-grid'), 'hidden');
+      assert(Number(await intro.getAttribute('data-exit-radius')) > 100, 'An exit is visible before arrival');
+      assert.equal(await intro.evaluate(el => el.style.opacity), '1', 'The scene is revealed through the exit, not a full-screen fade');
       await page.mouse.wheel(0, 120); await page.clock.runFor(900);
       await page.mouse.wheel(0, 120); await page.clock.runFor(1200);
     } else await page.clock.runFor(100);
@@ -372,12 +375,8 @@ try {
     await wheelTo(3.95);
     const secondStory = await storyAt(3.95, secondSentence);
     await page.screenshot({ path: `${output}/${name}-story-second.png` });
-    if (name === 'reduced') assert.equal(firstStory.pose[0], secondStory.pose[0], 'Reduced motion skips the camera orbit');
-    else {
-      const angle = pose => Math.atan2(pose[0] + 90, pose[2] + 480);
-      assert(Math.abs(angle(secondStory.pose) - angle(firstStory.pose) - Math.PI) < .001, 'The actual camera completes 180 degrees between reading poses');
-      assert(Math.abs(firstStory.pose[4] - secondStory.pose[4]) > .05, 'The rendered camera orientation changes with the orbit');
-    }
+    for (const index of [0, 1, 3, 4, 5, 6]) assert.equal(firstStory.pose[index], secondStory.pose[index], 'Reading preserves the straight axis and camera heading');
+    assert(secondStory.pose[2] <= firstStory.pose[2], 'Reading continues forward');
     await wheelTo(3.23);
     const reversedStory = await storyAt(3.23, firstSentence);
     reversedStory.pose.forEach((value, i) => assert(Math.abs(value - firstStory.pose[i]) < .02, `Reverse scroll restores camera pose ${i}: ${value} versus ${firstStory.pose[i]}`));
@@ -415,7 +414,7 @@ try {
         const p = solar?.[0];
         const pose = root.dataset.cameraPose?.split(',').map(Number);
         const passage = document.querySelector('.virgo-showcase-passage[data-phase="approaching"]');
-        if (!passage || p === undefined || p < 2.50 || !pose || pose[2] <= -480) return;
+        if (!passage || p === undefined || p < 2.56 || !pose || pose[2] >= -480) return;
         observer.disconnect(); clearTimeout(timeout);
         resolve({ hash: location.hash, galleryPresent: !!document.querySelector('.screening-room'),
           opacity: Number(getComputedStyle(passage.querySelector('.virgo-solar-flash')).opacity),
@@ -439,10 +438,11 @@ try {
       assert(!frame.hash.startsWith('#/showcase'), 'The lead-in precedes the showcase route change');
       assert.equal(frame.rectangularFrames, 0, 'Core entry removes every rectangular transition frame');
       assert(frame.opacity > .5, 'The stellar flash lights the full viewport before opening the gallery');
-      assert(frame.solar[1] > 3.99 && Math.abs(frame.solar[2] - Math.PI / 18) < .001, 'Orbits reach 4x speed and the camera rolls ten degrees');
+      assert(frame.solar[1] > 3.99 && frame.solar[2] === 0, 'Planet orbits accelerate while the camera keeps zero roll');
       const initialRadius = Math.hypot(secondStory.pose[0], secondStory.pose[1], secondStory.pose[2] + 480);
       assert(frame.solar[3] < initialRadius * .25, 'The actual camera dives into the core rather than stopping at 30 percent');
-      assert(frame.pose[2] > -480 && secondStory.pose[2] < -480, 'The rendered camera actually crosses through the solar centre');
+      assert(frame.pose[2] < -480 && secondStory.pose[2] > -480, 'The rendered camera crosses the solar centre along -Z');
+      for (const index of [0, 1, 3, 4, 5, 6]) assert.equal(frame.pose[index], secondStory.pose[index], 'Showcase entry preserves the straight heading');
       assert(Math.hypot(...frame.pose.slice(0, 3).map((value, i) => value - secondStory.pose[i])) > 2, 'The real camera moves forward during the lead-in');
       await page.screenshot({ path: `${output}/${name}-showcase-before-entry.png` });
       await page.clock.runFor(200);
@@ -542,7 +542,8 @@ try {
       for (let i = 1; i < contactFlight.length; i++) {
         const previous = contactFlight[i - 1].pose, pose = contactFlight[i].pose;
         assert(pose[2] <= previous[2] + .001, 'The forward fly-by never retreats');
-        assert(Math.hypot(pose[0] - 85, pose[1], pose[2] + 960) > 45, 'The camera passes beside the outgoing star');
+        assert.equal(pose[0], 0); assert.equal(pose[1], 0, 'The camera keeps its straight axis');
+        assert.deepEqual(pose.slice(3), [0, 0, 0, 1], 'The camera never turns during the approach');
       }
     }
     await page.goto(`${base}#/contact`, { waitUntil: 'domcontentloaded' });
@@ -586,7 +587,7 @@ try {
     if (name !== 'reduced') {
       assert(approachFrames[1].warm > 30 && approachFrames[1].warm > approachFrames[0].warm, `${name}: the luminous black hole is visible from afar and grows during approach`);
       assert(approachFrames[1].pose[2] < approachFrames[0].pose[2], 'The actual camera advances towards the gate');
-      assert(approachFrames.every(frame => Math.hypot(frame.pose[0] - 85, frame.pose[1], frame.pose[2] + 960) > 45), 'The approach clears the outgoing star instead of diving through its core');
+      assert(approachFrames.every(frame => frame.pose[0] === 0 && frame.pose[1] === 0 && frame.pose.slice(3).every((value, i) => value === [0, 0, 0, 1][i])), 'The approach keeps its axis and forward heading');
     }
     await scroller.evaluate(el => { el.scrollTop = el.scrollHeight; });
     const portal = page.getByRole('button', { name: 'Open workspace through Zavijava', exact: true });
@@ -808,7 +809,7 @@ try {
     report.push({ name, viewport: options.viewport, fit: initialFit, shadow, blackHoleEffects: effects, renderStats: { beforeMotion, afterMotion, realMotionDurationMs, realGasFps }, contactBoxes, contactFlight, approachFrames, passed: true });
     await writeReport('running');
     await context.close();
-    console.log(`PASS: ${name} layout, gallery inputs/routes, Manager removal, sequential sentences, actual camera orbit/reversal, mute and workspace entry.`);
+    console.log(`PASS: ${name} layout, gallery inputs/routes, Manager removal, sequential sentences, straight camera/reverse scroll, mute and workspace entry.`);
   }
   assert.equal(await fingerprintSource(), sourceSha256, 'Source changed during UI verification; rerun against one stable version');
   await writeReport('passed');

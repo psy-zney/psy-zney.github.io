@@ -1,8 +1,8 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { createRockGeometry } from "../data/virgoCelestial";
-import { journeyCameraZ, TRANSIT_LEGS, transitPlanets, transitSample } from "../data/virgoTransit";
+import { createTransitScenarios, journeyCameraZ, TRANSIT_LEGS, transitPlanets, transitSample, type TransitScenario } from "../data/virgoTransit";
 import { VirgoPlanet } from "./VirgoPlanet";
 
 type TransitFlight = { position: number; time: number; reduced: boolean; mobile: boolean; speed: number; tier: 'low' | 'medium' | 'high' };
@@ -11,11 +11,13 @@ const random = (i: number) => {
   return n - Math.floor(n);
 };
 
-function Passage({ index, flight, glow }: { index: number; flight: TransitFlight; glow: THREE.Texture }) {
+function Passage({ index, flight, glow, scenario }: { index: number; flight: TransitFlight; glow: THREE.Texture; scenario: TransitScenario }) {
   const group = useRef<THREE.Group>(null);
   const rocks = useRef<THREE.InstancedMesh>(null);
   const dust = useRef<THREE.Points>(null);
   const opacity = useRef(0);
+  const meteors = useRef<THREE.LineSegments>(null);
+  const nova = useRef<THREE.Group>(null);
   const planets = useMemo(() => transitPlanets(index, flight.mobile).slice(0,flight.tier === 'low' ? 3 : flight.tier === 'medium' ? 4 : 6), [index, flight.mobile, flight.tier]);
   const rockGeometry = useMemo(() => createRockGeometry(index + 12), [index]);
   const count = flight.tier === 'low' ? 24 : flight.tier === 'medium' || flight.mobile ? 48 : 110;
@@ -29,7 +31,10 @@ function Passage({ index, flight, glow }: { index: number; flight: TransitFlight
     }));
   }, [count, index, flight.mobile]);
   const dustGeometry = useMemo(() => new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(positions.flatMap(p => p.position), 3)), [positions]);
-  useEffect(() => () => { rockGeometry.dispose(); dustGeometry.dispose(); }, [rockGeometry, dustGeometry]);
+  const meteorGeometry = useMemo(() => new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(
+    positions.slice(0, flight.tier === 'low' ? 8 : 18).flatMap(({ position: [x, y, z] }) => [x, y, z, x + (x < 0 ? -3 : 3), y + 1.5, z + 16]), 3)), [positions, flight.tier]);
+  const novaZ = (journeyCameraZ(TRANSIT_LEGS[index].from, flight.mobile) + journeyCameraZ(TRANSIT_LEGS[index].to, flight.mobile)) / 2;
+  useEffect(() => () => { rockGeometry.dispose(); dustGeometry.dispose(); meteorGeometry.dispose(); }, [rockGeometry, dustGeometry, meteorGeometry]);
   useLayoutEffect(() => {
     if (!rocks.current) return;
     const object = new THREE.Object3D();
@@ -48,6 +53,16 @@ function Passage({ index, flight, glow }: { index: number; flight: TransitFlight
     if (group.current) group.current.visible = opacity.current > .001;
     if (rocks.current) (rocks.current.material as THREE.MeshStandardMaterial).opacity = opacity.current;
     if (dust.current) (dust.current.material as THREE.PointsMaterial).opacity = opacity.current * .28;
+    if (meteors.current) {
+      meteors.current.position.z = -passage.progress * 24;
+      (meteors.current.material as THREE.LineBasicMaterial).opacity = opacity.current * .7;
+    }
+    if (nova.current) {
+      // A local burst beside the corridor. Only the scenery expands, never the camera.
+      const burst = Math.sin(Math.PI * passage.progress) ** 2;
+      nova.current.scale.setScalar(.6 + burst * 1.4);
+      nova.current.children.forEach((child, i) => { ((child as THREE.Sprite).material as THREE.SpriteMaterial).opacity = opacity.current * burst * [1, .45, .12][i]; });
+    }
   }, -.4);
   return <group ref={group} visible={false}>
     {planets.map((planet, i) => <group key={i} position={planet.position}>
@@ -60,20 +75,33 @@ function Passage({ index, flight, glow }: { index: number; flight: TransitFlight
     <points ref={dust} geometry={dustGeometry}>
       <pointsMaterial map={glow} size={.65} color="#aac5df" transparent depthWrite={false} blending={THREE.AdditiveBlending} />
     </points>
+    {scenario === 'meteors' && <lineSegments ref={meteors} geometry={meteorGeometry}>
+      <lineBasicMaterial color="#c9eaff" transparent depthWrite={false} blending={THREE.AdditiveBlending} />
+    </lineSegments>}
+    {scenario === 'supernova' && <group ref={nova} position={[flight.mobile ? -16 : -38, 22, novaZ]}>
+      {[5, 16, 38].map((scale, i) => <sprite key={scale} scale={[scale, scale, 1]}>
+        <spriteMaterial map={glow} color={['#fff9df', '#ffce8a', '#cc7357'][i]} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
+      </sprite>)}
+    </group>}
   </group>;
 }
 
 export function VirgoTransit({ flight, glow }: { flight: TransitFlight; glow: THREE.Texture }) {
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
+  const [scenarios] = useState(createTransitScenarios);
+  const page = useMemo(() => gl.domElement.closest<HTMLElement>('.virgo-page'), [gl]);
   const light = useRef<THREE.PointLight>(null);
   const lightOffset = useMemo(() => new THREE.Vector3(-35, 45, 55), []);
   useFrame(() => {
     if (!light.current) return;
     light.current.position.copy(camera.position).add(lightOffset);
     light.current.intensity = transitSample(flight.position).envelope * 2200;
+    const index = transitSample(flight.position).index;
+    const scenario = index < 0 ? 'none' : scenarios[index];
+    if (page && page.dataset.transitScenario !== scenario) page.dataset.transitScenario = scenario;
   });
   return <group>
     <pointLight ref={light} color="#bdd6ee" distance={320} decay={1.5} />
-    {TRANSIT_LEGS.map((_, index) => <Passage key={index} index={index} flight={flight} glow={glow} />)}
+    {TRANSIT_LEGS.map((_, index) => <Passage key={index} index={index} flight={flight} glow={glow} scenario={scenarios[index]} />)}
   </group>;
 }
