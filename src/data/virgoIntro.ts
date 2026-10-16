@@ -38,10 +38,9 @@ export function introFrame(seconds: number) {
 }
 
 /** Fine opening/entry control blends continuously into the existing tunnel pace. */
-export function introScrollResponse(seconds: number) {
-  const flight = smooth(2.75, 4.4, seconds);
-  return { gain: .32 + .68 * flight, step: .16 + .26 * flight,
-    lead: .22 + .38 * flight, speed: .7 + 1.3 * flight, acceleration: 2.4 + 3.6 * flight };
+export function introScrollResponse(_seconds: number) {
+  return { gain: .60, step: .34,
+    lead: .52, speed: 1.25, acceleration: 4.2 };
 }
 
 export function introInputTarget(seconds: number, target: number, amount: number) {
@@ -66,6 +65,20 @@ export function advanceIntroScroll(seconds: number, velocity: number, target: nu
 
 export type IntroFrame = ReturnType<typeof introFrame>;
 
+/** Scroll creates a tall seam first, then pulls it open before forward flight. */
+export function introPortalFormation(seconds: number) {
+  const t = clamp(seconds, 0, 2.75);
+  return {
+    charge: smooth(0, .30, t) * (1 - smooth(.65, 1.15, t)),
+    seam: smooth(.08, .35, t) * (1 - smooth(.85, 1.20, t)),
+    crack: smooth(.08, .85, t),
+    extent: smooth(.95, 2.0, t),
+    aspect: .035 + .965 * smooth(1.20, 2.55, t),
+    rim: smooth(1.20, 1.75, t),
+    alignment: smooth(.85, 2.45, t),
+  };
+}
+
 /** Existing wall ink charges as we approach; its geometry never appears at the lens. */
 export function introCaptionInk(frame: IntroFrame, index: number, u: number) {
   const depth = frame.z - INTRO_CAPTIONS[index].z;
@@ -89,22 +102,23 @@ export function projectTunnelWall(view: IntroTunnelView, frame: IntroFrame, thet
     y: view.height / 2 + view.radius * (Math.sin(angle) * inset + .18 * bend) * scale, depth };
 }
 
-/** Letter baseline follows the flight axis; only the light trails follow the helix. */
+/** Reading advances away from the viewer on either wall. */
 export function introCaptionPoint(view: IntroTunnelView, frame: IntroFrame, index: number, u: number, v: number) {
   const caption = INTRO_CAPTIONS[index];
-  const z = caption.z + (u - .5) * caption.side * (view.width < 600 ? 900 : 1500);
+  const z = caption.z + (.5 - u) * (view.width < 600 ? 900 : 1500);
   const angle = (caption.side > 0 ? -.14 : Math.PI + .14) + (v - .5) * caption.side * .26;
   return projectTunnelWall(view, frame, angle - introWallTwist(z), z, .98);
 }
 
-/** Differential rotation: inner gas turns faster than the outer rim. */
-export const introVortexAngle = (radius: number, time: number) => time * (.16 + .42 / Math.max(.25, radius) ** 1.5);
+/** Right-wall words face the viewer while their reading order recedes in Z. */
+export function introCaptionGlyphU(index: number, from: number, to: number, progress: number) {
+  return INTRO_CAPTIONS[index].side > 0 ? to - (to - from) * progress : from + (to - from) * progress;
+}
 
-/** Screen-space gravitational shear, shared by background stars and sampled connections. */
-export function introWarpPoint(x: number, y: number, core: { x: number; y: number }, reach: number, opening: number, time: number) {
-  const dx = x - core.x, dy = y - core.y, radius = Math.hypot(dx, dy);
-  const influence = opening * Math.exp(-radius * radius / Math.max(1, reach * reach));
-  const angle = Math.atan2(dy, dx) + influence * (.8 + opening * 1.8 + Math.sin(time * .5) * .35);
-  const r = radius * (1 - influence * .07);
-  return { x: core.x + Math.cos(angle) * r, y: core.y + Math.sin(angle) * r };
+/** One gentle angular clock for the lip, wall and canvas recovery material. */
+export const introVortexAngle = (_radius: number, time: number) => time * .10;
+
+/** The sky stays fixed while the fracture and portal animate in front of it. */
+export function introWarpPoint(x: number, y: number, _core: { x: number; y: number }, _reach: number, _opening: number, _time: number) {
+  return { x, y };
 }

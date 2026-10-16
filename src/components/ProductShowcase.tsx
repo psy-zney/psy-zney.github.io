@@ -1,18 +1,22 @@
 import { useEffect, useLayoutEffect, useId, useRef, useState, type CSSProperties, type PointerEvent, type KeyboardEvent } from 'react';
-import { ArrowRight, ArrowUpRight, Download, Monitor, X } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Download, Monitor, RotateCcw, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { ShowcaseSpace } from './ShowcaseSpace';
 import { ShowcaseLiveFrame } from './ShowcaseLiveFrame';
+import { ShowcaseWebPreview } from './ShowcaseWebPreview';
+import { CurvedShowcaseCapture } from './CurvedShowcaseCapture';
+import { SHOWCASE_TURN } from '../data/solarShowcaseMotion';
 import { showcaseProducts, type ShowcaseProduct } from '../data/productShowcase';
-import { advanceShowcaseMotion, showcaseSkyStar, showcaseChapterTransition, type ShowcaseMotionMode } from '../data/virgoExperienceMotion';
+import { advanceShowcaseMotion, showcaseWheelTarget, showcaseSkyStar, showcaseChapterTransition, type ShowcaseMotionMode } from '../data/virgoExperienceMotion';
 import type { Language } from '../data/portfolio';
 import './ProductShowcase.css';
 
 const useBrowserLayoutEffect = typeof document === 'undefined' ? useEffect : useLayoutEffect;
 
-function ProductScreen({ product, lang, eager }: { product: ShowcaseProduct; lang: Language; eager: boolean }) {
+function ProductScreen({ product, lang, eager, live, reducedMotion, controlsHost }: { product: ShowcaseProduct; lang: Language; eager: boolean; live: boolean; reducedMotion: boolean; controlsHost: HTMLDivElement | null }) {
   const [state, setState] = useState<'loading' | 'ready' | 'error'>(product.preview ? 'loading' : 'error');
   const imageRef = useRef<HTMLImageElement>(null);
+  const curveId = `screen-curve-${useId().replace(/:/g, '')}`;
 
   useEffect(() => {
     if (!product.preview) {
@@ -29,10 +33,15 @@ function ProductScreen({ product, lang, eager }: { product: ShowcaseProduct; lan
   return (
     <div className="screening-tv" data-state={state} style={{ '--product-color': product.color } as CSSProperties}>
       <div className="screening-display">
+        <svg className="screening-curve-defs" aria-hidden="true"><defs>
+          <clipPath id={curveId} clipPathUnits="objectBoundingBox">
+            <path d="M0,0 Q.5,.115 1,0 L1,1 Q.5,.885 0,1 Z" />
+          </clipPath>
+        </defs></svg>
         {state !== 'ready' && <div className="screening-media-status" role="status"><Monitor size={26} strokeWidth={1}/>
           <span>{state === 'loading' ? (lang === 'vie' ? 'Đang tải preview…' : 'Loading preview…') : (lang === 'vie' ? 'Preview chưa khả dụng' : 'Preview unavailable')}</span>
         </div>}
-        {product.preview && state !== 'error' && (
+        <div className="screening-capture">{product.preview && state !== 'error' && (
           <img
             ref={imageRef}
             src={product.preview}
@@ -46,7 +55,14 @@ function ProductScreen({ product, lang, eager }: { product: ShowcaseProduct; lan
             onLoad={() => setState('ready')}
             onError={() => setState('error')}
           />
-        )}
+        )}</div>
+        {product.preview && state === 'ready' && !reducedMotion && <CurvedShowcaseCapture src={product.preview} cropScrollbar={['sentinel', 'security', 'backup'].includes(product.id)} />}
+        <ShowcaseWebPreview url={product.url} title={product.name} active={live} reducedMotion={reducedMotion} hasImage={!!product.preview} lang={lang} controlsHost={controlsHost} curveId={curveId} />
+        <svg className="screening-curved-rim" viewBox="0 0 1000 562.5" preserveAspectRatio="none" aria-hidden="true">
+          <path className="screening-rim-halo" d="M1,1 Q500,65 999,1 L999,561.5 Q500,497.5 1,561.5 Z" />
+          <path className="screening-rim-edge" d="M1,1 Q500,65 999,1 L999,561.5 Q500,497.5 1,561.5 Z" />
+          <path className="screening-rim-seam" d="M1,18 Q500,79 999,18 M1,544.5 Q500,483.5 999,544.5" />
+        </svg>
         <div className="screening-glare" aria-hidden="true" />
       </div>
     </div>
@@ -63,6 +79,10 @@ type Props = {
 export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose, onExit, embedded = false, enabled = true, coreArrival = false }: Props) {
   const vi = lang === 'vie', titleId = `${useId()}-product`;
   const [live, setLive] = useState(false);
+  const [canPreview, setCanPreview] = useState(!coreArrival || reducedMotion);
+  const [travelling, setTravelling] = useState(false);
+  const travelState = useRef(false);
+  const [previewControlsHost, setPreviewControlsHost] = useState<HTMLDivElement | null>(null);
   const [hasInteracted, setHasInteracted] = useState(false);
   const liveRef = useRef<HTMLDialogElement>(null);
   const rootRef = useRef<HTMLDivElement | HTMLDialogElement | null>(null);
@@ -83,7 +103,7 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
   const [active, setActive] = useState(index ?? 0);
   const [kind, setKind] = useState(showcaseProducts[index ?? 0].kind);
   const leaving = useRef(false);
-  const exitTimer = useRef(0);
+  const exitFrame = useRef(0);
   const activeRef = useRef(index ?? 0);
   const requested = useRef(index ?? 0);
   const reported = useRef<number | null>(null);
@@ -92,7 +112,7 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
   const motion = useRef({ x: 0, target: 0, velocity: 0, frame: 0, time: 0, step: 1, width: 1, min: 0, max: 0, lastInput: 0, mode: 'target' as ShowcaseMotionMode });
   const commitTimer = useRef(0);
   const suppressClick = useRef(false);
-  const drag = useRef<{ id: number; x: number; y: number; origin: number; axis: 'x' | 'y' | null; last: number; time: number; velocity: number; moved: boolean } | null>(null);
+  const drag = useRef<{ id: number; x: number; y: number; lastX: number; lastY: number; mode: 'look' | 'travel' | 'touch'; origin: number; axis: 'x' | 'y' | null; last: number; time: number; velocity: number; moved: boolean } | null>(null);
   const product = showcaseProducts[active] ?? showcaseProducts[0];
   const clamp = (value: number) => Math.max(motion.current.min, Math.min(motion.current.max, value));
 
@@ -106,12 +126,22 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
     root?.setAttribute('data-flow-direction', direction > 0 ? 'forward' : 'backward');
     root?.setAttribute('data-flow-phase', 'departing');
     root?.setAttribute('aria-busy', 'true');
+    setCanPreview(false);
     const complete = () => config.current.onExit?.(direction);
     if (config.current.reducedMotion) complete();
-    else exitTimer.current = window.setTimeout(complete, 520);
+    else {
+      space?.startDeparture(direction);
+      const started = performance.now();
+      const tick = () => {
+        paint();
+        if (space?.departureComplete || performance.now() - started >= SHOWCASE_TURN.exit * 1000) complete();
+        else exitFrame.current = requestAnimationFrame(tick);
+      };
+      exitFrame.current = requestAnimationFrame(tick);
+    }
   };
 
-  useEffect(() => () => clearTimeout(exitTimer.current), []);
+  useEffect(() => () => cancelAnimationFrame(exitFrame.current), []);
 
   const commit = () => {
     if (leaving.current || !config.current.enabled) return;
@@ -142,6 +172,9 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
     });
     const closest = Math.max(0, Math.min(showcaseProducts.length - 1, Math.round(slot)));
     const captionX = space?.render(slot, config.current.reducedMotion) ?? 0;
+    const crossing = (space?.portalCrossing ?? 0) > .16;
+    rootRef.current?.setAttribute('data-portal-state', crossing ? 'crossing' : 'reading');
+    if (travelState.current !== crossing) { travelState.current = crossing; setTravelling(crossing); }
     rootRef.current?.style.setProperty('--caption-x', `${captionX}px`);
     if (closest !== activeRef.current) {
       activeRef.current = closest;
@@ -156,6 +189,7 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
     if (!space || !coreStarted.current) return;
     space.startArrival();
     arriving.current = !reducedMotion && !space.arrivalComplete;
+    setCanPreview(!arriving.current);
     const root = rootRef.current;
     const content = root?.querySelector('.screening-content');
     content?.setAttribute('inert', '');
@@ -165,6 +199,7 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
       paint();
       if (space.arrivalComplete || reducedMotion) {
         arriving.current = false;
+        setCanPreview(true);
         content?.removeAttribute('inert');
         root?.removeAttribute('aria-busy');
         railRef.current?.focus({ preventScroll: true });
@@ -184,10 +219,10 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
       const isWheeling = now - state.lastInput < 140;
       const isDragging = drag.current !== null;
 
-      const next = advanceShowcaseMotion(state.x, state.target, state.velocity, dt, state.min, state.max, state.mode, config.current.reducedMotion);
+      const next = advanceShowcaseMotion(state.x, state.target, state.velocity, dt, state.min, state.max, state.mode, config.current.reducedMotion, state.step);
       if (!isDragging) Object.assign(state, next);
-      const settled = !isWheeling && !isDragging && next.settled;
       paint();
+      const settled = !isWheeling && !isDragging && next.settled && !space?.viewMoving && !space?.passageMoving;
       window.dispatchEvent(new CustomEvent('journey-screen-motion', { detail: state.velocity / state.step }));
       state.frame = settled ? 0 : requestAnimationFrame(tick);
     };
@@ -213,6 +248,7 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
   const choose = (destination: number) => {
     if (arriving.current) return;
     setHasInteracted(true);
+    space?.resetView();
     requested.current = Math.max(Math.round(motion.current.min / motion.current.step), Math.min(Math.round(motion.current.max / motion.current.step), destination));
     move(requested.current * motion.current.step);
     if (index === null) {
@@ -262,11 +298,13 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
 
     const wheel = (event: WheelEvent) => {
       if (arriving.current || leaving.current || !config.current.enabled || event.ctrlKey || root?.closest('[inert]') || index === null || drag.current) return;
+      if (event.target instanceof Element && event.target.closest('.screening-web-viewport.is-ready')) return;
       if (event.cancelable) event.preventDefault();
       event.stopPropagation();
       setHasInteracted(true);
       const state = motion.current;
       const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+      if (!delta) return;
       const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? state.step : 1;
       const now = performance.now();
       const atEnd = delta > 0 ? (state.target >= state.max - 2 && state.x >= state.max - 6) : (state.target <= state.min + 2 && state.x <= state.min + 6);
@@ -277,17 +315,13 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
       }
       state.lastInput = now;
       if (config.current.reducedMotion) {
-        move(state.x + delta * unit * .72, true);
+        move(showcaseWheelTarget(delta * unit, state.target, state.x, state.step, state.max), true);
         scheduleCommit();
         return;
       }
-      // Convert wheel delta into momentum for smooth horizontal glide
-      const impulse = delta * unit * 0.72;
-      state.velocity += impulse * 4;
-      const velocityLimit = state.step * 5;
-      state.velocity = Math.max(-velocityLimit, Math.min(velocityLimit, state.velocity));
-      state.target = clamp(state.target + impulse * 0.85);
-      state.mode = 'inertia';
+      state.target = showcaseWheelTarget(delta * unit, state.target, state.x, state.step, state.max);
+      if (Math.sign(delta) !== Math.sign(state.velocity)) state.velocity = 0;
+      state.mode = 'wheel';
       wake();
       scheduleCommit();
     };
@@ -299,6 +333,7 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
       motion.current.frame = 0;
       motion.current.x = motion.current.target;
       motion.current.velocity = 0;
+      space?.clearPassage();
       paint();
     };
     document.addEventListener('visibilitychange', hide);
@@ -333,6 +368,11 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
 
   useEffect(() => { move(motion.current.target, reducedMotion); }, [reducedMotion]);
 
+  useEffect(() => {
+    space?.setAmbient(enabled && canPreview && !live && !reducedMotion);
+    return () => space?.setAmbient(false);
+  }, [space, enabled, canPreview, live, reducedMotion]);
+
   // Stage 3D tilt tracking for mouse hover
   const onStagePointerMove = (e: PointerEvent<HTMLDivElement>) => {
     const stage = railRef.current;
@@ -356,7 +396,7 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
   };
 
   const startDrag = (event: PointerEvent<HTMLDivElement>) => {
-    if (arriving.current || leaving.current || !config.current.enabled || event.button !== 0 || (event.target as Element).closest('a,button')) return;
+    if (arriving.current || leaving.current || !config.current.enabled || event.button !== 0 || (event.target as Element).closest('a,button,.screening-web-viewport.is-ready')) return;
     clearTimeout(commitTimer.current);
     suppressClick.current = false;
     setHasInteracted(true);
@@ -365,7 +405,9 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
     state.frame = 0;
     state.velocity = 0;
     onStagePointerLeave();
-    drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, origin: state.x, axis: null, last: 0, time: performance.now(), velocity: 0, moved: false };
+    drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, lastX: event.clientX, lastY: event.clientY,
+      mode: reducedMotion || event.shiftKey ? 'travel' : event.pointerType === 'touch' ? 'touch' : 'look',
+      origin: state.x, axis: null, last: 0, time: performance.now(), velocity: 0, moved: false };
     try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* Ignore */ }
   };
 
@@ -378,6 +420,12 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
     if (!gesture.axis) return;
     gesture.moved = true;
     event.preventDefault();
+    if (gesture.mode === 'touch') gesture.mode = gesture.axis === 'y' ? 'travel' : 'look';
+    if (gesture.mode === 'look') {
+      space?.look(event.clientX - gesture.lastX, event.clientY - gesture.lastY);
+      gesture.lastX = event.clientX; gesture.lastY = event.clientY;
+      wake(); return;
+    }
     const delta = gesture.axis === 'x' ? dx : dy;
     const now = performance.now();
     gesture.velocity = .6 * gesture.velocity + .4 * (gesture.last - delta) / Math.max(.008, (now - gesture.time) / 1000);
@@ -396,6 +444,7 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
     }
     if (!gesture.moved) return;
     suppressClick.current = true;
+    if (gesture.mode === 'look') { wake(); return; }
     if (config.current.onExit && Math.abs(gesture.last) > 70 &&
       (gesture.origin >= motion.current.max - 6 && gesture.last < 0 || gesture.origin <= motion.current.min + 6 && gesture.last > 0)) {
       exit(gesture.last < 0 ? 1 : -1);
@@ -411,6 +460,14 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (arriving.current || leaving.current) return;
     if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const key = event.key.toLowerCase();
+    if (key === 'f') { event.preventDefault(); event.stopPropagation(); space?.resetView(); wake(); return; }
+    if (!reducedMotion && ['w', 'a', 's', 'd', 'r', 'c', 'q', 'e'].includes(key)) {
+      event.preventDefault(); event.stopPropagation();
+      if (key === 'q' || key === 'e') space?.look(0, 0, (key === 'q' ? 1 : -1) * .18);
+      else space?.travel(key === 'a' ? -1 : key === 'd' ? 1 : 0, key === 'r' ? 1 : key === 'c' ? -1 : 0, key === 'w' ? -1 : key === 's' ? 1 : 0);
+      wake(); return;
+    }
     const destination = event.key === 'ArrowLeft' || event.key === 'ArrowUp'
       ? activeRef.current - 1
       : event.key === 'ArrowRight' || event.key === 'ArrowDown'
@@ -446,11 +503,11 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
     .filter(item => item.kind === kind);
 
   const content = (
-    <div className="screening-content" style={{ '--product-color': product.color } as CSSProperties}>
+    <div ref={setPreviewControlsHost} className="screening-content" data-world-url={product.url} data-world-route={`#/showcase/${product.id}`} style={{ '--product-color': product.color } as CSSProperties}>
       <div className="screening-core-flash" aria-hidden="true" />
       <div className="screening-atmosphere" aria-hidden="true">
         <svg ref={starsRef} className="screening-stars" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
-          {Array.from({ length: 211 }, (_, i) => (
+          {Array.from({ length: 61 }, (_, i) => (
             <circle
               key={i}
               cx={(i * 479 + i * i * 37) % 1600}
@@ -461,9 +518,6 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
             />
           ))}
         </svg>
-        <div className="screening-glass-floor">
-          <div className="screening-floor-reflection" style={{ backgroundImage: product.preview ? `url(${product.preview})` : undefined }} />
-        </div>
       </div>
 
       {!embedded && !onExit && (
@@ -482,6 +536,13 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
         </div>
       ) : (
         <>
+          <nav className="screening-reading-links" aria-label={vi ? 'Đọc thêm' : 'Further reading'}>
+            <a href="#/projects/all">{vi ? 'Tất cả dự án' : 'Archive'}</a>
+            <a href={`#/cv/${product.resume ?? 'fullstack'}`}>CV <ArrowUpRight size={13} /></a>
+            {!reducedMotion && <button className="screening-reset" onClick={() => { space?.resetView(); wake(); }}
+              aria-label={vi ? 'Căn lại góc nhìn (F)' : 'Recenter view (F)'} title={vi ? 'Kéo: nhìn quanh · WASD: di chuyển · R/C: lên xuống · Q/E: nghiêng · F: căn lại' : 'Drag: look · WASD: move · R/C: up/down · Q/E: roll · F: recenter'}><RotateCcw size={16} /></button>}
+          </nav>
+          <span className="screening-world-marker">{vi ? 'Không gian' : 'Space'} <b>{String(active + 1).padStart(2, '0')}</b><span>/ {String(showcaseProducts.length).padStart(2, '0')}</span></span>
           <nav className="screening-kinds" aria-label={vi ? 'Loại sản phẩm' : 'Product type'}>
             {(['website', 'download'] as const).map(type => (
               <button
@@ -504,7 +565,7 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
               className="screening-rail"
               role="region"
               aria-roledescription="carousel"
-              aria-label={vi ? 'Cuộn hoặc vuốt để xoay các màn hình sản phẩm' : 'Scroll or swipe to rotate product screens'}
+              aria-label={vi ? 'Cuộn để xuyên hầm; kéo để nhìn quanh; WASD để di chuyển; F để căn lại' : 'Scroll through worlds; drag to look; WASD to move; F to recenter'}
               tabIndex={0}
               onPointerDown={startDrag}
               onPointerMove={moveDrag}
@@ -531,7 +592,8 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
                   aria-label={item.name}
                   aria-hidden={i !== active}
                 >
-                  <ProductScreen product={item} lang={lang} eager={Math.abs(i - active) <= 1} />
+                  <ProductScreen product={item} lang={lang} eager={Math.abs(i - active) <= 1}
+                    live={i === active && canPreview && enabled && !live && !travelling && index !== null} reducedMotion={reducedMotion} controlsHost={previewControlsHost} />
                 </article>
                 );
                 return space ? createPortal(slide, space.elements[i], item.id) : slide;
@@ -540,13 +602,13 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
           </div>
 
           <div className={`screening-hint-badge${hasInteracted ? ' is-hidden' : ''}`} aria-hidden="true">
-            <span>{vi ? '← Kéo hoặc cuộn ngang để khám phá →' : '← Drag or scroll horizontally to explore →'}</span>
+            <span>{vi ? 'Cuộn để xuyên hầm · Kéo để nhìn quanh' : 'Scroll through worlds · Drag to look around'}</span>
           </div>
 
           <section className="screening-info-panel" aria-labelledby={titleId}>
             <div className="screening-caption-stack">
               <span className="screening-category-tag" style={{ color: product.color }}>
-                {product.category[lang]}
+                {(product.scope ?? product.category)[lang]}
               </span>
               <h2 ref={titleRef} id={titleId} className="screening-title" aria-live="polite" aria-atomic="true">
                 {product.name}
@@ -554,6 +616,7 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
               <p className="screening-description">
                 {product.description[lang]}
               </p>
+              {product.stack && <p className="screening-stack" aria-label={vi ? 'Công nghệ' : 'Technologies'}>{product.stack}</p>}
             </div>
 
             <nav className="screening-pagination" aria-label={vi ? 'Danh sách sản phẩm' : 'Product items'}>

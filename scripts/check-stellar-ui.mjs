@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { chromium } from 'playwright';
 import sharp from 'sharp';
 
-const output = 'artifacts/stellar-effects'; await mkdir(output, { recursive: true });
+const output = process.env.STELLAR_OUTPUT || 'artifacts/stellar-effects'; await mkdir(output, { recursive: true });
 const selected = process.env.STELLAR_VIEWPORT;
 const sourcePaths = ['src/components/VirgoStellarEffects.tsx', 'src/data/virgoStellarEffects.ts', 'src/components/VirgoScene.tsx', 'src/components/VirgoTransit.tsx', 'src/data/virgoTransit.ts', 'src/components/VirgoPortfolio.tsx', 'src/components/VirgoPortfolio.css', 'src/data/virgoNarrative.ts'];
 const digest = async () => {
@@ -110,15 +110,14 @@ try {
       assert(reveals[2].words[0] > reveals[2].words.at(-1), 'The word cascade advances from left to right');
       assert(reveals[3].transform !== 'none');
     }
-    const lastStar = [];
-    for (const p of [4.92, 5.17, 5.28, ...(name === 'reduced' ? [] : [5.34])]) {
+    const samplePhotosphere = async (p, index, label) => {
       await seek(p);
       assert.equal(await root.getAttribute('data-supernova-frame'), null, 'The removed explosion stays absent');
-      const shot = await page.screenshot({ path: `${output}/${name}-last-star-${p}.png` });
+      const shot = await page.screenshot({ path: `${output}/${name}-${label}.png` });
       const camera = (await root.getAttribute('data-camera-pose')).split(',').map(Number);
       const shift = (await root.getAttribute('data-camera-framing')).split(',').map(Number);
       const centerX = (1 + shift[0]) * viewport.width / 2, centerY = (1 - shift[1]) * viewport.height / 2;
-      const diskRadius = 10.8 * viewport.height / (2 * Math.tan((viewport.width < 700 ? 49 : 46) * Math.PI / 360)) / (camera[2] + 960);
+      const diskRadius = [11.8, 10.4, 10.8][index] * viewport.height / (2 * Math.tan((viewport.width < 700 ? 49 : 46) * Math.PI / 360)) / (camera[2] + index * 480);
       const pixels = await sharp(shot).removeAlpha().raw().toBuffer({ resolveWithObject: true });
       let min = 255, max = 0, count = 0, detail = 0, blue = 0;
       for (let y = Math.max(1, Math.ceil(centerY - diskRadius * .65)); y < Math.min(viewport.height - 1, centerY + diskRadius * .65); y++) for (let x = Math.max(1, Math.ceil(centerX - diskRadius * .65)); x < Math.min(viewport.width - 1, centerX + diskRadius * .65); x++) {
@@ -128,9 +127,18 @@ try {
         if (Math.abs(pixels.data[i + 2] - pixels.data[i + 5]) > 15) detail++;
         if (pixels.data[i + 2] > pixels.data[i] * 1.15) blue++;
       }
-      const metrics = { p, contrast: max - min, detail: detail / count, blue: blue / count }; lastStar.push(metrics);
-      assert(count > 100 && metrics.contrast > 50 && metrics.detail > .08, `${name}: the last photosphere keeps visible detail, not an empty halo: ${JSON.stringify(metrics)}`);
-      assert(metrics.blue > .8, `${name}: the last star keeps a blue plasma surface: ${JSON.stringify(metrics)}`);
+      const metrics = { p, index, contrast: max - min, detail: detail / count, blue: blue / count };
+      assert(count > 100 && metrics.contrast > 50 && metrics.detail > .08, `${name}: photosphere ${index} keeps visible detail, not an empty halo: ${JSON.stringify(metrics)}`);
+      if (index === 2) assert(metrics.blue > .8, `${name}: the last star keeps a blue plasma surface: ${JSON.stringify(metrics)}`);
+      return metrics;
+    };
+    const lastStar = [];
+    for (const p of [4.92, 5.17, 5.28, ...(name === 'reduced' ? [] : [5.34])]) {
+      lastStar.push(await samplePhotosphere(p, 2, `last-star-${p}`));
+    }
+    const surfaceRecovery = [];
+    for (const [step, [p, index]] of [[2.12, 0], [3.23, 1], [4.92, 2], [2.12, 0], [4.92, 2], [3.23, 1]].entries()) {
+      surfaceRecovery.push(await samplePhotosphere(p, index, `surface-return-${step}-${index}`));
     }
     for (const p of [5.37, 5.60, 5.37]) { await seek(p); assert.equal(await root.getAttribute('data-supernova-frame'), null); }
 
@@ -152,7 +160,7 @@ try {
     await contact.locator('.virgo-email').focus();
     assert.equal(await contact.locator('.virgo-email').evaluate(el => el === document.activeElement), true, 'The persistent email link remains keyboard accessible');
     assert.deepEqual(errors, []);
-    scenarios.push({ name, changedPlasmaPixels: moved, stellarPixels: samples, surfaceContrast: max - min, eruptionFrames, reveals, lastStar, persistentContact: true });
+    scenarios.push({ name, changedPlasmaPixels: moved, stellarPixels: samples, surfaceContrast: max - min, eruptionFrames, reveals, lastStar, surfaceRecovery, persistentContact: true });
     console.log(`PASS stellar effects: ${name}`); await page.close();
   }
   assert.equal(await digest(), sourceSha256, 'The tested source stayed unchanged during visual QA'); status = 'passed';

@@ -9,7 +9,7 @@ export const NARRATIVE_BEATS = [
   { from: 1.40, to: 1.82, side: "middle", placement: "lower-right", effect: "aurora", vie: "Mình biến ý tưởng thành sản phẩm.", eng: "I turn ideas into useful tools." },
   { from: 1.92, to: 2.32, side: "left", placement: "upper-left", effect: "orbit", vie: "Mình tìm hiểu người dùng cần gì.", eng: "I start with what people need." },
   { from: 2.94, to: 3.52, side: "left", placement: "upper-left", effect: "nebula", vie: "Mỗi dự án cho mình thêm điều để học.", eng: "Each project gives me something new to learn." },
-  { from: 3.65, to: 4.25, side: "right", placement: "lower-right", effect: "meteor", vie: "Đây là cách mình biến nhu cầu thành dự án.", eng: "Here is how I turn those needs into projects." },
+  { from: 3.65, to: 4.25, side: "right", placement: "lower-right", effect: "meteor", vie: "Mời bạn ghé qua những sản phẩm mình góp phần xây dựng.", eng: "Step into the products I have helped build." },
   { from: 4.80, to: 5.04, side: "left", placement: "upper-left", effect: "aurora", vie: "Những dự án ấy định hình cách mình xây dựng.", eng: "Those projects shape the way I build." },
   { from: 5.04, to: 5.30, side: "right", placement: "lower-right", effect: "orbit", vie: "Giao diện, ứng dụng và hệ thống được kết nối cẩn thận.", eng: "Interfaces, apps and systems—connected with care." },
   { from: 5.82, to: 5.94, side: "right", placement: "upper-right", effect: "aurora", vie: "Cùng trao đổi, hoặc ghé không gian làm việc của mình.", eng: "Let's talk—or explore my workspace." },

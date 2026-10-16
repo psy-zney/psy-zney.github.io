@@ -49,6 +49,9 @@ try {
     });
     await page.route('**/track', route => route.fulfill({ status: 204 }));
     await page.route('**/api/track', route => route.fulfill({ status: 204 }));
+    await page.route(/^https:\/\/(?:[^/]+\.)?zney295\.id\.vn(?:\/|$)/, route => route.fulfill({
+      contentType: 'text/html', body: '<style>body{min-height:1800px;font:18px sans-serif;padding:20px}button,input{min-height:44px}</style><h1>Local live-preview fixture</h1><button onclick="this.textContent=\'Clicked in 3D\'">Test DOM click</button><input aria-label="Test DOM input" />',
+    }));
     const gallery = page.locator('dialog.screening-room');
     const rail = gallery.locator('.screening-rail');
     const title = gallery.locator('.screening-title');
@@ -104,9 +107,10 @@ try {
     const surfaces = await gallery.locator('.screening-surface').evaluateAll(elements => elements.slice(0, 3).map(el => ({ pose: el.dataset.spacePose.split(',').map(Number), matrix: el.style.transform })));
     assert(surfaces.every(surface => surface.matrix.includes('matrix3d(')), 'DOM screen projection comes from the CSS3D camera');
     if (name !== 'reduced') {
-      const radius = await gallery.locator('.screening-slide.is-active').evaluate(el => el.offsetWidth / (2 * Math.tan(.78 / 2)) * 1.025);
-      assert(Math.abs(surfaces[1].pose[0]) < .1 && Math.abs(surfaces[1].pose[2] + 2500 + radius) < 1 && Math.abs(surfaces[1].pose[3]) < .001, 'The selected DOM screen faces the camera at the cylinder front');
-      assert(surfaces[0].pose[0] < 0 && surfaces[2].pose[0] > 0 && surfaces[0].pose[2] > surfaces[1].pose[2] + 1 && surfaces[2].pose[2] > surfaces[1].pose[2] + 1, 'Neighbor screens share a true cylindrical scene');
+      const tunnelPose = (await gallery.getAttribute('data-tunnel-pose')).split(',').map(Number);
+      assert(tunnelPose[2] < 0 && Math.abs(surfaces[1].pose[0]) > 1 && Math.abs(surfaces[1].pose[1]) > 1, 'The selected URL occupies a spatial station inside the tube');
+      assert(surfaces[0].pose[2] > surfaces[1].pose[2] && surfaces[2].pose[2] < surfaces[1].pose[2] && new Set(surfaces.map(surface => Math.round(surface.pose[0]))).size === 3, 'Different worlds occupy distinct depths and wall positions');
+      assert.equal(await gallery.locator('.screening-tunnel-canvas').count(), 1, 'The tube is shared WebGL geometry');
     }
     assert.equal(await title.textContent(), 'BeatSync');
     initialFit = await fit();
@@ -116,7 +120,7 @@ try {
     }
     assert.equal(await gallery.locator('.screening-close').count(), 0, 'The journey showcase has no X exit control');
     const previewWidth = await gallery.locator('.screening-slide.is-active').evaluate(el => el.offsetWidth);
-    assert(previewWidth / options.viewport.width > (name === 'phone' ? .90 : name === 'landscape' ? .43 : .72), `${name}: the showcase preview uses the larger layout`);
+    assert(previewWidth / options.viewport.width > (name === 'phone' ? .90 : name === 'landscape' ? .43 : .55), `${name}: the website stays readable while leaving space for the tunnel`);
     await page.screenshot({ path: `${output}/${name}-gallery.png` });
     await rail.focus();
     await rail.press('ArrowRight');
@@ -175,9 +179,11 @@ try {
     const startX = bounds.x + bounds.width * .72, endX = bounds.x + bounds.width * .20, y = bounds.y + bounds.height * .35;
     await page.waitForFunction(({ x, y }) => !!document.elementFromPoint(x, y)?.closest('.screening-rail'), { x: startX, y });
     await page.mouse.move(startX, y);
+    await page.keyboard.down('Shift');
     await page.mouse.down();
     await page.mouse.move(endX, y, { steps: 16 });
     await page.mouse.up();
+    await page.keyboard.up('Shift');
     await page.waitForTimeout(1500);
     assert.equal(await gallery.getAttribute('data-test-instance'), 'original', 'Product selection must not remount the gallery');
     assert.notEqual(await title.textContent(), 'BeatSync', `${name}: pointer dragging rotates the screens`);
@@ -210,11 +216,14 @@ try {
       await page.goto(`${base}#/showcase/beatsync`, { waitUntil: 'domcontentloaded' });
       await hashIs('beatsync');
       const cdp = await context.newCDPSession(page);
+      const touchPose = (await gallery.getAttribute('data-tunnel-pose')).split(',').map(Number);
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: startX, y }] });
       for (let step = 1; step <= 16; step++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: startX + (endX - startX) * step / 16, y }] });
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
       await page.waitForTimeout(1500);
-      assert.notEqual(await title.textContent(), 'BeatSync', 'Emulated touch swipe changes the product');
+      const afterTouch = (await gallery.getAttribute('data-tunnel-pose')).split(',').map(Number);
+      assert.equal(await title.textContent(), 'BeatSync', 'Horizontal touch looks around the same world');
+      assert(Math.abs(afterTouch[3] - touchPose[3]) > .1, 'Horizontal touch changes the local view angle');
       await cdp.detach();
     }
 
@@ -380,7 +389,7 @@ try {
       assert.fail('Wheel must reach the requested reading position: ' + position);
     };
     const firstSentence = 'Each project gives me something new to learn.';
-    const secondSentence = 'Here is how I turn those needs into projects.';
+    const secondSentence = 'Step into the products I have helped build.';
     const firstStory = await storyAt(3.23, firstSentence);
     const firstOrbit = await page.locator('.virgo-page').getAttribute('data-reading-orbit');
     await page.screenshot({ path: `${output}/${name}-story-first.png` });
@@ -407,14 +416,14 @@ try {
       const timeout = setTimeout(() => { observer.disconnect(); resolve({ missing: true }); }, 10000);
       const observer = new MutationObserver(() => {
         const room = document.querySelector('.screening-room');
-        const pose = room?.dataset.cylinderPose?.split(',').map(Number);
-        if (!pose || pose.length !== 4 || !pose.every(Number.isFinite)) return;
+        const pose = room?.dataset.tunnelPose?.split(',').map(Number);
+        if (!pose || pose.length !== 6 || !pose.every(Number.isFinite)) return;
         observer.disconnect(); clearTimeout(timeout);
-        resolve({ pose, busy: room.getAttribute('aria-busy'), phase: room.dataset.flowPhase,
+        resolve({ pose, turn: room.dataset.showcaseTurn.split(',').map(Number), busy: room.getAttribute('aria-busy'), phase: room.dataset.flowPhase,
           flash: Number(getComputedStyle(room.querySelector('.screening-core-flash')).opacity),
           tabs: room.querySelector('.screening-kinds').getAnimations().map(animation => animation.animationName) });
       });
-      observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-cylinder-pose'] });
+      observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-tunnel-pose'] });
       document.querySelector('.virgo-page').setAttribute('data-qa-cylinder-ready', 'true');
     }));
     void cylinderArrivalFrame.catch(() => {}); // Preserve the primary error if the page closes before this observation finishes.
@@ -475,17 +484,17 @@ try {
       await page.screenshot({ path: `${output}/${name}-cylinder-arrival-failure.png` });
       await writeFile(`${output}/${name}-cylinder-arrival-failure.json`, JSON.stringify(cylinderStart, null, 2));
     }
-    if (name === 'reduced') assert.deepEqual(cylinderStart.pose, [-2500, 0, 0, 0], 'Reduced motion skips cylinder movement and roll');
+    if (name === 'reduced') assert.deepEqual(cylinderStart.turn, [0, 0, 0], 'Reduced motion skips the world turn');
     else {
-      assert(cylinderStart.pose[0] > -2500 && cylinderStart.pose[1] < -1 && cylinderStart.pose[2] > .001, 'Screens rise from below and stand upright as the camera decelerates');
+      assert(Math.abs(cylinderStart.turn[0]) > 5.5 && cylinderStart.pose.every(Number.isFinite), 'The world tube begins its complete turn in a valid spatial pose');
       assert.equal(cylinderStart.busy, 'true', 'Gallery controls wait until the four-second landing finishes');
       assert(cylinderStart.tabs.includes('screening-tabs-rise'), 'Chapter tabs enter from above after the cylinder reveal');
     }
     await page.screenshot({ path: `${output}/${name}-showcase-arrival.png` });
-    if (name !== 'reduced') await page.clock.runFor(1400);
+    if (name !== 'reduced') await page.clock.runFor(1800);
     await page.waitForFunction(() => !document.querySelector('.screening-room')?.hasAttribute('aria-busy'));
     await hashIs('mpoly');
-    assert.deepEqual(await gallery.evaluate(el => el.dataset.cylinderPose.split(',').map(Number)), [-2500, 0, 0, 0], 'The cylinder lands at the requested camera coordinates');
+    assert.deepEqual(await gallery.evaluate(el => el.dataset.showcaseTurn.split(',').map(Number)), [0, 0, 0], 'The world tube settles upright after the complete turn');
     assert.equal(await gallery.locator('.screening-core-flash').evaluate(el => getComputedStyle(el).opacity), '0', 'The core flash clears completely after arrival');
     await page.screenshot({ path: `${output}/${name}-automatic-showcase.png` });
     if (name !== 'reduced') await page.clock.resume();

@@ -1,6 +1,8 @@
 import type { Language } from '../data/portfolio';
-import { INTRO_CAPTIONS, introCaptionInk, introCaptionPoint, introFrame, introTunnelView } from '../data/virgoIntro';
+import { INTRO_CAPTIONS, introCaptionGlyphU, introCaptionInk, introCaptionPoint, introFrame, introTunnelView } from '../data/virgoIntro';
 import { smooth } from '../data/virgoFlight';
+
+type CaptionTexture = { surface: HTMLCanvasElement; words: { from: number; to: number }[] };
 
 /** Rasterize only on language/font changes; the render loop just projects strips. */
 export function createIntroCaptionTextures(lang: Language) {
@@ -23,44 +25,59 @@ export function createIntroCaptionTextures(lang: Language) {
     // Glow is baked into this small texture, never blurred across the viewport.
     ctx.shadowColor = '#61d9ee'; ctx.shadowBlur = 8; ctx.fillStyle = '#f0fbff';
     lines.forEach((text, i) => ctx.fillText(text, surface.width / 2, surface.height / 2 + (i - (lines.length - 1) / 2) * 65));
-    return surface;
+    const text = lines[0], words = text.split(' '), gap = ctx.measureText(' ').width;
+    let cursor = (surface.width - ctx.measureText(text).width) / 2;
+    const ranges = words.map((word, i) => {
+      const end = cursor + ctx.measureText(word).width;
+      const from = i === 0 ? 0 : (cursor - gap / 2) / surface.width;
+      const to = i === words.length - 1 ? 1 : (end + gap / 2) / surface.width;
+      cursor = end + gap;
+      return { from, to };
+    });
+    return { surface, words: ranges };
   });
 }
 
-export function drawIntroCaptions(ctx: CanvasRenderingContext2D, width: number, height: number, seconds: number, textures: HTMLCanvasElement[]) {
+export function drawIntroCaptions(ctx: CanvasRenderingContext2D, width: number, height: number, seconds: number, textures: CaptionTexture[]) {
   const view = introTunnelView(width, height), frame = introFrame(seconds);
   return INTRO_CAPTIONS.map((caption, index) => {
     const depth = frame.z - caption.z;
+    const readingDepths = [0, 1].map(u => introCaptionPoint(view, frame, index, u, .5).depth);
     const opacity = depth > -750 ? .16 + .84 * (1 - smooth(1800, 7000, depth)) : 0;
-    if (opacity < .001) return { opacity: 0, left: 0, top: 0, width: 0, height: 0 };
+    const atlas = textures[index];
+    if (opacity < .001 || !atlas) return { opacity: 0, left: 0, top: 0, width: 0, height: 0, readingDepths };
     let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
-    const texture = textures[index], strips = 24, rows = 2;
-    for (let i = 0; i < strips; i++) {
-      for (let row = 0; row < rows; row++) {
-        const a = introCaptionPoint(view, frame, index, i / strips, row / rows);
-        const b = introCaptionPoint(view, frame, index, (i + 1) / strips, row / rows);
-        const c = introCaptionPoint(view, frame, index, i / strips, (row + 1) / rows);
-        const d = introCaptionPoint(view, frame, index, (i + 1) / strips, (row + 1) / rows);
-        if (Math.min(a.depth, b.depth, c.depth, d.depth) < 80) continue;
-        left = Math.min(left, a.x, b.x, c.x, d.x); right = Math.max(right, a.x, b.x, c.x, d.x);
-        top = Math.min(top, a.y, b.y, c.y, d.y); bottom = Math.max(bottom, a.y, b.y, c.y, d.y);
-        if (opacity < .001 || !texture || Math.max(a.x, b.x, c.x) < 0 || Math.min(a.x, b.x, c.x) > width) continue;
-        const sw = texture.width / strips, sh = texture.height / rows;
-        // Two triangles keep the trapezoid edges joined; a CSS rotation or one
-        // affine parallelogram per strip would slide glyphs off the curved wall.
-        for (const lower of [false, true]) {
-          ctx.save(); ctx.globalAlpha = opacity * introCaptionInk(frame, index, (i + .5) / strips);
-          if (!lower) ctx.transform((b.x - a.x) / sw, (b.y - a.y) / sw, (c.x - a.x) / sh, (c.y - a.y) / sh, a.x, a.y);
-          else ctx.transform((d.x - c.x) / sw, (d.y - c.y) / sw, (d.x - b.x) / sh, (d.y - b.y) / sh, b.x + c.x - d.x, b.y + c.y - d.y);
-          ctx.beginPath();
-          if (!lower) { ctx.moveTo(-.2, -.2); ctx.lineTo(sw + .2, -.2); ctx.lineTo(-.2, sh + .2); }
-          else { ctx.moveTo(sw + .2, sh + .2); ctx.lineTo(-.2, sh + .2); ctx.lineTo(sw + .2, -.2); }
-          ctx.closePath(); ctx.clip();
-          ctx.drawImage(texture, i * sw, row * sh, sw, sh, 0, 0, sw, sh);
-          ctx.restore();
+    const texture = atlas.surface, rows = 2;
+    for (const word of atlas.words) {
+      const strips = Math.max(2, Math.ceil((word.to - word.from) * 24));
+      const wordU = (progress: number) => introCaptionGlyphU(index, word.from, word.to, progress);
+      const sw = (word.to - word.from) * texture.width / strips, sh = texture.height / rows;
+      for (let i = 0; i < strips; i++) {
+        for (let row = 0; row < rows; row++) {
+          const a = introCaptionPoint(view, frame, index, wordU(i / strips), row / rows);
+          const b = introCaptionPoint(view, frame, index, wordU((i + 1) / strips), row / rows);
+          const c = introCaptionPoint(view, frame, index, wordU(i / strips), (row + 1) / rows);
+          const d = introCaptionPoint(view, frame, index, wordU((i + 1) / strips), (row + 1) / rows);
+          if (Math.min(a.depth, b.depth, c.depth, d.depth) < 80) continue;
+          left = Math.min(left, a.x, b.x, c.x, d.x); right = Math.max(right, a.x, b.x, c.x, d.x);
+          top = Math.min(top, a.y, b.y, c.y, d.y); bottom = Math.max(bottom, a.y, b.y, c.y, d.y);
+          if (Math.max(a.x, b.x, c.x, d.x) < 0 || Math.min(a.x, b.x, c.x, d.x) > width) continue;
+          // Two triangles keep the trapezoid edges joined; a CSS rotation or one
+          // affine parallelogram per strip would slide glyphs off the curved wall.
+          for (const lower of [false, true]) {
+            ctx.save(); ctx.globalAlpha = opacity * introCaptionInk(frame, index, wordU((i + .5) / strips));
+            if (!lower) ctx.transform((b.x - a.x) / sw, (b.y - a.y) / sw, (c.x - a.x) / sh, (c.y - a.y) / sh, a.x, a.y);
+            else ctx.transform((d.x - c.x) / sw, (d.y - c.y) / sw, (d.x - b.x) / sh, (d.y - b.y) / sh, b.x + c.x - d.x, b.y + c.y - d.y);
+            ctx.beginPath();
+            if (!lower) { ctx.moveTo(-.2, -.2); ctx.lineTo(sw + .2, -.2); ctx.lineTo(-.2, sh + .2); }
+            else { ctx.moveTo(sw + .2, sh + .2); ctx.lineTo(-.2, sh + .2); ctx.lineTo(sw + .2, -.2); }
+            ctx.closePath(); ctx.clip();
+            ctx.drawImage(texture, word.from * texture.width + i * sw, row * sh, sw, sh, 0, 0, sw, sh);
+            ctx.restore();
+          }
         }
       }
     }
-    return Number.isFinite(left) ? { opacity, left, top, width: right - left, height: bottom - top } : { opacity: 0, left: 0, top: 0, width: 0, height: 0 };
+    return Number.isFinite(left) ? { opacity, left, top, width: right - left, height: bottom - top, readingDepths } : { opacity: 0, left: 0, top: 0, width: 0, height: 0, readingDepths };
   });
 }

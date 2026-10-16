@@ -201,9 +201,16 @@ function VirgoNode({ index, flight, glow, support = false }: FlightProps & { ind
   const radius = support ? 1.13 : VIRGO_STARS[index].radius;
   const coolStar = !support && index === 2;
   const surface = useSurfaceTexture(coolStar ? '#add3ff' : star.color, index, true);
-  const uniforms = useMemo(() => ({ surface: { value: surface }, stellarTime: { value: 0 }, presence: { value: 1 }, coolStar: { value: Number(coolStar) } }), [surface, coolStar]);
+  // Keep the material and its uniform containers together. Replacing only the
+  // uniforms can leave Three's compiled program reading the previous station opacity.
+  const photosphere = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: { surface: { value: surface }, stellarTime: { value: 0 }, presence: { value: 1 }, coolStar: { value: Number(coolStar) } },
+    vertexShader: STAR_VERTEX, fragmentShader: STAR_FRAGMENT, transparent: true, toneMapped: false,
+  }), [surface, coolStar]);
+  useEffect(() => () => photosphere.dispose(), [photosphere]);
   useFrame(() => {
     if (!group.current) return;
+    const uniforms = photosphere.uniforms;
     uniforms.stellarTime.value = flight.time;
     const presence = support ? 1 : starPresence(flight, index);
     uniforms.presence.value = presence;
@@ -231,7 +238,7 @@ function VirgoNode({ index, flight, glow, support = false }: FlightProps & { ind
   });
   return <group ref={group} position={star.position}>
     <sprite><spriteMaterial map={glow} color={star.color} transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} /></sprite>
-    <mesh onClick={event => event.stopPropagation()} onPointerOver={event => event.stopPropagation()}><sphereGeometry args={[radius, support ? 16 : 48, support ? 12 : 32]} /><shaderMaterial uniforms={uniforms} vertexShader={STAR_VERTEX} fragmentShader={STAR_FRAGMENT} transparent toneMapped={false} /></mesh>
+    <mesh onClick={event => event.stopPropagation()} onPointerOver={event => event.stopPropagation()}><sphereGeometry args={[radius, support ? 16 : 48, support ? 12 : 32]} /><primitive object={photosphere} attach="material" /></mesh>
     {!support && [0, 1].map(i => <mesh key={i}><ringGeometry args={[radius * 1.06, radius * 1.06 + .025, 80]} /><meshBasicMaterial color={star.color} transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} /></mesh>)}
     {!support && <StellarPlasma index={index} radius={radius} color={coolStar ? '#8caeff' : star.color} flight={flight} glow={glow} />}
   </group>;

@@ -1,7 +1,7 @@
 import { smooth } from '../data/virgoFlight';
 import { OPENING_EDGES, OPENING_STARS } from '../data/virgoOpening';
 import { INTRO_CONSTELLATION_COMPLETE, INTRO_PALETTE, introWarpPoint } from '../data/virgoIntro';
-import { drawIntroVortex } from './virgoIntroVortex';
+import { drawIntroRiftBirth, drawIntroVortex } from './virgoIntroVortex';
 import { drawIntroTunnel, introAperture } from './virgoIntroTunnel';
 
 const random = (i: number) => { const n = Math.sin(i * 127.1 + 31.7) * 43758.5453; return n - Math.floor(n); };
@@ -75,7 +75,7 @@ function drawStarPoint(
   ctx.fill();
 }
 
-/** The opening sky is sheared by the rotating portal before the camera crosses its plane. */
+/** Keep the opening sky fixed behind the local fracture and portal. */
 export function drawIntro(ctx: CanvasRenderingContext2D, width: number, height: number, seconds: number, idleTime = 0, constellation = INTRO_CONSTELLATION_COMPLETE) {
   const { sky: black, gold, violet } = INTRO_PALETTE;
   ctx.clearRect(0, 0, width, height); ctx.fillStyle = black; ctx.fillRect(0, 0, width, height);
@@ -83,7 +83,7 @@ export function drawIntro(ctx: CanvasRenderingContext2D, width: number, height: 
   const point = (i: number) => ({ x: width * .5 + OPENING_STARS[i].position[0] * scale, y: height * .45 - OPENING_STARS[i].position[1] * scale });
   const core = point(1), aperture = introAperture(width, height, seconds, core);
   const reach = Math.min(Math.min(width, height) * .85, Math.max(24, aperture.outerRadius * 1.8));
-  const warp = (x: number, y: number) => introWarpPoint(x, y, core, reach, aperture.opening, idleTime);
+  const warp = (x: number, y: number) => introWarpPoint(x, y, aperture, reach, aperture.opening, idleTime);
   const renderSky = () => {
     ctx.fillStyle = black; ctx.fillRect(-width * 2, -height, width * 4, height * 3);
     sky.forEach((star, i) => {
@@ -117,11 +117,14 @@ export function drawIntro(ctx: CanvasRenderingContext2D, width: number, height: 
   };
   renderSky();
   if (seconds <= 0) return;
-  ctx.save();
-  ctx.beginPath(); ctx.ellipse(aperture.x, aperture.y, aperture.radius, aperture.radius * .90, 0, 0, Math.PI * 2); ctx.clip();
-  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, width, height);
-  ctx.globalAlpha = smooth(1.6, 3.4, seconds);
-  drawIntroTunnel(ctx, width, height, seconds, idleTime);
-  ctx.restore();
-  drawIntroVortex(ctx, aperture.x, aperture.y, aperture.outerRadius, idleTime);
+  if (seconds > 1.20) {
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(aperture.x, aperture.y, aperture.radius * aperture.aspect, aperture.radius * .90, 0, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, width, height);
+    ctx.globalAlpha = smooth(1.20, 2.0, seconds);
+    drawIntroTunnel(ctx, width, height, seconds, idleTime);
+    ctx.restore();
+  }
+  drawIntroVortex(ctx, aperture.x, aperture.y, aperture.outerRadius, idleTime, seconds);
+  drawIntroRiftBirth(ctx, aperture.x, aperture.y, aperture.outerRadius, seconds, idleTime);
 }

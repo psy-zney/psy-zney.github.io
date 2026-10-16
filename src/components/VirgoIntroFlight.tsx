@@ -1,10 +1,11 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import type { Language } from '../data/portfolio';
 import { OPENING_STARS } from '../data/virgoOpening';
-import { INTRO_ARRIVAL, INTRO_ASSEMBLY_DURATION, INTRO_CONSTELLATION_COMPLETE, INTRO_CAPTIONS, INTRO_DURATION, advanceIntroScroll, introInputTarget, introScrollResponse, introConstellationFrame, introFrame } from '../data/virgoIntro';
+import { INTRO_ARRIVAL, INTRO_ASSEMBLY_DURATION, INTRO_CONSTELLATION_COMPLETE, INTRO_CAPTIONS, INTRO_DURATION, advanceIntroScroll, introInputTarget, introScrollResponse, introPortalFormation, introConstellationFrame, introFrame } from '../data/virgoIntro';
 import { drawIntro } from './virgoIntroRenderer';
 import { createIntroCaptionTextures, drawIntroCaptions } from './virgoIntroCaptions';
 import { drawIntroExit, introAperture } from './virgoIntroTunnel';
+import { disposeIntroLiquid } from './IntroLiquidSurface';
 import './VirgoIntroFlight.css';
 
 export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFinish, onReturn, initialDirection = 1, initialAssemblyComplete = false }: {
@@ -18,25 +19,35 @@ export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFin
   const arrived = useRef(initialDirection < 0);
   const assembly = useRef(initialAssemblyComplete || initialDirection < 0 || reducedMotion ? INTRO_ASSEMBLY_DURATION : 0);
   const callbacks = useRef({ onArrive, onFinish, onReturn }); callbacks.current = { onArrive, onFinish, onReturn };
-  const input = useRef<(amount: number) => void>(() => {});
-  input.current = amount => {
+  const input = useRef<(amount: number, openPortal?: boolean) => void>(() => {});
+  input.current = (amount, openPortal = false) => {
     if (!amount) return;
     if (reducedMotion) {
       if (amount > 0) { callbacks.current.onArrive(); callbacks.current.onFinish(); }
       return;
     }
     started.current = true;
-    target.current = introInputTarget(playback.current.seconds, target.current, amount);
+    target.current = openPortal ? 2.75 : introInputTarget(playback.current.seconds, target.current, amount);
   };
 
   useEffect(() => {
     const page = pageRef.current; if (!page) return;
     const blocked = (event: Event) => event.target instanceof Element && !!event.target.closest('a,button,input,textarea,select,[contenteditable="true"],[data-lenis-prevent]');
+    let lastWheel = -Infinity, openingGesture = false;
     const wheel = (event: WheelEvent) => {
       if (event.ctrlKey || blocked(event)) return;
       event.preventDefault(); event.stopImmediatePropagation();
       const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? page.clientHeight : 1;
-      input.current((Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX) * unit * .0045);
+      const amount = (Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX) * unit * .0045;
+      if (!amount) return;
+      const now = performance.now(), fresh = now - lastWheel > 180;
+      lastWheel = now;
+      if (amount < 0) openingGesture = false;
+      else if (fresh) openingGesture = playback.current.seconds < 2.749;
+      // The first gesture creates the doorway. Its trackpad tail cannot carry
+      // the observer through it; another gesture starts forward flight.
+      if (amount > 0 && openingGesture) { input.current(amount, true); return; }
+      input.current(amount);
     };
     const key = (event: KeyboardEvent) => {
       if (blocked(event) || !['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', ' ', 'Enter', 'Home', 'End'].includes(event.key)) return;
@@ -72,13 +83,15 @@ export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFin
     if (loaderActive) loader.observe(document.documentElement, { childList: true, subtree: true });
     void document.fonts.ready.then(() => { if (!disposed) textures = createIntroCaptionTextures(lang); });
     const render = () => {
+      // Pause the whole composition together so its last lit frame stays intact.
+      if (document.hidden) return;
       const elapsed = playback.current.seconds, frame = introFrame(elapsed);
       const constellation = assembly.current >= INTRO_ASSEMBLY_DURATION ? INTRO_CONSTELLATION_COMPLETE : introConstellationFrame(assembly.current);
       drawIntro(ctx, width, height, elapsed, idleTime, constellation);
       const scale = Math.min(width / 26, height / 20);
       const core = { x: width * .5 + OPENING_STARS[1].position[0] * scale, y: height * .45 - OPENING_STARS[1].position[1] * scale };
       const aperture = introAperture(width, height, elapsed, core);
-      ctx.save(); ctx.beginPath(); ctx.ellipse(aperture.x, aperture.y, aperture.radius, aperture.radius * .90, 0, 0, Math.PI * 2); ctx.clip();
+      ctx.save(); ctx.beginPath(); ctx.ellipse(aperture.x, aperture.y, aperture.radius * aperture.aspect, aperture.radius * .90, 0, 0, Math.PI * 2); ctx.clip();
       const surfaces = drawIntroCaptions(ctx, width, height, elapsed, textures);
       const exit = drawIntroExit(ctx, width, height, elapsed, idleTime); ctx.restore();
       root.dataset.phase = constellation.reveal < 1 ? 'connecting' : elapsed === 0 ? 'idle' : frame.phase;
@@ -88,8 +101,13 @@ export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFin
       root.dataset.seconds = elapsed.toFixed(3); root.dataset.scrollTarget = target.current.toFixed(3);
       root.dataset.inputGain = (introScrollResponse(elapsed).gain * .0045).toFixed(7);
       root.dataset.velocity = playback.current.velocity.toFixed(3);
+      const formation = introPortalFormation(elapsed);
+      root.dataset.riftFracture = formation.seam.toFixed(4);
+      root.dataset.riftGrowth = formation.crack.toFixed(4);
+      root.dataset.riftPortal = formation.rim.toFixed(4);
       root.dataset.virtualGrid = 'hidden';
       root.dataset.entranceWorldRadius = aperture.worldRadius.toFixed(3);
+      root.dataset.entranceAspect = aperture.aspect.toFixed(4);
       root.dataset.entranceDepth = aperture.depth.toFixed(3);
       root.dataset.exitRadius = exit.radius.toFixed(3);
       root.dataset.exitReveal = exit.reveal.toFixed(4);
@@ -108,16 +126,20 @@ export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFin
         const el = captions.current?.children[i] as HTMLElement | undefined; if (!el) return;
         el.style.opacity = String(patch.opacity); el.dataset.lines = '1'; el.dataset.effect = INTRO_CAPTIONS[i].effect;
         el.dataset.projectedBounds = [patch.left, patch.top, patch.width, patch.height].map(v => v.toFixed(2)).join(',');
+        el.dataset.readingDepths = patch.readingDepths.map(v => v.toFixed(2)).join(',');
         el.setAttribute('aria-hidden', String(patch.opacity < .1 || elapsed < 2.75));
       });
     };
-    const resize = new ResizeObserver(() => {
-      if (root.clientWidth < 2 || root.clientHeight < 2) return;
+    const resizeSurface = () => {
+      if (document.hidden || root.clientWidth < 2 || root.clientHeight < 2) return;
       width = root.clientWidth; height = root.clientHeight;
       const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-      surface.width = Math.round(width * dpr); surface.height = Math.round(height * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); render();
-    }); resize.observe(root);
-    const visibility = () => { previous = performance.now(); };
+      const pixelWidth = Math.round(width * dpr), pixelHeight = Math.round(height * dpr);
+      if (surface.width !== pixelWidth || surface.height !== pixelHeight) { surface.width = pixelWidth; surface.height = pixelHeight; }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); render();
+    };
+    const resize = new ResizeObserver(resizeSurface); resize.observe(root);
+    const visibility = () => { previous = performance.now(); if (!document.hidden) resizeSurface(); };
     document.addEventListener('visibilitychange', visibility);
     const tick = (now: number) => {
       const delta = Math.max(0, now - previous) / 1000; previous = now;
@@ -135,11 +157,12 @@ export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFin
     raf = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(raf); disposed = true; resize.disconnect(); loader.disconnect();
+      disposeIntroLiquid();
       document.removeEventListener('visibilitychange', visibility); delete page.dataset.openingFlight; delete page.dataset.introExitDepth;
     };
   }, [reducedMotion, pageRef, lang]);
 
-  return <div ref={layer} className="virgo-intro-flight" aria-label={lang === 'vie' ? 'Mở đầu hành trình vũ trụ' : 'Cosmic opening journey'} onClick={() => input.current(.35)}>
+  return <div ref={layer} className="virgo-intro-flight" data-surface="liquid-caustics-nebula" aria-label={lang === 'vie' ? 'Mở đầu hành trình vũ trụ' : 'Cosmic opening journey'} onClick={() => input.current(.35)}>
     <canvas ref={canvas} aria-hidden="true" />
     <div ref={captions} className="virgo-intro-captions" aria-live="off">
       {INTRO_CAPTIONS.map((caption, i) => <p key={i} data-z={caption.z} aria-hidden="true">{caption[lang]}</p>)}

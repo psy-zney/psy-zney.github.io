@@ -1,6 +1,13 @@
 import { clamp, smooth } from './virgoFlight';
 
-export type ShowcaseMotionMode = 'target' | 'inertia';
+export type ShowcaseMotionMode = 'target' | 'inertia' | 'wheel';
+
+/** Wheel distance is bounded in world units, independent of screen size. */
+export function showcaseWheelTarget(delta: number, target: number, rendered: number, step: number, maximum: number) {
+  const origin = Math.sign(delta) !== Math.sign(target - rendered) ? rendered : target;
+  const increment = clamp(delta / 120, -1, 1) * step * .14;
+  return clamp(origin + increment, Math.max(0, rendered - step * .32), Math.min(maximum, rendered + step * .32));
+}
 
 const READING_WINDOWS = [[1.92, 2.32], [2.94, 4.25], [4.80, 5.30]] as const;
 
@@ -27,10 +34,19 @@ export function showcaseChapterTransition(position: number, reduced = false) {
 }
 
 /** Integrate momentum without snapping; explicit navigation keeps its destination. */
-export function advanceShowcaseMotion(x: number, target: number, velocity: number, delta: number, min: number, max: number, mode: ShowcaseMotionMode, reduced = false) {
+export function advanceShowcaseMotion(x: number, target: number, velocity: number, delta: number, min: number, max: number, mode: ShowcaseMotionMode, reduced = false, step = 880) {
   const dt = clamp(delta, 0, .04);
   target = clamp(target, min, max);
   if (reduced) return { x: target, target, velocity: 0, settled: true };
+  if (mode === 'wheel') {
+    const distance = target - x;
+    if (Math.sign(velocity) !== Math.sign(distance)) velocity = 0;
+    const desired = clamp(distance * 7, -step * .8, step * .8);
+    const nextVelocity = velocity + clamp(desired - velocity, -step * 3 * dt, step * 3 * dt);
+    const travel = (velocity + nextVelocity) * .5 * dt;
+    const settled = Math.abs(distance) < .15 || Math.abs(travel) >= Math.abs(distance);
+    return { x: settled ? target : clamp(x + travel, min, max), target, velocity: settled ? 0 : nextVelocity, settled };
+  }
   if (mode === 'inertia') {
     const decay = Math.exp(-7 * dt);
     const next = x + velocity * (1 - decay) / 7;
@@ -39,7 +55,7 @@ export function advanceShowcaseMotion(x: number, target: number, velocity: numbe
     const settled = Math.abs(velocity) < 2;
     return { x, target: x, velocity: settled ? 0 : velocity, settled };
   }
-  const omega = 10;
+  const omega = 5.4;
   const offset = x - target;
   const impulse = velocity + omega * offset;
   const decay = Math.exp(-omega * dt);
