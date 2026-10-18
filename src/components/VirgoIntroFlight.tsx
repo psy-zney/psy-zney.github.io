@@ -1,11 +1,13 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import type { Language } from '../data/portfolio';
 import { OPENING_STARS } from '../data/virgoOpening';
-import { INTRO_ARRIVAL, INTRO_ASSEMBLY_DURATION, INTRO_CONSTELLATION_COMPLETE, INTRO_CAPTIONS, INTRO_DURATION, advanceIntroScroll, introInputTarget, introScrollResponse, introPortalFormation, introConstellationFrame, introFrame } from '../data/virgoIntro';
+import { INTRO_ARRIVAL, INTRO_ASSEMBLY_DURATION, INTRO_CONSTELLATION_COMPLETE, INTRO_CAPTIONS, INTRO_DURATION, advanceIntroScroll, introInputTarget, introScrollResponse, introPortalFormation, introPortalShot, introPortalShotProjection, introConstellationFrame, introFrame } from '../data/virgoIntro';
 import { drawIntro } from './virgoIntroRenderer';
 import { createIntroCaptionTextures, drawIntroCaptions } from './virgoIntroCaptions';
 import { drawIntroExit, introAperture } from './virgoIntroTunnel';
 import { disposeIntroLiquid } from './IntroLiquidSurface';
+import { RenderCadence, renderPixelRatio, requestedPixelRatio } from '../data/renderQuality';
+import { useQualityTier } from './workspace/useQualityTier';
 import './VirgoIntroFlight.css';
 
 export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFinish, onReturn, initialDirection = 1, initialAssemblyComplete = false }: {
@@ -13,6 +15,8 @@ export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFin
   onArrive: () => void; onFinish: () => void; onReturn: () => void;
   initialDirection?: 1 | -1; initialAssemblyComplete?: boolean;
 }) {
+  const quality = useQualityTier(true), qualityRef = useRef(quality);
+  qualityRef.current = quality;
   const layer = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null), captions = useRef<HTMLDivElement>(null);
   const playback = useRef({ seconds: initialDirection < 0 ? INTRO_DURATION : 0, velocity: 0 });
   const target = useRef(initialDirection < 0 ? INTRO_DURATION - .35 : 0), started = useRef(initialDirection < 0);
@@ -75,7 +79,10 @@ export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFin
   useEffect(() => {
     const surface = canvas.current, root = layer.current, page = pageRef.current;
     const ctx = surface?.getContext('2d'); if (!surface || !root || !ctx || !page) return;
-    let width = 1, height = 1, raf = 0, idleTime = 0, previous = performance.now(), disposed = false, lastPreview = -1;
+    let width = 1, height = 1, density = 0, raf = 0, idleTime = 0, previous = performance.now(), disposed = false, lastPreview = -1;
+    const cadence = new RenderCadence();
+    const currentDensity = () => renderPixelRatio(width, height, requestedPixelRatio(window.devicePixelRatio,true), qualityRef.current.tier,
+      qualityRef.current.preference === 'auto' ? cadence.scale : 1);
     let textures = createIntroCaptionTextures(lang), loaderActive = !!document.querySelector('[data-page-loader]');
     const loader = new MutationObserver(() => {
       if (!document.querySelector('[data-page-loader]')) { loaderActive = false; loader.disconnect(); }
@@ -102,6 +109,15 @@ export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFin
       root.dataset.inputGain = (introScrollResponse(elapsed).gain * .0045).toFixed(7);
       root.dataset.velocity = playback.current.velocity.toFixed(3);
       const formation = introPortalFormation(elapsed);
+      const shot = introPortalShot(elapsed);
+      const shotProjection = introPortalShotProjection(width, height, core, elapsed);
+      root.dataset.portalShotCenter = [shotProjection.x, shotProjection.y].map(v => v.toFixed(3)).join(',');
+      root.dataset.portalShotRadius = shotProjection.headRadius.toFixed(3);
+      root.dataset.portalShotTip = [shotProjection.headX, shotProjection.headY].map(v => v.toFixed(3)).join(',');
+      root.dataset.portalShotTail = [shotProjection.tailX, shotProjection.tailY].map(v => v.toFixed(3)).join(',');
+      root.dataset.portalShot = shot.opacity.toFixed(4);
+      root.dataset.portalShotHead = shot.head.toFixed(4);
+      root.dataset.portalImpact = shot.impact.toFixed(4);
       root.dataset.riftFracture = formation.seam.toFixed(4);
       root.dataset.riftGrowth = formation.crack.toFixed(4);
       root.dataset.riftPortal = formation.rim.toFixed(4);
@@ -133,10 +149,11 @@ export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFin
     const resizeSurface = () => {
       if (document.hidden || root.clientWidth < 2 || root.clientHeight < 2) return;
       width = root.clientWidth; height = root.clientHeight;
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      const dpr = density = currentDensity();
       const pixelWidth = Math.round(width * dpr), pixelHeight = Math.round(height * dpr);
       if (surface.width !== pixelWidth || surface.height !== pixelHeight) { surface.width = pixelWidth; surface.height = pixelHeight; }
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); render();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.imageSmoothingQuality = 'high';
+      root.dataset.renderDpr = dpr.toFixed(3); render();
     };
     const resize = new ResizeObserver(resizeSurface); resize.observe(root);
     const visibility = () => { previous = performance.now(); if (!document.hidden) resizeSurface(); };
@@ -144,6 +161,8 @@ export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFin
     const tick = (now: number) => {
       const delta = Math.max(0, now - previous) / 1000; previous = now;
       if (!document.hidden) {
+        cadence.sample(now, qualityRef.current.preference === 'auto' && !loaderActive && !reducedMotion);
+        if (Math.abs(currentDensity() - density) > .001) resizeSurface();
         idleTime += Math.min(delta, .05);
         if (!loaderActive) assembly.current = Math.min(INTRO_ASSEMBLY_DURATION, assembly.current + Math.min(delta, .05));
         if (assembly.current >= INTRO_ASSEMBLY_DURATION) playback.current = advanceIntroScroll(playback.current.seconds, playback.current.velocity, target.current, delta);
@@ -162,7 +181,7 @@ export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFin
     };
   }, [reducedMotion, pageRef, lang]);
 
-  return <div ref={layer} className="virgo-intro-flight" data-surface="liquid-caustics-nebula" aria-label={lang === 'vie' ? 'Mở đầu hành trình vũ trụ' : 'Cosmic opening journey'} onClick={() => input.current(.35)}>
+  return <div ref={layer} className="virgo-intro-flight" data-surface="liquid-caustics-nebula" data-portal="quantum-violet-frontal" aria-label={lang === 'vie' ? 'Mở đầu hành trình vũ trụ' : 'Cosmic opening journey'} onClick={() => input.current(.35)}>
     <canvas ref={canvas} aria-hidden="true" />
     <div ref={captions} className="virgo-intro-captions" aria-live="off">
       {INTRO_CAPTIONS.map((caption, i) => <p key={i} data-z={caption.z} aria-hidden="true">{caption[lang]}</p>)}

@@ -7,7 +7,90 @@ import ts from 'typescript';
 
 // Behavior and integration checks for the current build. Visual QA lives in check-ui.mjs.
 export async function checkCurrentFeatures(server) {
-  const { introFrame, INTRO_CAPTIONS, INTRO_DURATION, INTRO_ASSEMBLY_DURATION, introConstellationFrame, advanceIntroScroll, introInputTarget, introScrollResponse, introPortalFormation, introCaptionInk, introCaptionPoint, introCaptionGlyphU, introTunnelView, introWarpPoint, introVortexAngle, INTRO_TUNNEL_GRID, INTRO_EXIT_Z } = await server.ssrLoadModule('/src/data/virgoIntro.ts');
+  const {nebulaDustParticle}=await server.ssrLoadModule('/src/data/nebulaDust.ts');
+  for(let i=0;i<30;i++)for(const time of [3.4,4.1,5.2]){
+    const a=nebulaDustParticle(i,time),b=nebulaDustParticle(i,time+.015);
+    assert(Object.values(a).every(Number.isFinite),'Every nebula particle stays finite at every depth');
+    if(Math.abs(a.depth-b.depth)<.2)assert(Math.hypot(b.x,b.y)>Math.hypot(a.x,a.y),'Forward travel moves dust outward along the spiral');
+    const rewind=nebulaDustParticle(i,(time+.25)-.25);
+    assert(Math.hypot(rewind.x-a.x,rewind.y-a.y)<1e-10,'Backward samples restore the exact dust orbit');
+  }
+  const nebulaAsset=await sharp('public/img/fx/wormhole-nebula-v1.webp').metadata();
+  assert(nebulaAsset.width>=1536&&nebulaAsset.height>=768,'The tunnel uses an authored, detailed nebula wall texture');
+  const {worldPortalPose}=await server.ssrLoadModule('/src/data/worldsConstellation.ts');
+  for(let selected=0;selected<9;selected++)for(let i=0;i<9;i++){
+    const pose=worldPortalPose(i,selected);
+    if(i===selected)assert.deepEqual([pose.x,pose.y,pose.z,pose.pitch,pose.yaw,pose.roll],[0,0,0,0,0,0],'Every chosen world advances to the same clear focal plane');
+    else{
+      assert(pose.z< -400&&pose.opacity<1,'Both visited and upcoming portals remain behind the selected world');
+      const other=worldPortalPose(i,(selected+1)%9===i?(selected+2)%9:(selected+1)%9);
+      assert.deepEqual([pose.x,pose.y,pose.z],[other.x,other.y,other.z],'Background worlds keep their spatial address across scroll steps');
+    }
+  }
+  const {peripheralMask,cherenkovAngle,whiteHoleParticle}=await server.ssrLoadModule('/src/data/portalOptics.ts');
+  for(const aspect of [.46,1,1.6,2.4])for(const u of [.45,.5,.55])for(const v of [.45,.5,.55])assert.equal(peripheralMask(u,v,aspect),0,'Central content has exactly zero optical displacement');
+  assert(peripheralMask(.99,.99,1.6)>.99,'Optics concentrate at screen edges');
+  assert.equal(cherenkovAngle(.5,1.3),0,'Cherenkov emission is absent below the medium threshold');
+  assert(Math.abs(Math.cos(cherenkovAngle(.9,1.4))-1/(.9*1.4))<1e-12,'Cone angle obeys cos(theta)=1/(n beta)');
+  for(let layer=0;layer<3;layer++)for(let i=0;i<20;i++){
+    const early=whiteHoleParticle(i,.3,layer),late=whiteHoleParticle(i,.6,layer);
+    assert(Math.hypot(late.x,late.y)>Math.hypot(early.x,early.y),'Forward ejection moves outward in every dust layer');
+    const rewind=whiteHoleParticle(i,.6-.3,layer);
+    assert(Math.hypot(rewind.x-early.x,rewind.y-early.y)<1e-12,'Rewinding time exactly restores dust positions');
+  }
+  const { accretionFilament, singularitySample, singularityView, SINGULARITY_DURATION, SINGULARITY_ORBIT_END } = await server.ssrLoadModule('/src/data/singularityMotion.ts');
+  assert.deepEqual([singularityView(0).x,singularityView(0).y,singularityView(0).depth],[0,0,1], 'The local spiral starts at the Contact view');
+  let previousDepth=1;const positions=[];
+  for(let i=0;i<=100;i++){
+    const view=singularityView(SINGULARITY_ORBIT_END*i/100);
+    assert(view.depth<=previousDepth+1e-9,'The spiral continues inward without backing away from the hole');
+    previousDepth=view.depth;positions.push(view);
+  }
+  assert(positions.at(-1).angle-positions[0].angle>Math.PI*2,'The observer completes a full orbit before entering');
+  assert(Math.max(...positions.map(p=>p.x))>.08 && Math.min(...positions.map(p=>p.x))<-.08,'The camera moves to both sides of the hole');
+  assert(Math.abs(positions.at(-1).x)<1e-8&&Math.abs(positions.at(-1).y)<1e-8&&positions.at(-1).bank===0,'The local orbit meets the throat without residual bank');
+  for (let i = 0; i < 24; i++) {
+    const early = accretionFilament(i, .3), late = accretionFilament(i, 1.5);
+    assert(late.radius < early.radius * .12, 'Orbiting matter contracts towards the horizon');
+    assert(late.angle - early.angle > Math.PI * 2, 'Matter completes an orbit before capture');
+    assert(late.width < early.width * .3, 'Tidal stretch thins material towards the core');
+    const head = accretionFilament(i, 1.4, 0), tail = accretionFilament(i, 1.4, 1);
+    assert(tail.radius > head.radius * 1.5, 'The tail lags the plunging head to form a curved filament');
+  }
+  for (let t = 0; t <= SINGULARITY_DURATION; t += .025) {
+    const forward = singularitySample(t, 1), backward = singularitySample(SINGULARITY_DURATION - t, -1);
+    assert(Math.abs(forward.t - backward.t) < 1e-9, 'Rollback restores the same passage coordinate');
+    assert.equal(forward.phase, backward.phase, 'Both directions share the same three visual phases');
+  }
+  const { renderPixelRatio, requestedPixelRatio, blackHoleResolution, RenderCadence } = await server.ssrLoadModule('/src/data/renderQuality.ts');
+  assert.equal(requestedPixelRatio(1, true), 1.5, 'Manual High supersamples standard displays');
+  assert.equal(requestedPixelRatio(1, false), 1, 'Opting out of preferred sharp sampling keeps native density');
+  assert.equal(requestedPixelRatio(2, true), 2, 'Retina keeps its native sharpness');
+  assert.equal(renderPixelRatio(1440, 900, requestedPixelRatio(1, true)), 1.5);
+  assert(3840 * 2160 * renderPixelRatio(3840, 2160, requestedPixelRatio(1, true)) ** 2 <= 16_600_001, 'Supersampling still respects the pixel budget');
+  assert.equal(renderPixelRatio(1440, 900, 2), 2, 'Retina scenes use native physical pixels');
+  assert.equal(renderPixelRatio(390, 844, 3), 3, 'High-density phones retain their native sharpness');
+  assert.equal(renderPixelRatio(3840, 2160, 1), 1, '4K screens are not downscaled');
+  for (const [w, h, native] of [[3840, 2160, 2], [7680, 4320, 3], [390, 844, 4]]) {
+    const density = renderPixelRatio(w, h, native);
+    assert(density <= native && density <= 3 && w * h * density ** 2 <= 16_600_001, 'Native sharpness respects a bounded GPU allocation');
+    assert(w * density <= 8192 && h * density <= 8192, 'Very wide buffers stay within dimension limits');
+  }
+  assert(renderPixelRatio(390, 844, 3, 'low') <= 1, 'Economy mode remains available');
+  assert(renderPixelRatio(1440, 900, 2, 'high', 1, 1024) * 1440 <= 1024, 'Device texture limits take precedence');
+  assert.equal(blackHoleResolution(1900, 'high', false), 2048, 'Large black holes retain detail beyond the old 1280 limit');
+  assert.equal(blackHoleResolution(1900, 'high', true), 1280, 'Orbiting keeps a lighter ray cache until the view settles');
+  assert(blackHoleResolution(1900, 'high', false, 1, 512) <= 512, 'Black-hole targets respect smaller GPU limits');
+  let time = 0;
+  const cadence = new RenderCadence();
+  const frames = (count, ms, active = true) => { for (let i = 0; i < count; i++) cadence.sample(time += ms, active); };
+  frames(120, 1000 / 60); assert.equal(cadence.scale, 1, 'Healthy frames preserve maximum detail');
+  frames(20, 50); assert.equal(cadence.scale, 1, 'A brief loading stall cannot lower quality');
+  frames(120, 50); assert(cadence.scale < 1 && cadence.scale >= .6, 'Sustained poor cadence lowers resolution');
+  frames(2400, 1000 / 60); assert.equal(cadence.scale, 1, 'Sustained recovery restores full detail');
+  frames(120, 100, false); frames(30, 1000 / 60); assert.equal(cadence.scale, 1, 'Paused and hidden time cannot penalize quality');
+  frames(20, 1000); assert.equal(cadence.scale, 1, 'Background throttling is not treated as slow GPU frames');
+  const { introFrame, INTRO_CAPTIONS, INTRO_DURATION, INTRO_ASSEMBLY_DURATION, introConstellationFrame, advanceIntroScroll, introInputTarget, introScrollResponse, introPortalFormation, introPortalShot, introCaptionInk, introCaptionPoint, introCaptionGlyphU, introTunnelView, introWarpPoint, introVortexAngle, INTRO_TUNNEL_GRID, INTRO_EXIT_Z } = await server.ssrLoadModule('/src/data/virgoIntro.ts');
   assert.equal(introConstellationFrame(0).stars[1], 1, 'The constellation starts from the central yellow star');
   assert.equal(introConstellationFrame(0).stars.filter(amount => amount > .1).length, 1, 'Only the central star is visible before connections spread');
   assert(introConstellationFrame(0).edges.every(([a, b]) => a + b === 0), 'Connections are drawn progressively instead of appearing fully connected');
@@ -17,14 +100,43 @@ export async function checkCurrentFeatures(server) {
   assert.equal(INTRO_DURATION, 7.8, 'The intro scroll coordinate spans opening, entry and wall reading; it is not an autoplay duration');
   assert.equal(introFrame(0).z, 1000);
   assert.equal(introPortalFormation(0).charge + introPortalFormation(0).seam + introPortalFormation(0).rim, 0, 'Standing still starts with the unbroken constellation');
-  assert(introPortalFormation(1).aspect < .15, 'Creating space begins with a tall tear, not a miniature circular portal');
+  assert(introPortalFormation(.95).aspect < .15, 'Creating space begins with a tall plasma tear, not a miniature circular portal');
+  assert(introPortalShot(.2).opacity > .9 && introPortalShot(.2).head < 1, 'One energy shot travels before the aperture opens');
+  assert.equal(introPortalFormation(.2).rim, 0, 'The portal waits for the shot to hit');
+  assert.equal(introPortalShot(.42).head, 1);
+  assert.equal(introPortalShot(.42).impact, 1, 'The shot ignites a local impact at its endpoint');
+  assert(introPortalFormation(.6).rim > 0, 'Plasma opens immediately after the hit');
+  let previousShotHead = 0;
+  const { introPortalShotProjection } = await server.ssrLoadModule('/src/data/virgoIntro.ts');
+  for (const [width, height] of [[1440, 900], [390, 844]]) {
+    let previousHeadX = Infinity;
+    for (let p = 0; p <= .6; p += .01) {
+      const projection = introPortalShotProjection(width, height, { x: width * .48, y: height * .41 }, p);
+      assert.equal(projection.x, width * .48);
+      assert.equal(projection.y, height * .41);
+      assert.equal(projection.headY, projection.y, 'The shot never rises from the bottom');
+      assert.equal(projection.tailY, projection.y);
+      assert(projection.headX <= previousHeadX && projection.tailX >= projection.headX && projection.headX >= projection.x, 'Perspective projects the single shaft toward the core as it travels along Z');
+      assert(projection.headRadius <= 1.5 && projection.tailRadius <= 3 && projection.impactRadius <= 9, 'Neither the beam nor its impact can become a large glowing sphere');
+      if (p >= .42) assert.equal(projection.headX, projection.x, 'The shot hits the core precisely');
+      previousHeadX = projection.headX;
+    }
+  }
+  for (let p = 0; p < 8; p += .01) {
+    const shot = introPortalShot(p);
+    assert(shot.head >= previousShotHead && shot.tail <= shot.head, 'A single projectile follows one forward path without repeating');
+    assert(shot.opacity >= 0 && shot.opacity <= 1 && shot.impact >= 0 && shot.impact <= 1);
+    if (p > .78 || p === 0) assert.equal(shot.opacity + shot.impact, 0, 'The shot is absent at rest, once the portal opens and throughout flight');
+    assert.deepEqual(shot, introPortalShot(p), 'Reverse travel restores the same projectile position and impact');
+    previousShotHead = shot.head;
+  }
   assert(introPortalFormation(2.05).aspect > .6 && introPortalFormation(2.05).aspect < 1, 'The tear opens gradually under scroll');
   assert.equal(introPortalFormation(2.75).aspect, 1, 'The portal finishes opening before forward flight');
   let previousFormation = introPortalFormation(0);
   for (let p = .01; p <= 2.75; p += .01) {
     const formation = introPortalFormation(p);
-    assert(formation.crack >= previousFormation.crack, 'The fracture front spreads monotonically from the impact point and reverses with scroll');
-    assert.equal(formation.seam * formation.rim, 0, 'Glass and lightning end before the portal rim appears');
+    assert.equal(formation.charge + formation.seam + formation.crack, 0, 'Glass facets, lightning and the fracture front stay absent throughout opening and reverse');
+    assert(formation.rim >= previousFormation.rim, 'The plasma fades in continuously from the first scroll');
     assert.equal(introFrame(p).z, 1000, 'The observer stands still while creating the portal');
     assert(formation.aspect >= previousFormation.aspect && formation.extent >= previousFormation.extent, 'The opening geometry grows continuously and reverses with scroll');
     assert.deepEqual(formation, introPortalFormation(p), 'Returning to a scroll position restores the exact tear geometry');
@@ -65,6 +177,29 @@ export async function checkCurrentFeatures(server) {
   for (const p of [3.9, 4.7, 5.8, 6.9, 7.1]) drawIntroExit(closedExitContext, 1242, 715, p, 12);
   assert.equal(distantExitPaints, 0, 'The distant exit never paints a black cover over the liquid vanishing point');
   const maturePortal = introAperture(1242, 715, 2.75, { x: 600, y: 300 });
+  const { quantumEdge, quantumAperturePath, drawQuantumCorona } = await server.ssrLoadModule('/src/components/introQuantumPortal.ts');
+  for (const aspect of [.035, .15, .65, 1]) {
+    const points = [];
+    quantumAperturePath({ beginPath() {}, moveTo(x, y) { points.push([x, y]); }, lineTo(x, y) { points.push([x, y]); }, closePath() {} }, 621, 357.5, 140, aspect);
+    assert(points.every(([x, y]) => Number.isFinite(x) && Number.isFinite(y)), 'The slit and mature tear have finite projected edges');
+    const width = Math.max(...points.map(p => p[0])) - Math.min(...points.map(p => p[0]));
+    const height = Math.max(...points.map(p => p[1])) - Math.min(...points.map(p => p[1]));
+    assert(Math.abs(width / height / aspect - 1 / .9) < .12, 'The opening widens in its front-facing plane without a perspective tilt');
+  }
+  for (let angle = -Math.PI; angle < Math.PI; angle += .04) {
+    assert(Math.abs(quantumEdge(angle) - quantumEdge(angle + Math.PI * 2)) < 1e-10, 'The torn lip joins continuously around the aperture');
+    assert(quantumEdge(angle) > .32 && quantumEdge(angle) < .38, 'Ragged edges leave a clear physical passage');
+  }
+  // Recovery must obey the same opening fade, including a fully closed lip.
+  for (const opacity of [0, .15, 1]) {
+    const alphas = [], stack = [];
+    const recovery = { canvas: { width: 390 }, globalAlpha: opacity,
+      beginPath() {}, moveTo() {}, lineTo() {}, closePath() {}, scale() {},
+      save() { stack.push(this.globalAlpha); }, restore() { this.globalAlpha = stack.pop(); },
+      stroke() { alphas.push(this.globalAlpha); } };
+    drawQuantumCorona(recovery, 180, 12);
+    assert(alphas.length > 100 && alphas.every(a => a >= 0 && a <= opacity), 'Canvas recovery respects the scroll-controlled opacity instead of flashing at full brightness');
+  }
   assert.equal(maturePortal.x, 621); assert.equal(maturePortal.y, 357.5, 'The created opening settles directly ahead of the observer');
   const approachingPortal = introAperture(1242, 715, 3.1, { x: 600, y: 300 });
   assert.equal(maturePortal.worldRadius, approachingPortal.worldRadius, 'The mature entrance keeps its physical size while the camera advances');
@@ -103,9 +238,9 @@ export async function checkCurrentFeatures(server) {
     }
     previousIntroZ = frame.z;
   }
-  assert(introInputTarget(0, 0, 12 * .0045) > 0 && introInputTarget(0, 0, 12 * .0045) < .04, 'A light wheel still opens only a small amount');
+  assert(introInputTarget(0, 0, 12 * .0045) > 0 && introInputTarget(0, 0, 12 * .0045) < .06, 'A light wheel still opens only a small amount');
   assert(introInputTarget(0, 0, 120 * .0045) > .30, 'One normal wheel gesture opens about twice the previous amount');
-  assert(introInputTarget(0, .2, 100) <= .52, 'Wheel bursts keep a bounded lead rather than queue a full opening');
+  assert(introInputTarget(0, .2, 100) <= .85, 'Wheel bursts keep a bounded lead rather than queue a full opening');
   assert(introInputTarget(1, 1.2, -.05) < 1, 'Reverse input drops the pending forward lead');
   assert(Math.abs((introInputTarget(1, 1, .05) - 1) + (introInputTarget(1, 1, -.05) - 1)) < 1e-9, 'Opening input has identical sensitivity in both directions');
   for (const p of [2.75, 4.4]) assert(Math.abs(introScrollResponse(p - .00001).speed - introScrollResponse(p + .00001).speed) < .00001, 'Opening and tunnel speeds blend without a sudden step');
@@ -114,9 +249,9 @@ export async function checkCurrentFeatures(server) {
     for (let frame = 0; frame < fps; frame++) {
       const destination = introInputTarget(opening.seconds, opening.seconds, 100);
       opening = advanceIntroScroll(opening.seconds, opening.velocity, destination, 1 / fps);
-      assert(opening.velocity <= 1.25 + 1e-9, 'The quicker opening retains its velocity limit');
+      assert(opening.velocity <= 1.9 + 1e-9, 'The quicker opening retains its velocity limit');
     }
-    assert(opening.seconds > .95 && opening.seconds < 1.25, 'The opening responds sooner while retaining a controlled pace');
+    assert(opening.seconds > 1.5 && opening.seconds < 1.9, 'The opening responds sooner while retaining a controlled pace');
     let playback = { seconds: 4, velocity: 0 };
     for (let i = 0; i < fps; i++) {
       const next = advanceIntroScroll(playback.seconds, playback.velocity, 3.6, 1 / fps);
@@ -250,7 +385,7 @@ export async function checkCurrentFeatures(server) {
     for (const product of showcaseProducts) {
       window.location.hash = `#/showcase/${product.id}`;
       const markup = renderToStaticMarkup(React.createElement(VirgoPortfolio, { lang: 'eng', onEnterWorkspace() {} }));
-      assert.equal(markup.includes('class="screening-room"'), SHOWCASE_ENABLED, 'Public showcase routes mount the product ring');
+      assert.equal(markup.includes('worlds-showcase'), SHOWCASE_ENABLED, 'Public showcase routes mount the world selector');
       if (SHOWCASE_ENABLED) assert(markup.includes(`href="${product.url}"`));
       else assert(!markup.includes('href="#/showcase'), 'Public gallery entry links stay hidden');
     }
@@ -416,7 +551,7 @@ export async function checkCurrentFeatures(server) {
   };
   for (const [path, components] of [
     ['src/App.tsx', ['WavePageLoader']],
-    ['src/components/VirgoPortfolio.tsx', ['ProductShowcase', 'VirgoSceneBoundary', 'VirgoScene']],
+    ['src/components/VirgoPortfolio.tsx', ['WorldsShowcase', 'SingularityDust', 'VirgoSceneBoundary', 'VirgoScene']],
     ['src/components/VirgoScene.tsx', ['PortalGate', 'BlackHoleVortex', 'StellarPlasma']],
     ['src/components/VirgoTransit.tsx', ['VirgoPlanet', 'points']],
     ['src/components/BlackHoleVortex.tsx', ['BlackHoleAccretionMesh']],
@@ -446,8 +581,8 @@ export async function checkCurrentFeatures(server) {
     if (path.endsWith('VirgoScene.tsx')) assert(calls.has('contactPresence'), 'The live Contact panel has independent persistent visibility');
     if (path.endsWith('VirgoScene.tsx')) assert(calls.has('readingOrbitAngle') && calls.has('readingOrbitPoint'), 'Both station meshes and labels use the local reading orbit');
     if (path.endsWith('VirgoPortfolio.tsx')) {
-      assert((calls.get('openFlowShowcase') ?? 0) >= 3, 'Wheel and native-scroll paths must still enter the showcase automatically');
-      assert(attributes.get('ProductShowcase')?.has('onExit'), 'The gallery must still continue to the neighboring story chapter');
+      assert(!calls.has('openFlowShowcase'), 'The gallery no longer interrupts wheel or native story scrolling');
+      assert(attributes.get('WorldsShowcase')?.has('onClose'), 'The worlds retain an explicit return to Contact');
     }
   }
 
@@ -466,5 +601,5 @@ export async function checkCurrentFeatures(server) {
   assert(vortexSource.includes('rayResolution = resolution'), 'Ray resolution strictly matches shade resolution to prevent 2x2 artifacts');
   assert(vortexSource.includes('scale > .75'), 'Cadence scale preserves high minimum render quality');
 
-  console.log('PASS: nine product destinations/previews, bilingual showcase routes/actions, automatic gallery entry/exit wiring, connected straight flight and scenery variants, invalid-route recovery, wave loader, WebGL recovery, black-hole wiring, and reversible/refresh-rate-independent gallery motion.');
+  console.log('PASS: nine product destinations/previews, bilingual world routes/actions, explicit world-selector return wiring, connected straight flight and scenery variants, invalid-route recovery, wave loader, WebGL recovery, black-hole wiring, and reversible/refresh-rate-independent gallery motion.');
 }

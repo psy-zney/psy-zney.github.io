@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { startIntroAudioFromGesture, stopIntroAudio } from "../utils/audioPreloader";
+import { playPortfolioSfx } from "../utils/portfolioAudio";
 
 interface WavePageLoaderProps {
   onFinish?: () => void;
@@ -42,6 +43,9 @@ export function WavePageLoader({
         finished = true;
         setFadingOut(true);
         stopIntroAudio(); // Dừng ngay lập tức khi hoàn thành tải
+        if (document.documentElement.dataset.journeySound !== "off") {
+          playPortfolioSfx("loaderComplete");
+        }
         finishTimer = window.setTimeout(() => {
           onFinishRef.current?.();
         }, reduced ? 0 : 350);

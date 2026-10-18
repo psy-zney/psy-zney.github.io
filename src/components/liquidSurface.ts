@@ -41,11 +41,11 @@ export const liquidSurfaceGLSL = `
     float water=exp(-abs(detail.r*.6+detail.g*.4-.53)*36.);
     gleam=(caustic*.65+small+water*.36)*(.25+n.r*.75);
     float heat=smoothstep(.58,.89,.5+.5*sin(a*2.-p.y*2.+bend.y*5.));
-    vec3 body=mix(vec3(.035,.025,.19),vec3(.20,.045,.30),heat);
-    vec3 shine=mix(vec3(.26,.43,1.),vec3(.75,.34,1.),heat);
-    shine=mix(shine,vec3(.22,.83,.90),smoothstep(.64,.86,n.g)*(1.-heat)*.75);
-    return body*(.14+n.r*.32+fold*.30+detail.b*.16)+shine*gleam*1.3
-      +vec3(.66,.73,.85)*pow(gleam,3.)*.22;
+    vec3 body=mix(vec3(.018,.022,.055),vec3(.085,.052,.12),heat);
+    vec3 shine=mix(vec3(.39,.48,.68),vec3(.66,.55,.77),heat);
+    shine=mix(shine,vec3(.50,.65,.70),smoothstep(.64,.86,n.g)*(1.-heat)*.75);
+    return body*(.14+n.r*.32+fold*.30+detail.b*.16)+shine*gleam*.95
+      +vec3(.91,.87,.81)*pow(gleam,3.)*.48;
   }
 `;
 

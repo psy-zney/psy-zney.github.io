@@ -1,6 +1,6 @@
 # Các tính năng cần giữ khi đổi model
 
-Cập nhật ngày 16/10/2026. Đây là baseline của bản build hiện tại, áp dụng cho
+Cập nhật ngày 18/10/2026. Đây là baseline của bản build hiện tại, áp dụng cho
 Codex, Gemini và model khác. Các thay đổi đang nằm trong working tree cũng là
 công việc của chủ repo; không quay về bản Git cũ để làm check chạy qua.
 
@@ -10,6 +10,409 @@ chỉ tiến/lùi theo Z lúc chuyển trạm. Chủ repo xác nhận sau đó: 
 sao lúc đọc; phép quay góc nhìn cục bộ không làm bẻ hướng camera lúc bay.
 
 ## Những gì cần giữ
+
+**Hệ thống âm thanh nền vũ trụ và hiệu ứng tương tác (BGM & SFX), 18/10:**
+tích hợp hệ thống âm thanh không gian procedural Web Audio API (`src/utils/portfolioAudio.ts`)
+kết hợp `VirgoJourneyAudio`:
+- Nhạc nền vũ trụ (Cosmic Ambient Pad & Sub-drone) đa tầng (55Hz sub-bass,
+  harmonic chord pad A2-E3-G3-B3 và stardust shimmer) vận hành mượt mà,
+  không độ trễ (0ms latency), không phụ thuộc tải file ngoài.
+- Khi vào Hố đen (`singularityEnter`): Tần số BGM được lọc qua low-pass filter
+  (hạ xuống 180-250Hz) mô phỏng không gian bị nén lại bởi lực hấp dẫn; khi ra Lỗ Trắng
+  (`singularityExit`): Tiếng bừng sáng giải phóng năng lượng và phục hồi âm phổ.
+- Bộ Sound Effects (SFX) cho từng event: `hover` (micro-tick tinh thể siêu nhẹ
+  1750Hz với decay 18ms trên các thẻ dự án, tab kỹ năng, link và nút điều khiển),
+  `click` (tactile blip 620Hz->280Hz), `drawerOpen`/`drawerClose` (menu Chapters),
+  `modalOpen`/`modalClose` (modal Case Study & CV), `cardSlide` (chuyển đổi 9 sản phẩm
+  trong 3D Worlds Showcase), `muteOn`/`muteOff` (chime báo trạng thái âm thanh),
+  và `loaderComplete` (chime hoàn tất trang loading).
+- Đảm bảo nghiêm ngặt: Chờ tương tác người dùng trước khi phát âm thanh (no autoplay),
+  ngắt tiếng ngay dưới 100ms khi Mute (`journey-audio-muted`), tự động tạm dừng khi
+  chuyển tab (`document.hidden`), an toàn với SSR và pass toàn bộ bài kiểm tra.
+
+**Miệng lỗ trắng có chiều sâu, màu hầm tiết chế, 18/10:** bỏ quầng thoát
+Canvas; shader chiếu tia từ camera đang tiến trong một họng hữu hạn đến
+mặt thoát z=0. Bề mặt khí trắng sáng nằm quanh miệng; showcase được thấy
+qua lỗ mở, giữ preview phẳng. Camera vượt miệng thì bề mặt ra khỏi khung,
+không co một quả cầu trên sản phẩm hoặc quay đầu camera. Miệng xuất hiện
+từ cuối hầm để nối phối cảnh, rồi tiếp tục pha thoát 5,6–7,8 như cũ.
+Bỏ mặt nạ tròn ở chân trời; cảnh thật chìm dần vào tối trước khi hiện
+hầm. Hầm giảm saturation/tím, nền thép/xám, giảm optical cone và bụi còn
+140 hạt mảnh. Giữ asset gốc, camera orbit, handoff 4,3 và rollback tuyệt đối.
+Đây là cách dựng hình giả định nghệ thuật, không phải mô phỏng lỗ trắng
+đã quan sát. Thay ghi chú glow thoát và màu hầm trước đây bên dưới.
+Kiểm tra shader thay quota pixel sáng >140 bằng tương phản chi tiết >14
+vì chủ repo yêu cầu giảm sáng/màu; giữ yêu cầu vùng hầm đọc được >20%,
+đồng thời thêm chroma <0,22. Kiểm tra miệng thoát: vùng nhìn xuyên tăng
+theo camera tiến, trung tâm không đổi pixel, toàn màn hình sạch khi vượt
+miệng, tua ngược họng và hầm đều có 0 pixel sai khác. Bộ shader PASS
+desktop/phone/landscape và phục hồi asset lỗi ở `artifacts/white-hole-refinement/`.
+`pnpm run check` PASS; worlds PASS desktop/phone gồm camera, shader,
+vào/ra, điều hướng và rollback. Đã xem ảnh hầm và lỗ trắng trong hành
+trình thật: `artifacts/white-hole-journey/`. `check:ui` tổng vẫn dừng ở
+assertion con trỏ baseline dòng 99; chưa đo cảm giác/FPS thiết bị thật.
+
+**Bỏ lớp hiệu ứng dư ở hai đầu hố đen, 18/10:** theo ảnh phản hồi mới,
+bỏ 88 đường vàng Canvas và vòng viền cyan khi vào; bỏ lớp vệt bụi
+ba tầng và wake phụ vẽ đè khi ra lỗ trắng. Đĩa vật chất vẫn do shader
+ray-traced thể hiện; giữ lensing, camera xoắn, lòng hầm tinh vân, ánh thoát
+lỗ trắng và rollback theo cùng thời gian. Không thay bằng lớp trang trí
+mới. Quy tắc này thay yêu cầu vệt spaghetti Canvas / ba tầng bụi lỗ trắng
+trong ghi chú cũ. Bộ worlds kiểm tra không có nét stroke phụ ở hai pha.
+Ánh thoát lan rộng và giảm theo exp(-10p)*(1-p), không co thành quả cầu
+trắng đục che preview. Lớp tối giảm nhanh theo (1-p)^5; giữ pha thoát và
+timeline cũ, nên rollback vẫn dùng đúng ảnh tại cùng tọa độ thời gian.
+Kiểm chứng: `pnpm run check` PASS; worlds PASS desktop và phone, gồm
+shader, vào/ra, điều hướng và rollback. Theo dõi Canvas xác nhận không
+có stroke vẽ đè trong toàn pha bồi tụ và pha thoát. Đã xem ảnh quỹ đạo
+và thoát lỗ trắng bản cuối; ảnh/báo cáo ở `artifacts/passage-cleanup-final/`.
+`check:ui` tổng vẫn dừng tại assertion con trỏ baseline dòng 99.
+
+**Auto ưu tiên High, yêu cầu mới nhất 18/10:** bỏ nút độ nét công khai.
+Intro, scene Virgo và gallery luôn dùng Auto, bỏ qua lựa chọn Low/High cũ
+trong localStorage. Khởi đầu High (vẫn tôn trọng Save-Data), ưu tiên lấy
+mẫu 1,5× trên màn hình 1× trong trần GPU hiện có, tự giảm sau nhiều khung
+chậm liên tiếp và phục hồi khi ổn định. Không đổi camera hoặc timeline.
+Graphics trong workspace legacy vẫn giữ lựa chọn riêng như trước.
+Quy tắc này thay phần đồng hồ SVG và Auto native trong ghi chú cũ bên dưới.
+Kiểm chứng: `pnpm run check` PASS. Bộ render quality PASS desktop, phone
+và reduced motion với cấu hình Low cũ trong localStorage; intro/scene/
+gallery vẫn bắt đầu ở mức nét High. Đổi preference bằng event không làm
+intro chạy hoặc giảm nét. Ảnh và báo cáo: `artifacts/render-auto/`.
+Đã xem ảnh Contact desktop/phone không còn nút. `check:ui` tổng vẫn gặp
+assertion con trỏ baseline dòng 99; chưa benchmark FPS thiết bị thật.
+
+**Tinh giản HUD theo ảnh chủ repo, 18/10:** bỏ bản đồ chòm sao góc trên
+phải cùng chữ VIRGO, bộ đếm chương `03 / 07` và thanh tiến trình sát đáy.
+Không tạo vùng nhấn vô hình thay thế; giữ nút Chapters và điều hướng
+wheel/bàn phím. Chòm sao mở đầu và các sao trong không gian vẫn giữ nguyên.
+Yêu cầu này thay yêu cầu giữ mini-map trong các ghi chú cũ. Kiểm tra SSR
+xác nhận các phần HUD đã bỏ không còn trong DOM.
+Kiểm chứng: `pnpm run check` PASS; Chrome xác nhận DOM desktop/phone và
+đã xem ảnh `artifacts/hud-cleanup/*-contact.png`. `check:ui` tổng vẫn dừng
+ở assertion con trỏ baseline dòng 99.
+
+**Đồng hồ SVG độ nét, 18/10:** thay select công khai bằng ba vùng nhấn SVG:
+Low xanh bên trái, Auto trắng ở giữa, High đỏ bên phải. Kim và nhãn nhỏ chỉ
+mode đang chọn. Đồng hồ thu còn 64×52px; vùng nhấn trong suốt lớn hơn hình
+vẫn giữ >=44px. Tooltip ngắn hiện khi đổi mode, hover hoặc focus.
+Giữ preference lưu local, đồng bộ giữa các scene, Save-Data, độ nét Retina
+và xử lý cadence như trước; không đổi trần ngân sách render.
+High công khai yêu cầu tối thiểu 1,5× trên màn hình 1× cho intro, scene và
+live gallery (2,25 lần số mẫu); vẫn chịu giới hạn 16,6 triệu pixel, DPR 3
+và kích thước GPU. Auto dùng mật độ native và tự thích ứng, Low giữ giới
+hạn DPR 1 và ray target hố đen 768. Trên màn hình Retina hoặc máy đủ khỏe,
+Auto có thể nhìn gần High. Không đổi camera, thời gian hay nội dung để tạo
+khác biệt giả. Workspace legacy vẫn giữ chính sách mật độ cũ.
+Arrow/Home/End và Enter/Space điều khiển được, không làm hành trình cuộn;
+mỗi vùng có hit target >=44px và tên radio cho trình đọc màn hình.
+Không hiện Balanced ở control công khai; giá trị medium cũ được chuyển
+sang Auto khi mở portfolio. Tier medium và lựa chọn Graphics trong
+workspace legacy vẫn còn. Reduced motion bỏ chuyển động kim và tooltip.
+
+`check-render-quality-ui.mjs` dùng SVG radio thay native select; giữ kiểm
+tra DPR thực, đổi chất lượng không làm tiến intro, resize/màn hình mới,
+Contact/CV không bị che và live gallery. Bổ sung thứ tự ba mode, hit target,
+chọn Auto bằng bàn phím và lưu preference. Ảnh icon ở `artifacts/render-sharpness/`.
+
+Kiểm chứng SVG nhỏ và mức nét: `pnpm run check` PASS. Bộ render quality
+PASS desktop 1x, phone 3x, 4K 1x và reduced 2x, gồm ảnh ba trạng thái,
+hit target, bàn phím, đổi chất lượng không làm tiến camera, resize và link
+Contact/CV không bị che. Desktop đo High 2160×1350 / Auto 1440×900 trên
+khung 1440×900; ray target Contact High 2048 / Low 768. 4K vẫn chịu trần
+pixel. Đã xem ảnh Low/Auto/High nhỏ, Contact desktop và phone. Báo cáo ở
+`artifacts/render-sharpness/report-desktop.json` và
+`artifacts/render-sharpness/report-phone-reduced-4k.json`.
+`check:ui` tổng vẫn dừng ở assertion con trỏ baseline dòng 99.
+
+**Lòng hầm tinh vân theo ảnh mới, 18/10:** riêng đoạn xuyên hố đen dùng
+texture tinh vân gốc được tạo cho hiệu ứng này, chiếu thành ba lớp khí
+xanh/cyan/tím với sợi sáng và khoảng tối giữa các nhánh. Không thay ảnh
+sản phẩm hoặc GLB. Asset nằm ở `public/img/fx/wormhole-nebula-v1.webp`;
+nguồn tạo và prompt đầy đủ trong [ghi chú asset](wormhole-nebula-asset.vi.md).
+
+420 hạt gần/xa chạy theo đường xoắn và có đuôi cong, lấy vị trí tuyệt đối
+từ cùng thời gian với shader. Đi tới thấy bụi lướt ra ngoài; lùi khớp lại
+đúng trạng thái trước. Giữ timeline 0–3,2 / 3,2–5,6 / 5,6–7,8, handoff,
+camera, lỗ trắng, các cổng showcase và reduced motion. Không thêm quay
+camera vào đường bay giữa sao hoặc sửa intro. Texture có mipmap và
+anisotropy tối đa 4; crossfade tại mép tile tránh vết ghép quanh hầm.
+Nếu texture lỗi, shader khí procedural vẫn chạy; giải phóng texture khi
+unmount và xử lý callback load muộn sau dispose.
+
+`check-nebula-ui.mjs` kiểm tra render thật desktop/phone/landscape, tua
+ngược cùng tọa độ phải cho 0 pixel khác, và phục hồi khi chặn asset.
+Bộ worlds vẫn kiểm tra pha hầm có texture đã nạp, lỗ trắng và rollback.
+
+Kiểm chứng lòng hầm mới: `pnpm run check` PASS, bộ worlds PASS cả năm
+viewport; đã xem ảnh hầm thực trên desktop và phone. Bộ nebula PASS
+desktop/phone/landscape với 0 pixel khác khi tua ngược và PASS trường hợp
+texture bị chặn. Ảnh và số đo: `artifacts/nebula-passage/`; ảnh hành trình
+thật: `artifacts/worlds-showcase/*-throat.png`. `check:ui` tổng vẫn dừng ở
+assertion con trỏ baseline dòng 99. Chưa đo FPS/touch trên thiết bị thật.
+
+**Cụm cổng trên vòm vũ trụ, theo phác thảo mới 18/10:** thay hàng ba cổng
+bằng chín vị trí cố định trên một mặt cầu lõm nông. Cổng đang chọn tiến
+ra giữa, lớn và chính diện; cổng cũ thu nhỏ về đúng địa chỉ phía sau.
+Cổng đã qua và chưa tới đều còn trên nền, kể cả landscape. Mỗi nhịp cuộn
+lặp cùng chuyển động lấy nét có phối cảnh XYZ/yaw/pitch/roll nhẹ; không
+thêm autoplay hoặc xoay camera hành trình. Giữ các mốc đầu/cuối, wheel
+ngược ở đích đầu về Contact, nút Về Virgo và Escape như cũ.
+
+DOM và plasma dùng cùng phép chiếu: shader lấy nghịch đảo homography của
+CSS matrix hiện tại để rim bám đúng mặt cổng cả khi nghiêng và đang tiến
+ra. Chín cổng vẫn dùng một renderer, 60Hz trong chuyển động và 24Hz khi
+đứng; dòng năng lượng nối các địa chỉ theo đường cong. Preview trung tâm
+giữ mặt phẳng, không displacement hoặc chromatic aberration. Quy tắc này
+thay bố cục hàng ba và ẩn cổng nền ở landscape trong ghi chú cũ bên dưới.
+
+Kiểm chứng bố cục vòm: `pnpm run check` PASS; bộ worlds PASS năm viewport,
+gồm đủ chín cổng nền, độ sâu/góc nghiêng thật, lấy nét lặp qua wheel, live
+preview và rollback. Đã xem ảnh desktop, bước tiếp theo, đích cuối, phone
+và landscape. Chỉnh cuối riêng landscape giữ khoảng hở dưới heading,
+kiểm tra lại PASS tại `artifacts/worlds-showcase/landscape-refinement/`;
+report năm viewport vẫn giữ ở thư mục cha. `check:ui` vẫn dừng tại assertion
+con trỏ baseline dòng 99; chưa benchmark FPS trên thiết bị thật.
+
+**Cosmic optics và time rewind, 18/10:** nền showcase là vũ trụ sâu với
+ba cổng plasma nối bằng dòng năng lượng, dùng chung một WebGL renderer.
+Ảnh sản phẩm gốc nằm trên lớp DOM phẳng, chiếm hơn 70% đường kính cổng;
+không đưa ảnh hoặc chữ qua displacement/chromatic aberration. Khi ở đầu
+hoặc cuối danh sách, vẫn cho thấy ba đích; chín URL và thứ tự điều hướng
+giữ nguyên. Landscape ngắn chỉ hiện cổng đang chọn để dành chỗ cho caption.
+
+Mask ngoại vi phải bằng đúng 0 ở bán kính màn hình chuẩn hóa <=0,60;
+lensing và tách RGB chỉ tác động bên ngoài. Nón quang học xanh/tím dùng
+chung GLSL cho intro và passage, biên độ nhỏ theo pha chuyển động. Tham số
+beta=1,16 là giả định nghệ thuật; quan hệ Cherenkov thực chỉ áp dụng trong
+môi trường có beta*n>1. Không mô tả hiệu ứng này là mô phỏng vật lý đầy đủ.
+
+Rollback lấy lại cùng thời gian tuyệt đối cho camera, bank, khí bồi tụ,
+hầm và bụi lỗ trắng. Giữ ba tầng bụi với seed cố định, không tích phân vị
+trí qua từng frame. Chỉ cổng Contact dùng quỹ đạo xoắn cục bộ; các chặng
+giữa sao và orbit đọc giữ hợp đồng cũ. Escape giữa chuyến bay vẫn quay về
+từ vị trí hiện tại. Khi unmount, hủy RAF và giải phóng tài nguyên GPU;
+React effect replay phải dùng canvas WebGL mới, tránh tái dùng context đã
+bị forceContextLoss. Chi tiết và công thức: [kiến trúc đồ họa](graphics-architecture.vi.md).
+
+Kiểm tra pixel tia intro giữ ngưỡng sáng, aspect >3 và độ dày <8px; đo
+thành phần sáng liên thông của thân tia để sao nền rời rạc trong crop không
+bị tính thành mép tia. Lượt landscape phát hiện một pixel sao rời ở y=149
+trong khi thân tia ở y=157–159; ảnh đối chiếu nằm trong
+`artifacts/portal-open-flow/intro/landscape-shot-failure.png`.
+
+Kiểm chứng cosmic optics: `pnpm run check` PASS. Bộ worlds PASS cả năm
+viewport; kiểm tra GLSL thực trên checkerboard ghi nhận 0 pixel trung tâm
+đổi màu và 21.056 pixel ngoại vi thay đổi. Đã xem ảnh showcase desktop/
+phone/landscape, quỹ đạo, hầm và thoát lỗ trắng. Intro PASS desktop/tablet/
+phone trong `intro/report.json`, landscape/reduced trong
+`intro/report-landscape-reduced.json`; thân tia landscape đo 3px, loại đúng
+1 pixel sao nền rời. `pnpm run check:ui` vẫn dừng tại assertion con trỏ
+baseline dòng 99, trước khi có kết quả hồi quy tổng. Không tuyên bố suite
+này PASS. Chưa đo FPS hoặc touch trên thiết bị thật.
+
+**Quỹ đạo xoắn theo ảnh vẽ đỏ, 18/10:** chủ repo yêu cầu góc nhìn bị cuốn
+vòng quanh hố đen rồi mới thu vào lõi. Camera cục bộ chạy 1,45 vòng theo
+`singularityView`, dịch XYZ thật và bank nhẹ; renderer hố đen đổi góc
+observer tương ứng, vẫn giữ góc orbit thủ công của người xem. Đây là ngoại
+lệ riêng tại cổng Contact; không đổi đường bay giữa các sao. Observer ray
+được cập nhật tối đa 12Hz, ray/shade cùng 768 desktop hoặc 512 phone khi
+đang xoắn để giới hạn chi phí; bên ngoài dùng ngân sách chất lượng cũ.
+
+Chuyển cảnh giờ dài 7,8s: xoắn 3,2s → hầm khí 2,4s → lỗ trắng 2,2s.
+Handoff ở 4,3s. Chân trời tối nở vượt khung hình trước khi hầm lên sáng.
+Hầm dùng shader khí tím/xanh, vân sáng advection, xoáy theo chiều sâu và
+bụi cong; thay các vòng nét đơn giản trong đoạn bay. Reduced motion bỏ
+chờ kể cả khi preference đổi giữa chuyến bay. Rollback vẫn đảo tọa độ
+camera, bụi và hiệu ứng. Các mốc 5,4s và cấm orbit cục bộ ở lịch sử bên
+dưới được thay riêng bởi yêu cầu mới này. Kiểm tra bổ sung đo pose camera
+thật, chuyển sang cả hai phía và đi đủ một vòng trước khi vào hầm.
+Kiểm chứng lượt này: `pnpm run check` PASS; bộ worlds PASS cả năm viewport
+với shader/runtime không lỗi, camera thực đi đủ vòng, chiều về và Escape
+giữa chuyến bay. Đã xem ảnh quỹ đạo desktop/tablet và hầm khí. Pose từng
+frame lưu ở `artifacts/worlds-showcase/*-spiral-poses.json`. `check:ui`
+vẫn dừng tại assertion con trỏ baseline dòng 99. Chưa đo FPS máy thật.
+
+**Spaghettification, lực hút và rollback theo phản hồi 18/10:** tham khảo
+[NASA SVS – Black Hole Accretion Disk](https://svs.gsfc.nasa.gov/13326/) và
+[NASA – Anatomy](https://science.nasa.gov/universe/black-holes/anatomy/).
+Khí thật trong shader đĩa chạy clock nhanh 3,2 lần, thêm advection hướng vào
+trong; giữ ray Kerr, vùng bóng, đĩa phía trước và cache tia. Clock tiếp tục
+khi đang vào hố đen. Sợi vật chất có đầu rơi nhanh hơn đuôi: quay nhiều vòng,
+bán kính thu dần, kéo dài và mỏng hơn trước khi mất vào lõi. Shader thấu kính
+bóp méo ảnh WebGL đang render bằng trường biến dạng liên tục; không ghép các
+dải ảnh gây đường cắt. Đây là diễn họa, không phải mô phỏng GRMHD.
+
+Nút Về Virgo, Escape ở bộ chọn và cuộn ngược tại thế giới đầu chạy ngược
+cùng timeline 5,4s. Escape/cuộn ngược trong lúc đang đi đảo ngay từ tọa độ
+hiện tại. Handoff route dùng mốc trong timeline, không timer riêng. Camera
+trả chiều sâu từ lõi ra Contact theo trục cũ; không tự quay camera. Tab ẩn
+dừng tiến độ. Reduced motion về ngay. `singularityMotion.ts` được kiểm tra
+co bán kính, quay vòng, độ mảnh, đầu/đuôi và đối xứng timeline hai chiều;
+`check-worlds-ui.mjs` kiểm tra quay về bằng nút, wheel và hủy giữa đường.
+Kiểm chứng cuối: `pnpm run check` PASS; bộ worlds PASS desktop/tablet/
+phone/landscape/reduced với quay về bằng nút, cuộn ngược tại thế giới đầu,
+Escape khi đang bay và xác nhận cảnh WebGL được lấy để bóp méo. Đã xem ảnh
+spaghettification và thấu kính trên desktop/phone; sửa đường ghép ảnh bằng
+shader liên tục rồi chạy lại trên source cố định. `check:ui` vẫn dừng ở
+assertion con trỏ baseline dòng 99. Chưa đo FPS/touch máy thật.
+
+**Sửa theo phản hồi ảnh 18/10:** bỏ ảnh oval sát viền cổng. Mỗi cửa có
+lòng hầm chiếu phối cảnh nhiều lớp với vật liệu khí mềm và hạt theo độ sâu;
+preview thật nằm ở miệng xa. Chuyển cảnh giữ một canvas liên tục 5,4 giây:
+0–1,8s vật chất chuyển động quanh mặt phẳng đĩa bồi tụ rồi thu vào lõi;
+1,8–3,2s xuyên lòng hầm tới cửa sáng; 3,2–5,4s lõi trắng thu nhỏ và vật chất
+phóng ra ngoài, lộ dần các thế giới. Không thay bằng chớp sáng rồi cắt cảnh.
+Route có thể chuyển dưới canvas, canvas chỉ gỡ khi pha thoát hoàn tất.
+Reduced motion bỏ toàn bộ đoạn chờ. Đây là diễn họa Canvas theo phối cảnh,
+không phải mô phỏng tương đối tính hoặc phá hủy mesh gốc.
+`check-worlds-ui.mjs` kiểm tra đủ ba pha và chụp ảnh từng pha.
+Kiểm chứng lượt sửa: `pnpm run check` PASS; bộ worlds PASS trên cả năm
+viewport với ba pha accretion/throat/white-hole-exit. Đã xem ảnh vật chất
+quanh đĩa, lõi trắng phóng hạt và các cửa thế giới. Lượt đầu tablet bị chồng
+nút/footer, đã sửa bố cục và chạy lại trên source cố định. `check:ui` vẫn
+dừng tại assertion con trỏ baseline dòng 99. Chưa đo FPS trên máy thật.
+
+**Thiết kế lại showcase theo yêu cầu chủ repo, 18/10/2026:** thay gallery
+tự vào giữa Porrima → Skills bằng vùng thế giới sau hố đen Contact.
+Nút/Enter trên cổng cuối bay thẳng, bụi hội tụ rồi ánh sáng mở ra bộ chọn.
+Workspace/OS vẫn giữ route cũ để bảo toàn nội dung, nhưng không còn là
+đích của cửa hố đen trong luồng chính.
+
+Bộ chọn có một cổng chính, hai cổng lân cận, dùng preview gốc và màu riêng
+của chín sản phẩm. Mỗi thế giới giữ `#/showcase/:id`, website và case study.
+Một cử chỉ wheel chọn một thế giới; đuôi trackpad không nhảy nhiều đích,
+đảo chiều nhận ngay. Phím mũi tên/Home/End, vuốt dọc và nút trước/sau cùng
+hoạt động. Enter tiến vào gallery cong để xem và dùng live preview. Đóng
+gallery về bộ chọn; đóng bộ chọn về đúng hố đen cuối Contact. Case study
+trở về đúng sản phẩm và chế độ xem trước đó.
+
+Nhịp hành trình: bước wheel tối đa 0,22 viewport, lead 0,32 viewport;
+rút track About/More projects từ 300/280 xuống 240/220vh. Intro dùng gain
+0,95, bước 0,55, lead 0,85, tốc độ 1,9 và gia tốc 7,2; vẫn mở cổng bằng
+một cử chỉ, cử chỉ tiếp mới bay, giữ dừng/lùi và hướng camera cũ. Vật liệu
+hầm giảm bão hòa tím, tăng suy giảm ánh sáng theo chiều sâu, giữ rim
+trắng tím và sợi ánh lạnh. Không thay asset gốc.
+
+Các yêu cầu tự vào gallery tại Porrima và Contact → workspace trong lịch
+sử bên dưới được thay bằng luồng mới. Kiểm tra mới:
+`node scripts/check-worlds-ui.mjs`, ảnh/report tại `artifacts/worlds-showcase/`.
+Bộ mới đã PASS desktop/tablet/phone/landscape/reduced: bố cục, burst/reverse,
+phím, case-study return, gallery và cửa hố đen. `check:ui` vẫn dừng ở lỗi
+con trỏ baseline, không coi bộ tổng là PASS. Hiệu ứng bụi hiện là lớp hạt
+hội tụ cùng chuyến bay, chưa phải phá hủy từng mesh hay mô phỏng vật lý.
+
+Kiểm chứng cuối 18/10: `pnpm run check` PASS (còn cảnh báo bundle >500kB).
+Intro PASS desktop/phone với assertion màu giữ nguyên, reduced PASS riêng
+sau khi chuyển tọa độ click test khỏi nút chất lượng sang giữa cổng.
+Đã xem ảnh desktop/phone/landscape, hố đen khi vào và cổng mở đầu.
+`check-scroll-ui.mjs` PASS desktop/phone; reduced dừng tại assertion mã
+trạm orbit dòng 65 (2 thay vì 1), chưa xác minh nguyên nhân. Không ghi bộ
+scroll tổng là PASS. Chưa đo FPS hoặc touch/âm thanh trên thiết bị thật.
+
+**Ưu tiên chi tiết và độ nét trên mọi màn, 17/10:** cảnh Virgo, intro,
+gallery và workspace dùng mật độ pixel thật, tối đa DPR 3 ở High; Medium
+tối đa 2, Low tối đa 1. Bảo vệ GPU bằng ngân sách lần lượt 16,6 / 8,3 / 2,1
+triệu pixel và giới hạn kích thước thiết bị, kể cả màn ultrawide/8K. Reduced
+motion giữ độ nét, chỉ giảm chuyển động. Đổi màn/zoom/resize cập nhật backing
+buffer cả khi cảnh dùng demand render, không dựng lại camera.
+Auto khởi đầu High (Save-Data vẫn Low), hạ mật độ sau nhiều cửa sổ khung hình
+chậm và phục hồi khi máy khỏe lại; hidden/pause không làm giảm chất lượng.
+Lựa chọn độ nét yên ở góc trên trái, tách khỏi footer Contact/CV: Auto, Nét tối đa, Cân bằng,
+Tiết kiệm; dùng chung preference với Graphics trong workspace và lưu local.
+Nét tối đa bỏ hạ mật độ theo cadence, vẫn giữ trần tài nguyên thiết bị.
+Workspace giữ cơ chế đổi tier tự động cũ; High tăng shadow map lên 2048².
+MSAA bật cho cảnh chính/workspace; gallery giữ MSAA và ambient cap 24/18.
+Liquid intro shade đủ backing buffer thay vì 85% kích thước CSS; atlas chữ
+gấp đôi mỗi chiều, các tam giác lấy thêm texel/overlap để không rạn glyph ở
+đường ghép. Hố đen chọn LOD theo kích thước chiếu, tối đa High 2048²,
+Medium 1536², Low 768²; khi đổi góc tối đa 1280² rồi trả chi tiết khi ổn định.
+Giữ rayResolution = resolution, cache tia, bloom và khóa resolution khi entry.
+Không thay ảnh/model gốc, palette, hình cổng, camera, orbit đọc hay input.
+Check logic trong `check-current-features.mjs` giữ native Retina/phone/4K,
+giới hạn GPU, hạ/phục hồi cadence và pause. Browser check bổ sung:
+`node scripts/check-render-quality-ui.mjs http://127.0.0.1:5183/`; ảnh/report
+ở `artifacts/render-sharpness/`, đo buffer thật, MSAA, liquid, đổi chất lượng,
+resize, chuyển DPR khi reduced, gallery và workspace.
+Kiểm chứng: `pnpm run check` PASS trên source cuối. Render QA PASS desktop
+1440×900 DPR 1/2, phone 390×844 DPR 3, 4K 3840×2160 DPR 1 và reduced DPR 2;
+workspace Retina PASS. Bắt lỗi DPR không cập nhật ở cảnh tĩnh, đã thêm fallback
+nhẹ mỗi giây và xác nhận chuyển 2→3→2 mà không bật lại animation. Đã sửa chồng
+ô chọn/CV bằng vị trí góc trên trái, đo lại Contact trên năm viewport desktop,
+tablet, phone, landscape và 4K đều PASS. Intro bản cuối và showcase đều PASS
+desktop/phone/reduced; đã xem ảnh chữ trên vách, cổng, scene Retina/4K, hố đen,
+workspace, gallery và Contact phone. `quality-summary.json` tổng hợp các lượt
+chạy, report gốc giữ các lỗi đã bắt trong quá trình sửa. `check:ui` cuối vẫn
+dừng ở lỗi con trỏ baseline `check-ui.mjs:98`; không ghi bộ tổng là PASS.
+Chưa đo FPS, touch/âm thanh trên thiết bị thật; build còn cảnh báo chunk >500 kB.
+
+**Thân tia rõ, bỏ quả cầu nổ, 17/10:** ảnh phản hồi cho thấy xung tròn quá
+lớn che mất tia. Thay đĩa/halo bằng một thân tia trắng tím mảnh, chiếu theo
+Z từ cạnh trục nhìn vào sao đích để còn thấy chiều dài; camera vẫn chính
+diện, tia không bay từ đáy lên. Điểm chạm chỉ lóe trong bán kính tối đa 9px,
+không có khối sáng lớn. Giữ một tia, thứ tự chạm/mở, scroll/reverse và toàn
+bộ hành trình. Chốt này thay yêu cầu cũ giữ tâm của cả đuôi tia trùng đích.
+Check UI đo tỷ lệ dài/mỏng trên pixel thật để không cho quả cầu PASS nữa.
+Bằng chứng: `artifacts/visible-portal-beam/`.
+Kiểm chứng cuối ở `final/`: `pnpm run check` PASS; intro desktop/phone/
+reduced PASS, đã xem chuỗi tia gần/đang bay/chạm trên desktop và phone.
+Lượt đầu phone FAIL vì thân tia thu ngắn, lẫn quầng sao; đã sửa gia tốc
+chiếu theo chiều sâu, giữ nguyên ngưỡng dài/mỏng và chạy lại cả ba chế độ.
+UI tổng vẫn dừng ở lỗi con trỏ baseline dòng 98. Chưa thử tablet/landscape,
+FPS, touch/âm thanh máy thật.
+
+**Tia bắn dọc trục chính diện, 17/10:** theo chỉnh góc tiếp theo, không
+vẽ tia từ đáy màn hình bay lên. Người xem nhìn dọc thân tia: lõi trắng tím
+và đuôi sáng cùng tâm cổng, thu nhỏ theo phối cảnh khi đi xa vào chiều sâu,
+chạm sáng rồi mở cổng. Chỉ một xung, không lắc/di chuyển camera hoặc bầu
+sao; giữ các mốc cuộn, lùi và cổng plasma cũ. Logic kiểm tra tâm X/Y cố
+định và bán kính thu theo Z; UI đo pixel trên mặt tia ngoài sao trung tâm.
+Bằng chứng: `artifacts/frontal-portal-shot/`.
+Kiểm chứng: `pnpm run check` PASS; intro desktop/phone/reduced PASS, đã
+xem ảnh tia chính diện và điểm chạm trên desktop/phone. UI tổng vẫn dừng
+ở lỗi con trỏ baseline dòng 98. Chưa chạy lại tablet/landscape, đo FPS hoặc
+thử touch/âm thanh trên thiết bị thật.
+
+**Một tia bắn rồi mở cổng, 17/10:** cuộn đầu bắn một tia thẳng tím trắng
+từ phía người xem vào sao trung tâm; chạm ở 0,42, sáng cục bộ rồi plasma
+mới mở. Không có mảnh kính hoặc sét phân nhánh. Tia/va chạm lấy từ tọa độ
+cuộn, không tự bắn lặp theo ambient; lùi phục hồi cùng đường. Giữ góc chính
+diện, một roll hoàn tất tại 2,75, gesture tiếp mới bay, camera/bầu sao/vách
+hầm/chữ/cửa ra như cũ. Thay chốt “plasma hiện ngay” ở mục lịch sử bên dưới.
+Check logic đo thứ tự tia → va chạm → cổng; UI đo pixel tia thật và chụp
+ba mốc trên desktop/phone. Bằng chứng: `artifacts/portal-shot/`.
+Kiểm chứng: `pnpm run check` PASS; intro desktop/phone/reduced PASS, đã
+xem ảnh tia bay, va chạm và cổng mở trên desktop/phone. UI tổng vẫn dừng
+ở con trỏ baseline dòng 98. Chưa chạy lại tablet/landscape, đo FPS hay thử
+touch/âm thanh trên thiết bị thật.
+
+**Bỏ đoạn kính rạn/sét theo ảnh, 17/10:** cổng plasma tím mở trực tiếp từ
+nhịp cuộn đầu. Gỡ renderer mảnh kính, vết nứt và tia sét; trải độ mở plasma
+trên khoảng 0–2,75 để không giữ một đoạn chờ trống. Một roll vẫn mở hết,
+gesture tiếp mới bay; góc chính diện, bầu sao cố định, vách hầm/chữ/cửa ra
+và cuộn lùi giữ nguyên. Check thay yêu cầu kính/sét trước cổng bằng kiểm tra
+plasma hiện ngay và không có kính ở cả hai chiều. Yêu cầu này thay riêng
+phần kính rạn được ghi trong các mục lịch sử bên dưới.
+Kiểm chứng: `pnpm run check` PASS, intro desktop/phone/reduced PASS, đã xem
+ảnh plasma ở đoạn từng có kính và khi cuộn lùi. Ảnh/report lưu tại
+`artifacts/direct-plasma/`. `check:ui` vẫn dừng ở lỗi con trỏ baseline dòng
+98. Chưa chạy lại tablet/landscape hoặc thử touch/âm thanh trên thiết bị thật.
+
+**Cổng tím chính diện theo TikTok, 17/10:** tham chiếu video
+`https://www.tiktok.com/@hungbeoedit/video/7341566042126273812` đã xem trong
+browser: vết xé dọc, viền trắng tím nham nhở và sợi plasma tỏa ra ngoài.
+Thay vật liệu và khẩu độ cổng vào intro bằng mép rách cùng hình học ở Canvas
+và WebGL, nhìn chính diện, không nghiêng mặt cổng hoặc quay camera. Giữ kính
+rạn trước cổng, bầu sao cố định, một roll mở hết, gesture tiếp mới bay, lùi
+khớp hình học; giữ nguyên vách liquid/chữ và cửa ra. Có Canvas recovery;
+không nhúng video hay thay asset thật. Check logic kiểm tra viền liên tục,
+khẩu độ thông và mặt phẳng chính diện; check intro đối chiếu màu/plasma,
+giữ input, camera và khả năng đi/về. Bằng chứng: `artifacts/quantum-tiktok/`.
+Kiểm chứng: `pnpm run check` PASS; intro desktop/phone/reduced PASS, đã xem
+ảnh vết xé, cổng mở, vách hầm và cửa ra. `check:ui` đã chạy, vẫn dừng ở lỗi
+con trỏ baseline dòng 98; không bỏ assertion này. Chưa chạy lại tablet/
+landscape, chưa đo FPS hoặc thử touch/âm thanh trên thiết bị thật. Canvas
+recovery có kiểm tra hình học/opacity; chưa chụp riêng trường hợp mất WebGL.
 
 **Thao tác trong live preview, 17/10:** iframe đang xem nhận click, nhập và
 cuộn website trực tiếp; bỏ inert/pointer-events khóa preview. Chỉ frame

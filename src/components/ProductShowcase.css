@@ -295,7 +295,7 @@
   height: 106%;
 }
 .screening-reading-links {
-  position: absolute; top: 22px; right: 24px; z-index: 30;
+  position: absolute; top: 22px; right: 84px; z-index: 30;
   display: flex; gap: 18px;
 }
 .screening-reading-links a {
@@ -674,7 +674,7 @@
   .screening-hint-badge { top: 26px; left: 20px; transform: none; }
   .screening-hint-badge span { font-size: 10px; }
   .screening-hint-badge { max-width: calc(100% - 220px); }
-  .screening-reading-links { right: 20px; gap: 10px; }
+  .screening-reading-links { right: 76px; gap: 10px; }
   .screening-reading-links a { font-size: 11px; }
   .screening-web-controls { top: 144px; right: 20px; }
   .screening-placeholder-overlay { gap: 6px; padding: 12px; }

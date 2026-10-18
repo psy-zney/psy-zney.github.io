@@ -8,23 +8,24 @@ type CaptionTexture = { surface: HTMLCanvasElement; words: { from: number; to: n
 export function createIntroCaptionTextures(lang: Language) {
   return INTRO_CAPTIONS.map((_, index) => {
     const surface = document.createElement('canvas');
-    surface.width = 1600; surface.height = 112;
+    const density = 2;
+    surface.width = 1600 * density; surface.height = 112 * density;
     const ctx = surface.getContext('2d')!;
-    ctx.font = '400 66px Outfit, sans-serif';
+    ctx.font = `400 ${66 * density}px Outfit, sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const lines = [INTRO_CAPTIONS[index][lang]];
-    surface.width = Math.ceil(ctx.measureText(lines[0]).width) + 96;
+    surface.width = Math.ceil(ctx.measureText(lines[0]).width) + 96 * density;
     // Resizing resets the context; keep glyphs at their natural aspect ratio.
-    ctx.font = '400 66px Outfit, sans-serif';
+    ctx.font = `400 ${66 * density}px Outfit, sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     // Keep names together and fit both languages on the same physical patch.
     while (Math.max(...lines.map(line => ctx.measureText(line).width)) > surface.width * .82) {
-      const fontSize = Number(ctx.font.match(/([\d.]+)px/)?.[1] ?? 52) - 1;
+      const fontSize = Number(ctx.font.match(/([\d.]+)px/)?.[1] ?? 52 * density) - density;
       ctx.font = `400 ${fontSize}px Outfit, sans-serif`;
     }
     // Glow is baked into this small texture, never blurred across the viewport.
-    ctx.shadowColor = '#61d9ee'; ctx.shadowBlur = 8; ctx.fillStyle = '#f0fbff';
-    lines.forEach((text, i) => ctx.fillText(text, surface.width / 2, surface.height / 2 + (i - (lines.length - 1) / 2) * 65));
+    ctx.shadowColor = '#61d9ee'; ctx.shadowBlur = 8 * density; ctx.fillStyle = '#f0fbff';
+    lines.forEach((text, i) => ctx.fillText(text, surface.width / 2, surface.height / 2 + (i - (lines.length - 1) / 2) * 65 * density));
     const text = lines[0], words = text.split(' '), gap = ctx.measureText(' ').width;
     let cursor = (surface.width - ctx.measureText(text).width) / 2;
     const ranges = words.map((word, i) => {
@@ -47,7 +48,7 @@ export function drawIntroCaptions(ctx: CanvasRenderingContext2D, width: number, 
     const atlas = textures[index];
     if (opacity < .001 || !atlas) return { opacity: 0, left: 0, top: 0, width: 0, height: 0, readingDepths };
     let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
-    const texture = atlas.surface, rows = 2;
+    const texture = atlas.surface, rows = 2, bleed = texture.height / 112 * .5;
     for (const word of atlas.words) {
       const strips = Math.max(2, Math.ceil((word.to - word.from) * 24));
       const wordU = (progress: number) => introCaptionGlyphU(index, word.from, word.to, progress);
@@ -69,10 +70,17 @@ export function drawIntroCaptions(ctx: CanvasRenderingContext2D, width: number, 
             if (!lower) ctx.transform((b.x - a.x) / sw, (b.y - a.y) / sw, (c.x - a.x) / sh, (c.y - a.y) / sh, a.x, a.y);
             else ctx.transform((d.x - c.x) / sw, (d.y - c.y) / sw, (d.x - b.x) / sh, (d.y - b.y) / sh, b.x + c.x - d.x, b.y + c.y - d.y);
             ctx.beginPath();
-            if (!lower) { ctx.moveTo(-.2, -.2); ctx.lineTo(sw + .2, -.2); ctx.lineTo(-.2, sh + .2); }
-            else { ctx.moveTo(sw + .2, sh + .2); ctx.lineTo(-.2, sh + .2); ctx.lineTo(sw + .2, -.2); }
+            // Overlap the shared diagonal too; touching antialiased clip edges
+            // otherwise cut hairline cracks through high-resolution glyphs.
+            if (!lower) { ctx.moveTo(-bleed, -bleed); ctx.lineTo(sw + bleed * 2, -bleed); ctx.lineTo(-bleed, sh + bleed * 2); }
+            else { ctx.moveTo(sw + bleed, sh + bleed); ctx.lineTo(-bleed * 2, sh + bleed); ctx.lineTo(sw + bleed, -bleed * 2); }
             ctx.closePath(); ctx.clip();
-            ctx.drawImage(texture, word.from * texture.width + i * sw, row * sh, sw, sh, 0, 0, sw, sh);
+            // Include neighbouring texels so the expanded clip has real pixels.
+            const x = word.from * texture.width + i * sw, y = row * sh;
+            const sx = Math.max(0, x - bleed * 2), sy = Math.max(0, y - bleed * 2);
+            const sourceWidth = Math.min(texture.width, x + sw + bleed * 2) - sx;
+            const sourceHeight = Math.min(texture.height, y + sh + bleed * 2) - sy;
+            ctx.drawImage(texture, sx, sy, sourceWidth, sourceHeight, sx - x, sy - y, sourceWidth, sourceHeight);
             ctx.restore();
           }
         }

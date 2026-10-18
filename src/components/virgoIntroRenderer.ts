@@ -1,8 +1,9 @@
 import { smooth } from '../data/virgoFlight';
 import { OPENING_EDGES, OPENING_STARS } from '../data/virgoOpening';
 import { INTRO_CONSTELLATION_COMPLETE, INTRO_PALETTE, introWarpPoint } from '../data/virgoIntro';
-import { drawIntroRiftBirth, drawIntroVortex } from './virgoIntroVortex';
+import { drawIntroVortex } from './virgoIntroVortex';
 import { drawIntroTunnel, introAperture } from './virgoIntroTunnel';
+import { drawPortalShot, quantumAperturePath } from './introQuantumPortal';
 
 const random = (i: number) => { const n = Math.sin(i * 127.1 + 31.7) * 43758.5453; return n - Math.floor(n); };
 const sky = Array.from({ length: 640 }, (_, i) => ({ x: random(i * 3), y: random(i * 3 + 1), size: .4 + random(i * 3 + 2) * 1.1 }));
@@ -75,7 +76,7 @@ function drawStarPoint(
   ctx.fill();
 }
 
-/** Keep the opening sky fixed behind the local fracture and portal. */
+/** Keep the opening sky fixed behind the local plasma portal. */
 export function drawIntro(ctx: CanvasRenderingContext2D, width: number, height: number, seconds: number, idleTime = 0, constellation = INTRO_CONSTELLATION_COMPLETE) {
   const { sky: black, gold, violet } = INTRO_PALETTE;
   ctx.clearRect(0, 0, width, height); ctx.fillStyle = black; ctx.fillRect(0, 0, width, height);
@@ -117,14 +118,14 @@ export function drawIntro(ctx: CanvasRenderingContext2D, width: number, height: 
   };
   renderSky();
   if (seconds <= 0) return;
-  if (seconds > 1.20) {
+  drawPortalShot(ctx, width, height, core, seconds);
+  if (seconds > .42) {
     ctx.save();
-    ctx.beginPath(); ctx.ellipse(aperture.x, aperture.y, aperture.radius * aperture.aspect, aperture.radius * .90, 0, 0, Math.PI * 2); ctx.clip();
+    quantumAperturePath(ctx, aperture.x, aperture.y, aperture.radius, aperture.aspect); ctx.clip();
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, width, height);
-    ctx.globalAlpha = smooth(1.20, 2.0, seconds);
+    ctx.globalAlpha = smooth(.42, 1.05, seconds);
     drawIntroTunnel(ctx, width, height, seconds, idleTime);
     ctx.restore();
   }
-  drawIntroVortex(ctx, aperture.x, aperture.y, aperture.outerRadius, idleTime, seconds);
-  drawIntroRiftBirth(ctx, aperture.x, aperture.y, aperture.outerRadius, seconds, idleTime);
+  drawIntroVortex(ctx, aperture.x, aperture.y, aperture.outerRadius, idleTime, seconds, true);
 }

@@ -58,6 +58,7 @@ try {
       return hash;
     });
     assert.equal(await intro.getAttribute('data-surface'), 'liquid-caustics-nebula');
+    assert.equal(await intro.getAttribute('data-portal'), 'quantum-violet-frontal');
     assert.equal(await page.locator('.virgo-intro-fracture, .virgo-space-rift, [data-narrative-index="0"]').count(), 0, 'Reload at root mounts no legacy black screen or opening text');
     await page.clock.install(); await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 1000)));
     if (name !== 'reduced') {
@@ -96,20 +97,24 @@ try {
     if (name !== 'reduced') {
       await page.mouse.wheel(0, 120); await page.waitForTimeout(40);
       await page.clock.runFor(300);
-      const crackStart = Number(await intro.getAttribute('data-rift-growth'));
-      assert(crackStart > 0 && crackStart < .25, 'The fracture starts as a small local crack');
-      await page.screenshot({ path: output + '/' + name + '-fracture-seed.png' });
+      const plasmaStart = Number(await intro.getAttribute('data-rift-portal'));
+      assert.equal(plasmaStart, 0, 'The first scroll fires a shot before opening the portal');
+      assert(Number(await intro.getAttribute('data-portal-shot')) > .9, 'The single energy shot is visible');
+      assert(Number(await intro.getAttribute('data-portal-shot-head')) < 1, 'The shot is travelling toward the core');
+      assert.equal(Number(await intro.getAttribute('data-rift-growth')), 0, 'There is no preliminary crack front');
+      assert.equal(Number(await intro.getAttribute('data-rift-fracture')), 0, 'There are no glass facets or lightning');
+      await page.screenshot({ path: output + '/' + name + '-energy-shot.png' });
       await page.clock.runFor(300);
-      assert(Number(await intro.getAttribute('data-rift-growth')) > crackStart + .3, 'The crack spreads outward before the portal opens');
-      const cracking = Number(await intro.getAttribute('data-seconds'));
-      assert(cracking > .3 && cracking < 1, 'One roll first reveals the space fracture');
+      assert(Number(await intro.getAttribute('data-rift-portal')) > plasmaStart, 'The plasma opens after the shot reaches the core');
+      const opening = Number(await intro.getAttribute('data-seconds'));
+      assert(opening > .3 && opening < 1, 'One roll immediately opens the plasma tear');
       assert.equal(await intro.getAttribute('data-camera'), '0.000,0.000,1000.000');
-      await page.screenshot({ path: output + '/' + name + '-one-roll-fracture.png' });
+      await page.screenshot({ path: output + '/' + name + '-one-roll-plasma.png' });
       await page.clock.runFor(350);
-      assert.equal(await intro.getAttribute('data-camera'), '0.000,0.000,1000.000', 'Detailed fractures remain local while the aperture grows');
-      assert(Number(await intro.getAttribute('data-rift-fracture')) > .2, 'The glass fracture persists before the portal');
-      assert.equal(Number(await intro.getAttribute('data-rift-portal')), 0, 'The fracture and lightning exist before any portal rim');
-      await page.screenshot({ path: output + '/' + name + '-fracture-detail.png' });
+      assert.equal(await intro.getAttribute('data-camera'), '0.000,0.000,1000.000', 'The observer stays still as the plasma opens');
+      assert.equal(Number(await intro.getAttribute('data-rift-fracture')), 0, 'Glass and lightning do not return while opening');
+      assert.equal(Number(await intro.getAttribute('data-rift-portal')), 1, 'The plasma is already visible before the aperture finishes widening');
+      await page.screenshot({ path: output + '/' + name + '-plasma-opening.png' });
       await page.clock.runFor(3000);
       assert.equal(Number(await intro.getAttribute('data-seconds')), 2.75, 'One roll opens the complete portal');
       assert.equal(await intro.getAttribute('data-camera'), '0.000,0.000,1000.000', 'Opening never flies through the doorway');
@@ -119,10 +124,57 @@ try {
       await page.mouse.wheel(0, 120); await page.waitForTimeout(40); await page.clock.runFor(1200);
       assert(Number(await intro.getAttribute('data-seconds')) > 2.75, 'The next wheel gesture starts entry');
       await scrollTo(0);
-      await scrollTo(.35);
-      assert.equal(await intro.getAttribute('data-camera'), '0.000,0.000,1000.000', 'The observer remains still while charging the tear');
-      await page.screenshot({ path: output + '/' + name + '-rift-charge.png' });
-      await scrollTo(1.45);
+      await scrollTo(.12);
+      const earlyShotX = Number((await intro.getAttribute('data-portal-shot-tip')).split(',')[0]);
+      await page.screenshot({ path: output + '/' + name + '-shot-near.png' });
+      await scrollTo(.22);
+      assert.equal(Number(await intro.getAttribute('data-rift-portal')), 0, 'No aperture is drawn while the shot travels');
+      assert.equal(await intro.getAttribute('data-portal-shot-center'), await intro.getAttribute('data-entrance-center'), 'The frontal shot aims at the portal core');
+      const shotPixels = await intro.locator('canvas').evaluate(canvas => {
+        const ctx = canvas.getContext('2d'), scale = canvas.width / canvas.clientWidth;
+        const [hx, hy] = canvas.parentElement.dataset.portalShotTip.split(',').map(Number);
+        const [tx] = canvas.parentElement.dataset.portalShotTail.split(',').map(Number);
+        const w = Math.ceil((tx - hx + 8) * scale), h = Math.ceil(20 * scale);
+        const p = ctx.getImageData(Math.floor((hx - 4) * scale), Math.floor((hy - 10) * scale), w, h).data;
+        const mask=new Uint8Array(w*h),visited=new Uint8Array(w*h);
+        let totalBright=0;
+        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+          const i = (y * w + x) * 4;
+          if (p[i + 2] < 100 || p[i] < 70) continue;
+          mask[y*w+x]=1;totalBright++;
+        }
+        // Measure the connected shaft; a separate background star inside the crop
+        // must not become its upper edge. Keep all brightness/geometry limits.
+        let beam={count:0,minX:w,maxX:0,minY:h,maxY:0};
+        for(let start=0;start<mask.length;start++){
+          if(!mask[start]||visited[start])continue;
+          const queue=[start],part={count:0,minX:w,maxX:0,minY:h,maxY:0};visited[start]=1;
+          for(let cursor=0;cursor<queue.length;cursor++){
+            const point=queue[cursor],x=point%w,y=Math.floor(point/w);
+            part.count++;part.minX=Math.min(part.minX,x);part.maxX=Math.max(part.maxX,x);part.minY=Math.min(part.minY,y);part.maxY=Math.max(part.maxY,y);
+            for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+              const nx=x+dx,ny=y+dy,next=ny*w+nx;
+              if(nx>=0&&nx<w&&ny>=0&&ny<h&&mask[next]&&!visited[next]){visited[next]=1;queue.push(next);}
+            }
+          }if(part.count>beam.count)beam=part;
+        }
+        return { bright:beam.count, aspect:(beam.maxX-beam.minX+1)/(beam.maxY-beam.minY+1),thickness:(beam.maxY-beam.minY+1)/scale,backgroundPixels:totalBright-beam.count,head:[hx,hy],tail:tx,seconds:canvas.parentElement.dataset.seconds };
+      });
+      if(!(shotPixels.bright > 4 && shotPixels.aspect > 3 && shotPixels.thickness < 8)){
+        await page.screenshot({path:output+'/'+name+'-shot-failure.png'});
+        await writeFile(output+'/'+name+'-shot-failure.json',JSON.stringify(shotPixels));
+      }
+      assert(shotPixels.bright > 4 && shotPixels.aspect > 3 && shotPixels.thickness < 8, `The shot renders a narrow visible shaft instead of a glowing orb: ${JSON.stringify(shotPixels)}`);
+      formationSamples.push({ stage: 'visible-beam', p: .22, ...shotPixels });
+      await page.screenshot({ path: output + '/' + name + '-shot-travelling.png' });
+      await scrollTo(.34);
+      assert(Number((await intro.getAttribute('data-portal-shot-tip')).split(',')[0]) < earlyShotX, 'The visible beam tip moves toward the target over the shot sequence');
+      await page.screenshot({ path: output + '/' + name + '-shot-far.png' });
+      await scrollTo(.42);
+      assert(Number(await intro.getAttribute('data-portal-impact')) > .9, 'The shot hits before the aperture opens');
+      await page.screenshot({ path: output + '/' + name + '-shot-impact.png' });
+      assert.equal(await intro.getAttribute('data-camera'), '0.000,0.000,1000.000', 'The observer remains still while the plasma appears');
+      await scrollTo(.95);
       assert.equal(await intro.getAttribute('data-camera'), '0.000,0.000,1000.000');
       tearGeometry = await intro.evaluate(el => [el.dataset.entranceAspect, el.dataset.entranceWorldRadius, el.dataset.entranceCenter]);
       assert(Number(tearGeometry[0]) < .15, 'The portal begins as a vertical seam');
@@ -137,8 +189,7 @@ try {
         if (!(blue > 35 && blue > green * 1.25 && blue > red * 1.05)) continue;
         colored++; columns[x]++; rows[y]++;
       }
-      // Sample the nascent slit, excluding stars outside its horizontal span.
-      // Violet appears dimmer during rim fade-in than the old copper streams.
+      // Sample the early plasma slit, excluding stars outside its horizontal span.
       const coloredSpan = counts => {
         let sum = 0, start = 0;
         for (let i = 0; i < counts.length; i++) {
@@ -149,8 +200,8 @@ try {
         return 0;
       };
       const tearRatio = coloredSpan(columns) / coloredSpan(rows);
-      assert(colored > 80 && tearRatio < .6, `The visible opening after the glass is a tall liquid tear, not a round icon: ${JSON.stringify({ colored, tearRatio })}`);
-      formationSamples.push({ stage: 'tear', p: 1.45, aspect: Number(tearGeometry[0]), tearRatio, colored });
+      assert(colored > 80 && tearRatio < .6, `The opening is directly a tall plasma tear: ${JSON.stringify({ colored, tearRatio })}`);
+      formationSamples.push({ stage: 'tear', p: .95, aspect: Number(tearGeometry[0]), tearRatio, colored });
       await scrollTo(2.05);
       assert.equal(await intro.getAttribute('data-camera'), '0.000,0.000,1000.000');
       const expandingAspect = Number(await intro.getAttribute('data-entrance-aspect'));
@@ -173,7 +224,9 @@ try {
       let ringPixels = 0, changedPixels = 0, violetPixels = 0, coolPixels = 0;
       for (let y = 0; y < viewport.height; y += 2) for (let x = 0; x < viewport.width; x += 2) {
         const r = Math.hypot((x - cx) / radius, (y - cy) / (radius * .9));
-        if (r < .45 || r > .85) continue;
+        // The reference replaces the broad liquid disc with a narrow torn lip
+        // and outward corona. Measure its actual band, excluding empty sky.
+        if (r < .32 || r > .65) continue;
         const offset = (y * beforePixels.info.width + x) * 3;
         ringPixels++;
         const [red, green, blue] = beforePixels.data.subarray(offset, offset + 3);
@@ -181,8 +234,8 @@ try {
         if (blue > 45 && blue > red * 1.5) coolPixels++;
         if (Math.abs(beforePixels.data[offset] - afterPixels[offset]) + Math.abs(beforePixels.data[offset + 1] - afterPixels[offset + 1]) + Math.abs(beforePixels.data[offset + 2] - afterPixels[offset + 2]) > 20) changedPixels++;
       }
-      assert(changedPixels > ringPixels * .08, 'The portal gas actually rotates while scroll position is held');
-      assert(violetPixels > ringPixels * .01 && coolPixels > ringPixels * .02, 'The rendered liquid contains both violet nebula and cool starlight streams');
+      assert(changedPixels > ringPixels * .08, `The quantum plasma keeps moving while scroll position is held: ${JSON.stringify({ changedPixels, ringPixels })}`);
+      assert(violetPixels > ringPixels * .01 && coolPixels > ringPixels * .02, `The rendered liquid contains both violet nebula and cool starlight streams: ${JSON.stringify({ violetPixels, coolPixels, ringPixels })}`);
       await scrollTo(3.9);
       assert.equal(await intro.getAttribute('data-entrance-world-radius'), matureWorldRadius, 'Entry translates the camera through a fixed-size portal');
       assert(Number(await intro.getAttribute('data-entrance-depth')) < 0, 'The camera crosses the entrance plane');
@@ -259,7 +312,7 @@ try {
       await page.screenshot({ path: output + '/' + name + '-exit-opening.png' });
       // The last input reaches the endpoint and unmounts the intro.
       await page.mouse.wheel(0, 120); await page.clock.runFor(1200);
-    } else { await intro.click({ position: { x: 40, y: 40 } }); await page.clock.runFor(100); }
+    } else { await intro.click({ position: { x: viewport.width / 2, y: viewport.height / 2 } }); await page.clock.runFor(100); }
     await intro.waitFor({ state: 'detached' });
     assert.equal(await page.evaluate(() => location.hash), '#/home');
     await page.mouse.wheel(0, -10); await page.clock.runFor(500);
@@ -273,8 +326,9 @@ try {
       assert(Math.abs(Number(await intro.getAttribute('data-seconds')) - paused) < .002, 'Reverse travel also stops when scrolling stops');
       await scrollTo(4.7);
       await page.screenshot({ path: output + '/' + name + '-return-tunnel.png' });
-      await scrollTo(1.45);
+      await scrollTo(.95);
       const returnedTear = await intro.evaluate(el => [el.dataset.entranceAspect, el.dataset.entranceWorldRadius, el.dataset.entranceCenter]);
+      assert.equal(Number(await intro.getAttribute('data-rift-fracture')), 0, 'Reversing the portal never restores the removed glass stage');
       assert(Math.abs(Number(returnedTear[0]) - Number(tearGeometry[0])) < .003 && Math.abs(Number(returnedTear[1]) - Number(tearGeometry[1])) < 1, 'Reverse travel restores the creation seam within the scroll settling tolerance');
       for (const [i, value] of returnedTear[2].split(',').map(Number).entries()) assert(Math.abs(value - Number(tearGeometry[2].split(',')[i])) < 1, 'The seam centre returns to the same position');
       await page.screenshot({ path: output + '/' + name + '-rift-return.png' });

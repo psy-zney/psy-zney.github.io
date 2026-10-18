@@ -39,8 +39,8 @@ export function introFrame(seconds: number) {
 
 /** Fine opening/entry control blends continuously into the existing tunnel pace. */
 export function introScrollResponse(_seconds: number) {
-  return { gain: .60, step: .34,
-    lead: .52, speed: 1.25, acceleration: 4.2 };
+  return { gain: .95, step: .55,
+    lead: .85, speed: 1.9, acceleration: 7.2 };
 }
 
 export function introInputTarget(seconds: number, target: number, amount: number) {
@@ -65,17 +65,36 @@ export function advanceIntroScroll(seconds: number, velocity: number, target: nu
 
 export type IntroFrame = ReturnType<typeof introFrame>;
 
-/** Scroll creates a tall seam first, then pulls it open before forward flight. */
+/** One shot reaches the core before the aperture opens; reverse restores its path. */
+export function introPortalShot(seconds: number) {
+  const t = clamp(seconds, 0, 2.75), head = smooth(.03, .42, t);
+  return { head, tail: Math.max(0, head - .28),
+    opacity: smooth(0, .06, t) * (1 - smooth(.42, .56, t)),
+    impact: smooth(.36, .42, t) * (1 - smooth(.42, .78, t)) };
+}
+
+/** Project one narrow Z-directed beam beside the lens axis so its shaft is visible. */
+export function introPortalShotProjection(width: number, height: number, core: { x: number; y: number }, seconds: number) {
+  const shot = introPortalShot(seconds), unit = Math.min(width, height);
+  const lensOffset = Math.min(width * .24, unit * .35);
+  // Accelerate into depth so the shaft remains readable before reaching the star's corona.
+  const projectX = (depth: number) => core.x + lensOffset * (1 / (1 + depth * depth * 14) - 1 / 15);
+  return { x: core.x, y: core.y, headX: projectX(shot.head), headY: core.y,
+    tailX: projectX(shot.tail), tailY: core.y, headRadius: 1.2, tailRadius: 2.4,
+    impactRadius: Math.max(4, Math.min(9, unit * .012)) };
+}
+
+/** A single energy shot ignites plasma; no glass or branching lightning stage. */
 export function introPortalFormation(seconds: number) {
   const t = clamp(seconds, 0, 2.75);
   return {
-    charge: smooth(0, .30, t) * (1 - smooth(.65, 1.15, t)),
-    seam: smooth(.08, .35, t) * (1 - smooth(.85, 1.20, t)),
-    crack: smooth(.08, .85, t),
-    extent: smooth(.95, 2.0, t),
-    aspect: .035 + .965 * smooth(1.20, 2.55, t),
-    rim: smooth(1.20, 1.75, t),
-    alignment: smooth(.85, 2.45, t),
+    charge: 0,
+    seam: 0,
+    crack: 0,
+    extent: smooth(.42, 1.6, t),
+    aspect: .035 + .965 * smooth(.65, 2.55, t),
+    rim: smooth(.42, .85, t),
+    alignment: smooth(.42, 2.45, t),
   };
 }
 

@@ -13,8 +13,8 @@ export const STORY_PACING = {
   transitSeconds: 3.4,
   finalTransitSeconds: 1.8,
   approachSeconds: 1.9,
-  wheelStepVh: .12,
-  wheelLeadVh: .16,
+  wheelStepVh: .22,
+  wheelLeadVh: .32,
 } as const;
 
 export const HOME_PACING = {

@@ -5,6 +5,7 @@ import { documentSections } from '../../data/projectDocuments';
 import type { DocumentSection } from '../../utils/appRoutes';
 import { DocumentContents } from './DocumentContents';
 import { confirmFeedback } from '../../utils/uiFeedback';
+import { playPortfolioSfx } from '../../utils/portfolioAudio';
 
 export function ProjectDocument({ projectId, section = 'overview', lang, onSection }: {
   projectId: string; section?: DocumentSection; lang: Language;
@@ -17,9 +18,9 @@ export function ProjectDocument({ projectId, section = 'overview', lang, onSecti
   return <article className="project-document" style={{ '--document-accent': project.color } as React.CSSProperties}>
     <header><p className="reader-kicker">{project.category} / {project.year}</p>
       <h1>{project.name}</h1><p className="document-headline">{project.headline[lang]}</p>
-      <p className="document-role">{project.role[lang]}</p><p className="reader-note">Portfolio notes · Reviewed 4 October 2026{project.source && <> · <a href={project.source} target="_blank" rel="noopener noreferrer">Source <ArrowUpRight size={14}/></a></>}</p><button className="reader-primary" onClick={async () => { try { await navigator.clipboard.writeText(window.location.href); setCopied('Link copied'); confirmFeedback(); } catch { setCopied('Copy the address from your browser.'); } clearTimeout(timer.current); timer.current = window.setTimeout(() => setCopied(''), 1500); }}><Copy size={16}/> Copy link</button><span role="status">{copied}</span></header>
+      <p className="document-role">{project.role[lang]}</p><p className="reader-note">Portfolio notes · Reviewed 4 October 2026{project.source && <> · <a onMouseEnter={() => playPortfolioSfx('hover')} onClick={() => playPortfolioSfx('click')} href={project.source} target="_blank" rel="noopener noreferrer">Source <ArrowUpRight size={14}/></a></>}</p><button className="reader-primary" onMouseEnter={() => playPortfolioSfx('hover')} onClick={async () => { playPortfolioSfx('click'); try { await navigator.clipboard.writeText(window.location.href); setCopied('Link copied'); confirmFeedback(); } catch { setCopied('Copy the address from your browser.'); } clearTimeout(timer.current); timer.current = window.setTimeout(() => setCopied(''), 1500); }}><Copy size={16}/> Copy link</button><span role="status">{copied}</span></header>
     <div className="document-layout"><DocumentContents><nav className="document-tabs" aria-label="Project contents">{documentSections.map(item =>
-      <button key={item.id} aria-current={section === item.id ? 'page' : undefined} onClick={() => onSection(item.id)}>{item[lang]}</button>)}</nav></DocumentContents>
+      <button key={item.id} aria-current={section === item.id ? 'page' : undefined} onMouseEnter={() => playPortfolioSfx('hover')} onClick={() => { playPortfolioSfx('click'); onSection(item.id); }}>{item[lang]}</button>)}</nav></DocumentContents>
     <div className="document-section" key={section}>
       {section === 'overview' && <><h2>{lang === 'vie' ? 'Tổng quan' : 'Overview'}</h2><p>{project.summary[lang]}</p>
         <h2>{lang === 'vie' ? 'Bài toán' : 'The challenge'}</h2><p>{project.problem[lang]}</p></>}
@@ -33,9 +34,9 @@ export function ProjectDocument({ projectId, section = 'overview', lang, onSecti
         {project.note && <aside className="document-attribution">{project.note[lang]}</aside>}
         <p className="reader-note">{lang === 'vie' ? 'Nội dung được biên tập từ các nguồn đã ghi nhận trong portfolio.' : 'Editorial notes based on the sources recorded for this portfolio.'}</p></>}
       {project.note && section !== 'notes' && <aside className="document-attribution">{project.note[lang]}</aside>}
-      <footer className="document-links">{project.source && <a href={project.source} target="_blank" rel="noopener noreferrer">GitHub <ArrowUpRight size={16}/></a>}
-        {project.demo && <a href={project.demo} target="_blank" rel="noopener noreferrer">{project.id === 'chemistry-lab' ? 'Documentation viewer' : 'Live site'} <ArrowUpRight size={16}/></a>}
-        <button onClick={() => onSection(documentSections[(documentSections.findIndex(item => item.id === section) + 1) % 4].id)}>Next section →</button></footer>
+      <footer className="document-links">{project.source && <a onMouseEnter={() => playPortfolioSfx('hover')} onClick={() => playPortfolioSfx('click')} href={project.source} target="_blank" rel="noopener noreferrer">GitHub <ArrowUpRight size={16}/></a>}
+        {project.demo && <a onMouseEnter={() => playPortfolioSfx('hover')} onClick={() => playPortfolioSfx('click')} href={project.demo} target="_blank" rel="noopener noreferrer">{project.id === 'chemistry-lab' ? 'Documentation viewer' : 'Live site'} <ArrowUpRight size={16}/></a>}
+        <button onMouseEnter={() => playPortfolioSfx('hover')} onClick={() => { playPortfolioSfx('click'); onSection(documentSections[(documentSections.findIndex(item => item.id === section) + 1) % 4].id); }}>Next section →</button></footer>
     </div></div>
   </article>;
 }

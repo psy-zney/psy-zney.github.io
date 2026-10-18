@@ -4,6 +4,8 @@ import { ShowcasePortals } from './ShowcasePortals';
 import { showcaseScreenPoint } from '../data/showcaseScreen';
 import { portalPreviewPresence, tunnelStation, tunnelVisibility, tunnelWorldBlend } from '../data/showcaseTunnel';
 import { liquidSurfaceGLSL, liquidTextureData } from './liquidSurface';
+import { RenderCadence, renderPixelRatio, requestedPixelRatio } from '../data/renderQuality';
+import { initialQuality } from './workspace/useQualityTier';
 
 /** Shared camera, curved mounts and slow ambient detail around native web windows. */
 export class ShowcaseTunnel {
@@ -30,14 +32,16 @@ export class ShowcaseTunnel {
   private last = 0;
   private lastDraw = 0;
   private readonly fps: number;
+  private readonly cadence = new RenderCadence();
+  private width = 1;
+  private height = 1;
   private state = { focal: 1, slot: 0, spin: 0, depth: 0, crossing: 0 };
 
   constructor(host: HTMLElement, private readonly count: number) {
     const mobile = host.clientWidth < 700;
     this.fps = mobile ? 18 : 24;
     this.root = host.closest<HTMLElement>('.screening-room');
-    this.renderer = new WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'low-power' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.25 : 1.5));
+    this.renderer = new WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'high-performance' });
     this.renderer.setClearColor('#03050b', 1);
     this.renderer.domElement.className = 'screening-tunnel-canvas';
     this.renderer.domElement.setAttribute('aria-hidden', 'true');
@@ -135,7 +139,14 @@ export class ShowcaseTunnel {
     document.addEventListener('visibilitychange', this.visibility);
   }
 
-  resize(width: number, height: number) { this.renderer.setSize(width, height); }
+  resize(width: number, height: number) { this.width = width; this.height = height; this.resolution(); this.renderer.setSize(width, height); }
+  private resolution() {
+    const tier = initialQuality();
+    const dpr = renderPixelRatio(this.width, this.height, requestedPixelRatio(window.devicePixelRatio,true), tier,
+      this.cadence.scale, this.renderer.capabilities.maxTextureSize);
+    if (Math.abs(this.renderer.getPixelRatio() - dpr) > .001) this.renderer.setPixelRatio(dpr);
+    this.renderer.domElement.dataset.renderDpr = dpr.toFixed(3);
+  }
   private visibility = () => this.syncAnimation();
   setActive(active: boolean) { this.active = active; this.syncAnimation(); }
   private syncAnimation() {
@@ -145,6 +156,7 @@ export class ShowcaseTunnel {
     if (!running) return;
     this.last = this.lastDraw = performance.now();
     const tick = (now: number) => {
+      this.cadence.sample(now, true);
       this.time += Math.min(.1, Math.max(0, (now - this.last) / 1000)); this.last = now;
       if (now - this.lastDraw >= 1000 / this.fps) { this.lastDraw = now; this.draw(); }
       this.frame = requestAnimationFrame(tick);
@@ -153,6 +165,7 @@ export class ShowcaseTunnel {
   }
   private draw() {
     if (!this.camera) return;
+    this.resolution();
     this.lastDraw = performance.now();
     for (const material of [this.shell.material, this.flowMaterial, this.dustMaterial]) material.uniforms.time.value = this.time;
     const { focal, slot, spin, depth, crossing } = this.state;

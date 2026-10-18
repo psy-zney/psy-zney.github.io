@@ -1,5 +1,62 @@
 # Chuyển cảnh đã chốt: luôn bay thẳng
 
+18/10, chỉnh góc nhìn thoát theo phản hồi mới: miệng lỗ trắng là một họng
+hữu hạn nhìn từ trong ra, camera tiến qua mặt miệng rồi ra không gian.
+Không quay đầu, không chèn quả cầu sáng lên showcase. Nối miệng từ cuối
+hầm; giữ mốc orbit/handoff/thoát và cùng tọa độ thời gian khi lùi.
+
+18/10, phác thảo cụm cổng mới: riêng bộ chọn showcase dùng mặt cầu lõm
+nông với chín địa chỉ phía sau; cổng đang chọn dịch XYZ ra giữa, phóng lớn
+và hết nghiêng. Cuộn tiếp lặp cùng chuyển động lấy nét; cổng trước quay
+về địa chỉ nền. Đây là transform cục bộ của các mặt cổng, không đổi
+camera Virgo, quỹ đạo Contact/hố đen hoặc đường bay giữa sao. Giữ rollback,
+các mốc đầu/cuối và reduced motion (đổi pose ngay, không chờ animation).
+
+18/10, chốt mới theo ảnh vẽ xoắn đỏ: riêng hành trình Contact → hố đen
+được phép camera xoắn quanh lõi, thu bán kính và nghiêng nhẹ theo quỹ đạo,
+sau đó xuyên qua chân trời vào hầm khí để thoát lỗ trắng. Đây là ngoại lệ
+được chủ repo yêu cầu rõ; thay riêng chốt không orbit/roll ở các đoạn vào
+hố đen ghi bên dưới. Các chuyến bay giữa sao và orbit đọc giữ như cũ.
+Chiều về đi ngược cùng tọa độ, không cắt tắt về Contact. Mốc mới: orbit
+0–3,2s, hầm 3,2–5,6s, thoát 5,6–7,8s; handoff renderer ở 4,3s.
+
+18/10, phản hồi spaghettification và rollback: tăng tốc dòng khí, thêm
+sợi vật chất kéo dài trong mặt phẳng đĩa và bóp méo ảnh cảnh. Chuyển động
+quay thuộc vật chất/thấu kính, không thêm roll hoặc orbit camera hành trình.
+Chiều về chạy ngược cùng tọa độ passage; camera lùi khỏi lõi về Contact
+theo trục cũ, Escape hoặc cuộn ngược có thể hủy chuyến đi ngay giữa đường.
+
+18/10, sửa theo phản hồi ảnh showcase: vật chất phải cuốn quanh mặt phẳng
+đĩa bồi tụ trước khi thu vào lõi; chuyển động này thuộc vật chất, không quay
+camera. Handoff có lòng hầm và pha thoát lỗ trắng riêng, với vật chất phóng
+ra, rồi lộ các cửa thế giới. Giữ hướng camera hành trình và orbit đọc cũ.
+
+18/10, theo yêu cầu thiết kế lại: showcase chuyển ra sau hố đen Contact,
+thay workspace trong luồng chính. Giữ camera bay thẳng hiện có; lớp bụi
+hội tụ và ánh lỗ trắng chỉ bổ sung hiệu ứng. Bỏ tự vào gallery tại Porrima.
+Bộ chọn thế giới dùng phối cảnh cục bộ; chọn/Enter tiến qua cổng sản phẩm,
+đóng trả về đúng bộ chọn hoặc hố đen cuối Contact. Rút track About/More
+projects và tăng đáp ứng input; không đổi đường Z hoặc orbit khi đọc.
+
+17/10, sửa theo ảnh quả cầu sáng: giữ camera chính diện nhưng chiếu thân
+tia Z từ cạnh trục nhìn để thấy chiều dài, đầu tia hội tụ đúng sao đích.
+Tia nằm ngang tầm đích, không từ đáy lên; bỏ đĩa sáng lớn, chạm lóe ≤9px.
+Giữ mốc 0,42/2,75, đi/lùi và camera như cũ; thay riêng phép chiếu tia bên dưới.
+
+17/10, chỉnh góc tia: nhìn dọc trục bắn chính diện vào tâm cổng. X/Y của
+xung sáng cố định ở tâm đích, bán kính chiếu thu theo độ sâu; không có tia
+bay từ đáy lên. Camera/bầu sao, mốc va chạm 0,42 và mở xong 2,75 giữ nguyên.
+
+17/10, phản hồi tiếp: một tia năng lượng bay vào tâm trước, chạm tại 0,42
+rồi mở cổng plasma. Camera vẫn đứng yên tới 2,75; một roll mở hết, gesture
+tiếp mới bay. Tia là hiệu ứng cục bộ theo cuộn, lùi khớp và không bắn lặp;
+không khôi phục kính rạn hoặc đổi hướng camera.
+
+17/10, theo ảnh phản hồi mới: bỏ đoạn kính rạn và sét trước cổng. Plasma
+mở trực tiếp theo cuộn từ 0 đến 2,75; thay giai đoạn kính bên dưới. Giữ một
+gesture mở hết, gesture tiếp mới bay, camera đứng yên rồi tiến thẳng và
+cuộn lùi khớp; không đổi orbit đọc hay đường bay.
+
 17/10, hình mở mới: kính rạn và sét tồn tại trước, tan ở 1,20; sau đó cổng
 mới hình thành. Vẫn hoàn tất trong một gesture, camera đứng yên đến 2,75.
 Thay thứ tự nứt chồng lên rim cũ, không thay đường bay hoặc nhịp input.

@@ -6,6 +6,8 @@ import { ACCRETION_VERTEX, DISPLAY_FRAGMENT } from "./blackHoleShader";
 import type { BlackHoleOrbitState } from "./BlackHoleOrbitControls";
 import { BlackHoleRenderPipeline } from './blackHoleRendering';
 import { BLACK_HOLE_SCALE } from '../data/virgoSpace';
+import { blackHoleResolution } from '../data/renderQuality';
+import { singularityView, SINGULARITY_ORBIT_END } from '../data/singularityMotion';
 
 interface BlackHoleProps {
   flight: {
@@ -16,6 +18,7 @@ interface BlackHoleProps {
     mobile: boolean;
     position: number;
     tier?: 'low' | 'medium' | 'high';
+    adaptive?: boolean;
   };
   glow: THREE.Texture;
   orbit: RefObject<BlackHoleOrbitState>;
@@ -40,6 +43,8 @@ function BlackHoleAccretionMesh({ flight, orbit }: Pick<BlackHoleProps, "flight"
   const pipeline = useMemo(() => new BlackHoleRenderPipeline(uniforms), [uniforms]);
   const warmed = useRef(false);
   const prepared = useRef(false);
+  const gasTimeline = useRef({active:false,base:0,offset:0,last:4});
+  const orbitPaintAt = useRef(-Infinity);
   const display = useMemo(() => ({
     uRadiance: { value: pipeline.radiance.texture },
     uBloomNear: { value: pipeline.bloom[0].output.texture },
@@ -85,20 +90,37 @@ function BlackHoleAccretionMesh({ flight, orbit }: Pick<BlackHoleProps, "flight"
     const presence = flight.exit > 0 ? 1 : smooth(5.30, 5.40, flight.position);
     mesh.current.visible = presence > .005;
     if (!mesh.current.visible) return;
-    uniforms.uTime.value = flight.reduced ? 4 : flight.time;
+    const passageTime = gl.domElement.closest<HTMLElement>('.virgo-page')?.dataset.singularityTime;
+    const gas=gasTimeline.current;
+    if(!flight.reduced&&passageTime!==undefined){
+      const t=Number(passageTime);
+      if(!gas.active){gas.base=uniforms.uTime.value-t*3.2;gas.active=true;}
+      gas.last=gas.base+t*3.2;uniforms.uTime.value=gas.last;
+    }else{
+      if(gas.active){gas.offset=gas.last-flight.time*3.2;gas.active=false;}
+      uniforms.uTime.value=flight.reduced?4:flight.time*3.2+gas.offset;
+    }
     uniforms.uPresence.value = presence * (1 - flight.exit * .5);
     uniforms.uExit.value = flight.exit;
     const target = orbit.current;
-    if (target) {
+    const orbital = !flight.reduced && passageTime !== undefined && Number(passageTime) < SINGULARITY_ORBIT_END;
+    if (target && orbital) {
+      // A separate local observer follows the owner's spiral; manual orbit state is retained.
+      if (performance.now()-orbitPaintAt.current>1000/12) {
+        const t=Number(passageTime),view=singularityView(t),envelope=Math.sin(Math.PI*t/SINGULARITY_ORBIT_END)**2;
+        uniforms.uAzimuth.value=target.azimuth+view.angle+Math.PI*.7;
+        uniforms.uElevation.value=target.elevation+Math.sin(view.angle)*envelope*.20;
+        orbitPaintAt.current=performance.now();
+      }
+    } else if (target) {
       for (const [uniform, value] of [[uniforms.uElevation, target.elevation], [uniforms.uAzimuth, target.azimuth]] as const) {
         uniform.value = flight.reduced || Math.abs(uniform.value - value) < .0005
           ? value : THREE.MathUtils.damp(uniform.value, value, 12, Math.min(delta, .05));
       }
     }
     const tier = flight.tier ?? 'high';
-    const viewMoving = !!target && (Math.abs(target.azimuth - uniforms.uAzimuth.value) > .0005
+    const viewMoving = orbital || !!target && (Math.abs(target.azimuth - uniforms.uAzimuth.value) > .0005
       || Math.abs(target.elevation - uniforms.uElevation.value) > .0005);
-    const maximumResolution = tier === 'low' ? 640 : flight.mobile || size.height < 600 || tier === 'medium' ? 896 : 1280;
     mesh.current.updateWorldMatrix(true, false);
     mesh.current.getWorldPosition(worldPosition);
     mesh.current.getWorldScale(worldScale);
@@ -106,10 +128,9 @@ function BlackHoleAccretionMesh({ flight, orbit }: Pick<BlackHoleProps, "flight"
     const projected = 190 * worldScale.x * size.height * gl.getPixelRatio()
       / (2 * Math.tan(THREE.MathUtils.degToRad((camera as THREE.PerspectiveCamera).fov / 2)) * Math.max(1, distance));
     const previous = rendered.current;
-    const baseResolution = viewMoving && !flight.reduced ? Math.min(maximumResolution, 896)
-      : Math.min(maximumResolution, projected < 720 ? 640 : projected < 1200 ? 960 : 1280);
-    const targetResolution = Math.max(640, Math.round(baseResolution * cadence.current.scale / 64) * 64);
-    const resolution = flight.exit > 0 && previous.resolution ? previous.resolution : targetResolution;
+    const targetResolution = blackHoleResolution(projected, tier, viewMoving && !flight.reduced,
+      flight.adaptive === false ? 1 : cadence.current.scale, gl.capabilities.maxTextureSize);
+    const resolution = orbital ? Math.min(targetResolution,flight.mobile?512:768) : flight.exit > 0 && previous.resolution ? previous.resolution : targetResolution;
     // Keep rayResolution and shade resolution matched so NearestFilter encounter
     // textures never produce 2x2 derivative block artifacts.
     const rayResolution = resolution;
@@ -139,7 +160,7 @@ function BlackHoleAccretionMesh({ flight, orbit }: Pick<BlackHoleProps, "flight"
       if (now - sample.start >= 1000) {
         const frameMs = (now - sample.start) / sample.frames;
         root.dataset.blackHoleFrameMs = frameMs.toFixed(2);
-        if (!viewMoving && !flight.reduced) {
+        if (!viewMoving && !flight.reduced && flight.adaptive !== false) {
           sample.slow = frameMs > 36 ? sample.slow + 1 : 0;
           sample.fast = frameMs < 18 ? sample.fast + 1 : 0;
           if (sample.slow >= 2 && sample.scale > .75) {

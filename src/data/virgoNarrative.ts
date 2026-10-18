@@ -12,7 +12,7 @@ export const NARRATIVE_BEATS = [
   { from: 3.65, to: 4.25, side: "right", placement: "lower-right", effect: "meteor", vie: "Mời bạn ghé qua những sản phẩm mình góp phần xây dựng.", eng: "Step into the products I have helped build." },
   { from: 4.80, to: 5.04, side: "left", placement: "upper-left", effect: "aurora", vie: "Những dự án ấy định hình cách mình xây dựng.", eng: "Those projects shape the way I build." },
   { from: 5.04, to: 5.30, side: "right", placement: "lower-right", effect: "orbit", vie: "Giao diện, ứng dụng và hệ thống được kết nối cẩn thận.", eng: "Interfaces, apps and systems—connected with care." },
-  { from: 5.82, to: 5.94, side: "right", placement: "upper-right", effect: "aurora", vie: "Cùng trao đổi, hoặc ghé không gian làm việc của mình.", eng: "Let's talk—or explore my workspace." },
+  { from: 5.82, to: 5.94, side: "right", placement: "upper-right", effect: "aurora", vie: "Bên kia hố đen, mỗi ý tưởng mở ra một thế giới.", eng: "Beyond the black hole, every idea becomes a world." },
 ] as const;
 
 export const narrativeRevealStyle = (index: number) => (['scan', 'focus', 'stagger', 'rise', 'scan'] as const)[Math.max(0, index - 3) % 5];

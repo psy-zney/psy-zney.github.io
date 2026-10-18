@@ -115,13 +115,15 @@ const DISK_MATERIAL = /* glsl */ `
     float angularPixel = cone.y + radialPixel * r * abs(woundAge * 1.7 * omegaDerivative);
     vec3 seedOffset = vec3(seed * 17.3, seed * 8.1, seed * 13.7);
 
-    vec3 flow = vec3(orbit * radialScale * 3.2, logR * 5.2) + seedOffset;
+    // Advect radial texture coordinates outward so material visibly flows inward.
+    float inflow = logR + age * .20;
+    vec3 flow = vec3(orbit * radialScale * 3.2, inflow * 5.2) + seedOffset;
     float flowPixel = max(max(radialPixel, angularPixel) * radialScale * 3.2, radialPixel * 5.2);
     float eddy = turbulence(vec3(orbit * radialScale * .65, logR * 1.4) + seedOffset,
       max(max(radialPixel, angularPixel) * radialScale * .65, radialPixel * 1.4));
     flow.z += (eddy - .5) * 2.4;
     float body = turbulence(flow, flowPixel);
-    float threads = turbulence(vec3(logR * 14.0 + eddy * 3.2, orbit * 12.0) + seedOffset,
+    float threads = turbulence(vec3(inflow * 14.0 + eddy * 3.2, orbit * 12.0) + seedOffset,
       max(radialPixel * 14.0, angularPixel * 12.0));
     float finePixel = flowPixel * 4.5;
     float fine = mix(.5, noise(flow * vec3(3.2, 2.5, 2.5) + threads * 1.6), 1.0 - smoothstep(.22, .68, finePixel));

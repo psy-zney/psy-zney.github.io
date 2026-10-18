@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { singularityView } from '../data/singularityMotion';
 import { gsap } from "gsap";
 import * as THREE from "three";
 import { VIRGO_STARS, VIRGO_SUPPORT_STARS } from "../data/virgoStations";
@@ -17,6 +18,8 @@ import { PlanetTextureLibrary, VirgoPlanet } from "./VirgoPlanet";
 import { CelestialVisitors } from "./VirgoVisitors";
 import { celestialSlot } from '../data/celestialRegistry';
 import { useQualityTier, type QualityTier } from './workspace/useQualityTier';
+import { AdaptiveResolution } from './AdaptiveResolution';
+import { renderPixelRatio, requestedPixelRatio } from '../data/renderQuality';
 import { BlackHoleVortex } from "./BlackHoleVortex";
 import type { BlackHoleOrbitState } from "./BlackHoleOrbitControls";
 import { solarPassageSample } from '../data/solarShowcaseMotion';
@@ -31,7 +34,7 @@ export const CAMERA_STOPS = [
   ...VIRGO_STARS.map(star => new THREE.Vector3(0, 0, star.position[2] + SPACE_LAYOUT.desktopCamera.distance)),
 ];
 
-type Flight = FlightSample & { speed: number; exit: number; time: number; reduced: boolean; mobile: boolean; tier: QualityTier };
+type Flight = FlightSample & { speed: number; exit: number; time: number; reduced: boolean; mobile: boolean; tier: QualityTier; adaptive: boolean };
 type FlightProps = { flight: Flight; glow: THREE.Texture };
 const random = (seed: number) => {
   const n = Math.sin(seed * 127.1 + 31.7) * 43758.5453;
@@ -544,8 +547,8 @@ export function createFlightPaths(mobile = false) {
 function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, selectedProject, selectedSkill, selectedOrigin, portalRef, blackHoleControlRef, blackHoleOrbit, labelsRef, entering, paused, readingFocus, showcaseApproach, onPlanetSelect, onPlanetHover }: SceneProps) {
   const { camera, size, invalidate } = useThree();
   const mobile = size.width < 700;
-  const quality = useQualityTier();
-  const flight = useMemo<Flight>(() => ({ ...flightSample(0, reducedMotion), speed: 0, exit: 0, time: 0, reduced: reducedMotion, mobile, tier: quality.tier }), [mobile, reducedMotion, quality.tier]);
+  const quality = useQualityTier(true);
+  const flight = useMemo<Flight>(() => ({ ...flightSample(0, reducedMotion), speed: 0, exit: 0, time: 0, reduced: reducedMotion, mobile, tier: quality.tier, adaptive: quality.preference === 'auto' }), [mobile, reducedMotion, quality.tier, quality.preference]);
   const ambientTime = useRef(0);
   const scroll = useRef({ value: 0, target: 0, offsets: [0, 1] });
   const exit = useRef({ value: 0 });
@@ -662,7 +665,9 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     scroll.current.value = reducedMotion ? target : (paused || readingFocus) ? scroll.current.value : protectOpeningHandoff(scroll.current.value, advancePacedFlightPosition(scroll.current.value, target, dt));
     const position = clamp(frozenPosition.current ?? scroll.current.value, 0, 6);
     Object.assign(flight, flightSample(position, reducedMotion, flight.time));
-    flight.exit = exit.current.value;
+    const returning = overlay.parentElement!.dataset.singularityReturn;
+    const singularityTime = overlay.parentElement!.dataset.singularityTime;
+    flight.exit = singularityTime !== undefined ? (1-singularityView(Number(singularityTime)).depth)/.97 : returning === undefined ? exit.current.value : Number(returning);
     paths[flight.leg].getPointAt(flight.travel, point);
     // Keep the approved straight flight through reading and transit boundaries.
     // Scenery may rotate; the camera must not orbit or reset its heading.
@@ -690,8 +695,15 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     // The look point travels with the camera. Interpolating station targets
     // can put the target behind the camera halfway through a long passage.
     look.copy(point).add(direction);
-    if (entering) { camera.position.lerp(exitPoint, flight.exit); look.lerp(gate, flight.exit); }
+    if (singularityTime !== undefined && !reducedMotion) {
+      const local = singularityView(Number(singularityTime));
+      const distance = point.distanceTo(gate);
+      camera.position.set(gate.x + local.x * distance, gate.y + local.y * distance, gate.z + local.depth * distance);
+      look.copy(gate);
+      overlay.parentElement!.dataset.singularityPose = [camera.position.x, camera.position.y, camera.position.z, local.angle, local.bank].join(',');
+    } else if (entering || returning !== undefined) { camera.position.lerp(exitPoint, flight.exit); look.lerp(gate, flight.exit); }
     camera.lookAt(look);
+    if (singularityTime !== undefined && !reducedMotion) camera.rotateZ(singularityView(Number(singularityTime)).bank);
     const perspective = camera as THREE.PerspectiveCamera;
     const fov = flightFieldOfView(position, mobile, reducedMotion, flight.exit);
     const passage = transitSample(position);
@@ -916,13 +928,15 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
 }
 
 export function VirgoScene(props: SceneProps) {
+  const quality = useQualityTier(true);
   const [visible, setVisible] = useState(() => document.visibilityState !== "hidden");
   useEffect(() => {
     const change = () => setVisible(document.visibilityState !== "hidden");
     document.addEventListener("visibilitychange", change);
     return () => document.removeEventListener("visibilitychange", change);
   }, []);
-  return <Canvas className="virgo-canvas" frameloop={!visible ? "never" : props.reducedMotion || props.paused ? "demand" : "always"} camera={{ position: [0, 0, 25 * SPACE_LAYOUT.interstellar], fov: 46, near: .1, far: SPACE_LAYOUT.far }} dpr={[1, props.reducedMotion ? 1 : 1.5]} gl={{ antialias: false, alpha: false, powerPreference: "high-performance" }}>
+  return <Canvas className="virgo-canvas" frameloop={!visible ? "never" : props.reducedMotion || props.paused ? "demand" : "always"} camera={{ position: [0, 0, 25 * SPACE_LAYOUT.interstellar], fov: 46, near: .1, far: SPACE_LAYOUT.far }} dpr={renderPixelRatio(window.innerWidth, window.innerHeight, requestedPixelRatio(window.devicePixelRatio,true), quality.tier)} gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}>
+    <AdaptiveResolution tier={quality.tier} adaptive={quality.preference === 'auto'} supersample active={visible && !props.paused && !props.reducedMotion} />
     <color attach="background" args={["#020408"]} /><CameraFlight {...props} />
   </Canvas>;
 }

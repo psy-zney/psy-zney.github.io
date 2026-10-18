@@ -559,11 +559,12 @@ try {
       assert(html.includes('class="virgo-overlay-panel virgo-cosmos"'));
       assert.equal(html.includes('class="virgo-intro-flight"'), ['', '#/', '#/cosmos'].includes(hash), 'All root aliases mount only the new scroll-driven opening');
       assert(!html.includes('class="virgo-header"') && !html.includes('virgo-scroll-rail'), "The portfolio top bar and vertical dot rail must be removed; reader headers are allowed");
-      assert(html.includes('virgo-constellation-map') && html.includes('aria-label="Virgo"'), "Navigation must use the original Virgo map");
-      assert.equal((html.match(/class="virgo-map-star"/g) || []).length,4);
+      assert(!html.includes('class="virgo-constellation-map"') && !html.includes('class="virgo-map-star"'), "The owner removed the corner constellation map");
+      assert(!html.includes('class="virgo-index"') && !html.includes('class="virgo-flight-progress"'), "The owner removed the bottom chapter counter and progress line");
+      assert(!html.includes('virgo-quality-gauge') && !html.includes('virgo-quality-select'), 'Public quality is automatic without a visible selector');
       assert(!html.includes('class="virgo-space-rift"') && !html.includes('class="virgo-intro-fracture"'), "The obsolete black-screen fracture is removed from the mounted portfolio");
       assert(!html.includes('<video') && !html.includes('fracture-transition.webm'), "Fracture visuals must never use the reference film");
-      assert(html.includes('Open workspace through Zavijava') || html.includes('Mở không gian làm việc qua sao Zavijava'));
+      assert(html.includes('Explore worlds through the black hole') || html.includes('Khám phá các thế giới qua hố đen'));
       assert(html.includes("SPICA") && html.includes("PORRIMA") && html.includes("VINDEMIATRIX") && html.includes("ZAVIJAVA"));
       assert.equal((html.match(/class="virgo-project-link"/g) || []).length, 3);
       assert.equal((html.match(/class="virgo-row-star"/g) || []).length >= projects.length, true);

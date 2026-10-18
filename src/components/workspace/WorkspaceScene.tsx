@@ -9,6 +9,8 @@ import { WorkspaceControls } from './WorkspaceControls';
 import { workspaceAssets, workspaceItems, type WorkspaceItemId } from '../../data/workspaceManifest';
 import { workspaceProxies } from './workspacePicking';
 import { QUALITY, type QualityTier } from './useQualityTier';
+import { AdaptiveResolution } from '../AdaptiveResolution';
+import { renderPixelRatio } from '../../data/renderQuality';
 import { ScreenGifFrames } from './screenGif';
 import { WorkspaceLighting } from './WorkspaceLighting';
 import type { MoveInput, RoomView, WorkspaceInput } from './workspaceNavigation';
@@ -142,12 +144,13 @@ function RendererLifecycle({ onError }: { onError: () => void }) {
 export function WorkspaceScene(props: Props) {
   const [visible, setVisible] = useState(!document.hidden);
   useEffect(() => { const change = () => setVisible(!document.hidden); document.addEventListener('visibilitychange', change); return () => document.removeEventListener('visibilitychange', change); }, []);
-  return <Canvas className={`room-canvas${props.locked ? ' is-locked' : ''}`} shadows={QUALITY[props.tier].shadows ? { type: THREE.PCFShadowMap } : false} dpr={[1, QUALITY[props.tier].dpr]}
+  return <Canvas className={`room-canvas${props.locked ? ' is-locked' : ''}`} shadows={QUALITY[props.tier].shadows ? { type: THREE.PCFShadowMap } : false} dpr={renderPixelRatio(window.innerWidth, window.innerHeight, window.devicePixelRatio, props.tier)}
     frameloop={!visible ? 'never' : props.paused || props.reduced && !props.moving ? 'demand' : 'always'} camera={{ position: [7.5, 10.5, .85], fov: 54, near: .1, far: 200 }}
-    gl={{ antialias: false, powerPreference: props.tier === 'low' ? 'low-power' : 'high-performance' }} onCreated={({ gl }) => {
+    gl={{ antialias: true, powerPreference: props.tier === 'low' ? 'low-power' : 'high-performance' }} onCreated={({ gl }) => {
       gl.setClearColor('#050913'); gl.shadowMap.type = THREE.PCFShadowMap;
     }}>
-    <ambientLight intensity={.45}/><directionalLight position={[15,25,15]} intensity={1.25} castShadow={QUALITY[props.tier].shadows} shadow-mapSize={[1024,1024]} shadow-bias={-.0001}/>
+    <AdaptiveResolution tier={props.tier} adaptive={false} active={false} />
+    <ambientLight intensity={.45}/><directionalLight position={[15,25,15]} intensity={1.25} castShadow={QUALITY[props.tier].shadows} shadow-mapSize={[2048,2048]} shadow-bias={-.0001}/>
     <pointLight position={[-10,10,-10]} intensity={.55} color="#60a5fa"/><pointLight position={[10,5,-10]} intensity={.45} color="#8b5cf6"/>
     <WorkspaceLighting/><RendererLifecycle onError={props.onError}/><Room {...props}/>
   </Canvas>;

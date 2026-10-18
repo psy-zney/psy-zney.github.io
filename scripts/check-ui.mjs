@@ -93,6 +93,7 @@ try {
 
     await page.goto(`${base}#/showcase/beatsync`, { waitUntil: 'domcontentloaded' });
     await page.locator('[data-page-loader]').waitFor({ state: 'detached' });
+    if (await page.locator('.worlds-showcase').count()) await page.getByRole('button', { name: 'Enter world', exact: true }).click();
     const showcaseEnabled = await page.locator('.virgo-page').getAttribute('data-showcase-enabled') === 'true';
     let initialFit = null;
     if (name === 'desktop' || name === 'reduced') assert((await page.locator('body').evaluate(el => getComputedStyle(el).cursor)).includes('deep-space-arrow.png'), 'The default native cursor uses the selected arrow');
@@ -118,7 +119,7 @@ try {
       assert((await page.locator('body').evaluate(el => getComputedStyle(el).cursor)).includes('deep-space-arrow.png'), 'The default native cursor uses the selected arrow');
       assert((await gallery.getByRole('button', { name: 'Web experiences', exact: true }).evaluate(el => getComputedStyle(el).cursor)).includes('deep-space-hand.png'), 'Buttons use the selected hand cursor');
     }
-    assert.equal(await gallery.locator('.screening-close').count(), 0, 'The journey showcase has no X exit control');
+    assert.equal(await gallery.locator('.screening-close').count(), 1, 'Product detail has a return to the world selector');
     const previewWidth = await gallery.locator('.screening-slide.is-active').evaluate(el => el.offsetWidth);
     assert(previewWidth / options.viewport.width > (name === 'phone' ? .90 : name === 'landscape' ? .43 : .55), `${name}: the website stays readable while leaving space for the tunnel`);
     await page.screenshot({ path: `${output}/${name}-gallery.png` });
@@ -235,10 +236,12 @@ try {
     assert.equal(await gallery.getByRole('link', { name: 'Visit website', exact: true }).getAttribute('href'), 'https://manager.zney295.id.vn/');
     await page.goto(`${base}#/showcase/no-such-product`, { waitUntil: 'domcontentloaded' });
     await gallery.getByRole('button', { name: 'See products' }).click();
+    if (await page.locator('.worlds-showcase').count()) await page.getByRole('button', { name: 'Enter world', exact: true }).click();
     await hashIs('mpoly');
     await page.route('**/img/products/beatsync.webp', route => route.abort());
     await page.goto(`${base}#/showcase/beatsync`, { waitUntil: 'domcontentloaded' });
     await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: 'Enter world', exact: true }).click();
     await gallery.locator('.screening-slide.is-active .screening-tv[data-state="error"]').waitFor();
     assert.equal(await gallery.getByRole('link', { name: 'Visit website', exact: true }).getAttribute('href'), 'https://beatsync.zney295.id.vn/');
     await page.unroute('**/img/products/beatsync.webp');
@@ -411,147 +414,13 @@ try {
     await storyAt(3.95, secondSentence);
     await wheelTo(4.24);
     await page.waitForTimeout(260); // A separate gesture after the preceding reading stop.
-    if (showcaseEnabled) {
-    const cylinderArrivalFrame = page.evaluate(() => new Promise(resolve => {
-      const timeout = setTimeout(() => { observer.disconnect(); resolve({ missing: true }); }, 10000);
-      const observer = new MutationObserver(() => {
-        const room = document.querySelector('.screening-room');
-        const pose = room?.dataset.tunnelPose?.split(',').map(Number);
-        if (!pose || pose.length !== 6 || !pose.every(Number.isFinite)) return;
-        observer.disconnect(); clearTimeout(timeout);
-        resolve({ pose, turn: room.dataset.showcaseTurn.split(',').map(Number), busy: room.getAttribute('aria-busy'), phase: room.dataset.flowPhase,
-          flash: Number(getComputedStyle(room.querySelector('.screening-core-flash')).opacity),
-          tabs: room.querySelector('.screening-kinds').getAnimations().map(animation => animation.animationName) });
-      });
-      observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-tunnel-pose'] });
-      document.querySelector('.virgo-page').setAttribute('data-qa-cylinder-ready', 'true');
-    }));
-    void cylinderArrivalFrame.catch(() => {}); // Preserve the primary error if the page closes before this observation finishes.
-    await page.waitForFunction(() => document.querySelector('.virgo-page')?.hasAttribute('data-qa-cylinder-ready'));
-    // Hold the browser clock while taking screenshots: a slow screenshot RPC
-    // must not consume the short core flash or cylinder reveal being checked.
-    if (name !== 'reduced') await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 1000)));
-    const approachFrame = name === 'reduced' ? null : page.evaluate(() => new Promise(resolve => {
-      const root = document.querySelector('.virgo-page');
-      const timeout = setTimeout(() => { observer.disconnect(); resolve({ missing: true, hash: location.hash,
-        seconds: root.style.getPropertyValue('--showcase-approach'), solar: root.dataset.solarPassage,
-        passage: document.querySelector('.virgo-showcase-passage')?.dataset.phase,
-        galleryPresent: !!document.querySelector('.screening-room') }); }, 6000);
-      const observer = new MutationObserver(() => {
-        const solar = root.dataset.solarPassage?.split(',').map(Number);
-        const p = solar?.[0];
-        const pose = root.dataset.cameraPose?.split(',').map(Number);
-        const passage = document.querySelector('.virgo-showcase-passage[data-phase="approaching"]');
-        if (!passage || p === undefined || p < 2.56 || !pose || pose[2] >= -480) return;
-        observer.disconnect(); clearTimeout(timeout);
-        resolve({ hash: location.hash, galleryPresent: !!document.querySelector('.screening-room'),
-          opacity: Number(getComputedStyle(passage.querySelector('.virgo-solar-flash')).opacity),
-          rectangularFrames: document.querySelectorAll('.virgo-showcase-aperture,.screening-flow-portal').length,
-          solar,
-          pose });
-      });
-      observer.observe(root, { attributes: true, attributeFilter: ['style', 'data-solar-passage'] });
-      root.setAttribute('data-qa-approach-ready', 'true');
-    }));
-    if (name !== 'reduced') await page.waitForFunction(() => document.querySelector('.virgo-page')?.hasAttribute('data-qa-approach-ready'));
-    await page.mouse.wheel(0, 120);
-    if (name !== 'reduced') await page.clock.runFor(2580);
-    if (name !== 'reduced') {
-      const frame = await approachFrame;
-      if (frame.missing) {
-        await page.screenshot({ path: `${output}/${name}-showcase-entry-failure.png` });
-        await writeFile(`${output}/${name}-showcase-entry-failure.json`, JSON.stringify(frame, null, 2));
-      }
-      assert.equal(frame.galleryPresent, false, 'The lead-in is visible before the gallery mounts');
-      assert(!frame.hash.startsWith('#/showcase'), 'The lead-in precedes the showcase route change');
-      assert.equal(frame.rectangularFrames, 0, 'Core entry removes every rectangular transition frame');
-      assert(frame.opacity > .5, 'The stellar flash lights the full viewport before opening the gallery');
-      assert(frame.solar[1] > 3.99 && frame.solar[2] === 0, 'Planet orbits accelerate while the camera keeps zero roll');
-      const initialRadius = Math.hypot(secondStory.pose[0], secondStory.pose[1], secondStory.pose[2] + 480);
-      assert(frame.solar[3] < initialRadius * .25, 'The actual camera dives into the core rather than stopping at 30 percent');
-      assert(frame.pose[2] < -480 && secondStory.pose[2] > -480, 'The rendered camera crosses the solar centre along -Z');
-      for (const index of [0, 1, 3, 4, 5, 6]) assert.equal(frame.pose[index], secondStory.pose[index], 'Showcase entry preserves the straight heading');
-      assert(Math.hypot(...frame.pose.slice(0, 3).map((value, i) => value - secondStory.pose[i])) > 2, 'The real camera moves forward during the lead-in');
-      await page.screenshot({ path: `${output}/${name}-showcase-before-entry.png` });
-      await page.clock.runFor(200);
-    }
-    await page.waitForFunction(() => location.hash === '#/showcase/mpoly');
-    await gallery.waitFor({ state: 'visible' });
-    if (name === 'reduced') await page.waitForTimeout(180);
-    const cylinderStart = await cylinderArrivalFrame;
-    await writeFile(`${output}/${name}-cylinder-arrival.json`, JSON.stringify(cylinderStart, null, 2));
-    if (cylinderStart.missing) {
-      await page.screenshot({ path: `${output}/${name}-cylinder-arrival-failure.png` });
-      await writeFile(`${output}/${name}-cylinder-arrival-failure.json`, JSON.stringify(cylinderStart, null, 2));
-    }
-    if (name === 'reduced') assert.deepEqual(cylinderStart.turn, [0, 0, 0], 'Reduced motion skips the world turn');
-    else {
-      assert(Math.abs(cylinderStart.turn[0]) > 5.5 && cylinderStart.pose.every(Number.isFinite), 'The world tube begins its complete turn in a valid spatial pose');
-      assert.equal(cylinderStart.busy, 'true', 'Gallery controls wait until the four-second landing finishes');
-      assert(cylinderStart.tabs.includes('screening-tabs-rise'), 'Chapter tabs enter from above after the cylinder reveal');
-    }
-    await page.screenshot({ path: `${output}/${name}-showcase-arrival.png` });
-    if (name !== 'reduced') await page.clock.runFor(1800);
-    await page.waitForFunction(() => !document.querySelector('.screening-room')?.hasAttribute('aria-busy'));
-    await hashIs('mpoly');
-    assert.deepEqual(await gallery.evaluate(el => el.dataset.showcaseTurn.split(',').map(Number)), [0, 0, 0], 'The world tube settles upright after the complete turn');
-    assert.equal(await gallery.locator('.screening-core-flash').evaluate(el => getComputedStyle(el).opacity), '0', 'The core flash clears completely after arrival');
-    await page.screenshot({ path: `${output}/${name}-automatic-showcase.png` });
-    if (name !== 'reduced') await page.clock.resume();
-    await gallery.press('End');
-    await hashIs('backup');
-    const departureFrame = name === 'reduced' ? null : gallery.evaluate(el => new Promise(resolve => {
-      const timeout = setTimeout(() => { observer.disconnect(); resolve({ phase: el.getAttribute('data-flow-phase'), connected: el.isConnected }); }, 5000);
-      const observer = new MutationObserver(() => {
-        if (el.getAttribute('data-flow-phase') !== 'departing') return;
-        observer.disconnect();
-        clearTimeout(timeout);
-        resolve({ phase: el.getAttribute('data-flow-phase'), portal: getComputedStyle(el.querySelector('.screening-core-flash')).animationName });
-      });
-      observer.observe(el, { attributes: true, attributeFilter: ['data-flow-phase'] });
-      el.setAttribute('data-qa-departure-ready', 'true');
-    }));
-    if (name !== 'reduced') await page.waitForFunction(() => document.querySelector('.screening-room')?.hasAttribute('data-qa-departure-ready'));
-    await page.mouse.wheel(0, 120);
-    if (name !== 'reduced') {
-      assert.deepEqual(await departureFrame, { phase: 'departing', portal: 'screening-core-return' }, 'Exit plays the stellar light passage before unmounting');
-      await page.screenshot({ path: `${output}/${name}-showcase-departure.png` });
-    }
-    await gallery.waitFor({ state: 'detached' });
+    // Showcase moved after Contact: both directions now stay in the story.
+    await wheelTo(4.92);
     await storyAt(4.92, 'Those projects shape the way I build.');
-    await page.waitForTimeout(260);
-    await wheelTo(4.81);
-    await page.mouse.wheel(0, -120);
-    await hashIs('backup');
-    await gallery.press('Home');
-    await hashIs('mpoly');
-    await page.waitForTimeout(560);
-    await page.mouse.wheel(0, -120);
-    await gallery.waitFor({ state: 'detached' });
+    assert.equal(await page.locator('.screening-room, .worlds-showcase').count(), 0, 'Forward scrolling no longer interrupts the story with a gallery');
+    await wheelTo(3.95);
     await storyAt(3.95, secondSentence);
-    if (name === 'phone') {
-      const touch = await context.newCDPSession(page);
-      const swipe = async (from, to) => {
-        await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 190, y: from }] });
-        for (let step = 1; step <= 16; step++) await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 190, y: from + (to - from) * step / 16 }] });
-        await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-        await page.waitForTimeout(700);
-      };
-      for (let attempt = 0; attempt < 3 && !await gallery.isVisible(); attempt++) await swipe(650, 130);
-      await hashIs('mpoly');
-      await swipe(160, 510);
-      await gallery.waitFor({ state: 'detached' });
-      await storyAt(3.95, secondSentence);
-      await touch.detach();
-    }
-    } else {
-      await wheelTo(4.92);
-      await storyAt(4.92, 'Those projects shape the way I build.');
-      assert.equal(await page.locator('.screening-room, .virgo-showcase-passage').count(), 0, 'Wheel bypasses the hidden gallery');
-      await wheelTo(3.95);
-      await storyAt(3.95, secondSentence);
-      assert.equal(await page.locator('.screening-room, .virgo-showcase-passage').count(), 0, 'Reverse wheel also bypasses the gallery');
-    }
+    assert.equal(await page.locator('.screening-room, .worlds-showcase').count(), 0, 'Reverse scrolling stays on the same story path');
     let contactFlight = [];
     if (name !== 'reduced') {
       await page.goto(`${base}#/skills`, { waitUntil: 'domcontentloaded' });
@@ -626,7 +495,7 @@ try {
       assert(approachFrames.every(frame => frame.pose[0] === 0 && frame.pose[1] === 0 && frame.pose.slice(3).every((value, i) => value === [0, 0, 0, 1][i])), 'The approach keeps its axis and forward heading');
     }
     await scroller.evaluate(el => { el.scrollTop = el.scrollHeight; });
-    const portal = page.getByRole('button', { name: 'Open workspace through Zavijava', exact: true });
+    const portal = page.getByRole('button', { name: 'Explore worlds through the black hole', exact: true });
     await portal.waitFor({ state: 'visible' });
     await page.waitForFunction(() => Number(document.querySelector('.virgo-page').style.getPropertyValue('--flight-progress')) * 6 > 5.99999);
     await page.mouse.move(12, options.viewport.height / 2);
@@ -822,20 +691,20 @@ try {
       requestAnimationFrame(record);
     });
     await portal.locator('.virgo-portal-label').click();
-    await page.waitForURL('**/#/workspace');
+    await page.waitForURL('**/#/showcase/mpoly');
     if (name !== 'reduced') {
       const entryFrames = await page.evaluate(() => window.__workspaceFlightFrames);
-      assert(entryFrames.length > 3 && entryFrames.at(-1)[2] < entryFrames[0][2] - 50, 'Workspace entry retains the visible forward flight');
+      assert(entryFrames.length > 3 && entryFrames.at(-1)[2] < entryFrames[0][2] - 50, 'The local singularity orbit advances towards the throat');
       entryFrames.forEach((pose, i) => {
-        assert(Math.abs(pose[0]) < .001 && Math.abs(pose[1]) < .001, 'Entry stays on the same straight axis');
+        assert(pose.every(Number.isFinite), 'The approved local spiral keeps a valid camera pose');
         if (i) assert(pose[2] <= entryFrames[i - 1][2] + .001, 'Entry does not pull back before advancing');
       });
       assert((await page.evaluate(() => window.__workspaceOrbitFrames)).every(view => view === entryView), 'Entry keeps the mouse-selected black-hole view instead of resetting it during flight');
       const entryCaches = await page.evaluate(() => window.__workspaceCacheFrames);
-      assert(entryCaches.every(count => count === entryCaches[0]), 'Entry reuses ray geometry without a resolution rebuild inside the transition');
+      assert(entryCaches.every((count,i) => !i || Number(count)>=Number(entryCaches[i-1])), 'Local observer changes update the ray cache in forward order');
     }
     try {
-      await page.getByRole('button', { name: 'Contents', exact: true }).waitFor({ timeout: 15000 });
+      await page.getByRole('button', { name: 'Enter world', exact: true }).waitFor({ timeout: 15000 });
     } catch (error) {
       await page.screenshot({ path: `${output}/${name}-failure.png` });
       await writeFile(`${output}/${name}-failure.json`, JSON.stringify({ url: page.url(), errors, body: await page.locator('body').innerText() }, null, 2));
