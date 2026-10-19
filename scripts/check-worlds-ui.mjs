@@ -62,6 +62,19 @@ try {
     const previewRatio=await worlds.locator('.worlds-gate.is-selected').evaluate(el=>el.querySelector('.worlds-window').offsetWidth/el.offsetWidth);
     assert(previewRatio>.70,'The central product preview fills the portal aperture');
     assert.equal(await worlds.locator('.worlds-gate.is-selected img').evaluate(el=>getComputedStyle(el).transform),'none','Authentic preview pixels remain on an undistorted plane');
+    assert.equal(await worlds.locator('.worlds-gate.is-selected img').evaluate(el=>getComputedStyle(el).objectFit),'contain','Focused work preserves the entire authentic preview');
+    const frame = await worlds.locator('.worlds-gate.is-selected .worlds-window').boundingBox();
+    assert(frame.x >= 0 && frame.x + frame.width <= width, 'The wide viewing plane stays within the viewport');
+    if (height >= 600) {
+      const separated = frame.x + frame.width + 20 < layout.caption.left || frame.y + frame.height < layout.caption.top;
+      assert(separated, 'The viewing plane and project text occupy separate visual zones');
+    }
+    if (reducedMotion !== 'reduce') {
+      await worlds.focus(); await worlds.press('Enter'); await worlds.press('Escape');
+      await page.waitForTimeout(750);
+      assert.equal(await page.locator('dialog.screening-room[open]').count(),0,'Escape cancels a pending world entry');
+      await worlds.waitFor();
+    }
     if(name==='desktop'){
       const optics=await page.evaluate(async()=>{
         const {SingularityLens}=await import('/src/components/SingularityLens.ts');
@@ -163,10 +176,16 @@ try {
       // Cancel during the outward flight, preserving the current coordinate.
       await portal.locator('.virgo-portal-label').click();
       await page.waitForFunction(() => Number(document.querySelector('.singularity-passage')?.getAttribute('data-seconds')) > .65);
-      await page.keyboard.press('Escape');
+      if (name === 'phone') {
+        await page.locator('.singularity-passage').evaluate(target => {
+          const touch = clientY => new Touch({ identifier: 1, target, clientX: 190, clientY });
+          target.dispatchEvent(new TouchEvent('touchstart', { touches: [touch(200)], targetTouches: [touch(200)], changedTouches: [touch(200)], bubbles: true, cancelable: true }));
+          target.dispatchEvent(new TouchEvent('touchend', { changedTouches: [touch(320)], bubbles: true, cancelable: true }));
+        });
+      } else await page.keyboard.press('Escape');
       await page.waitForFunction(() => document.querySelector('.singularity-passage')?.getAttribute('data-direction') === '-1');
       await page.locator('.singularity-passage').waitFor({state:'detached'});
-      assert(page.url().endsWith('/contact'),'Escape rolls back an unfinished passage');
+      assert(page.url().endsWith('/contact'),'Escape or a downward touch gesture rolls back an unfinished passage');
       const pose = await page.locator('.virgo-page').getAttribute('data-camera-pose');
       assert(pose.split(',').map(Number).every(Number.isFinite), 'Rollback restores a valid camera pose');
     }

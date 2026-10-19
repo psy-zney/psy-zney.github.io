@@ -13,3 +13,6 @@ artifacts/
 .env.local
 .env.*.local
 
+
+# Private backend
+analytics-backend/

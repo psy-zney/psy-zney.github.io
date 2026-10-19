@@ -1,5 +1,11 @@
 # Chuyển cảnh đã chốt: luôn bay thẳng
 
+19/10: mặt xem sản phẩm được chọn mở rộng, giữ nguyên mặt phẳng ảnh;
+các cửa xa vẫn nằm trên mặt cầu lõm. Nối hầm và họng thoát bằng crossfade
+theo progress tuyệt đối 0,58–0,76, không đổi camera hoặc các mốc passage.
+Vuốt xuống khi đang vào đảo chiều cùng tọa độ như Escape/wheel; Escape
+trong 680ms mở sản phẩm hủy entry và giữ nguyên thế giới đang chọn.
+
 18/10, chỉnh góc nhìn thoát theo phản hồi mới: miệng lỗ trắng là một họng
 hữu hạn nhìn từ trong ra, camera tiến qua mặt miệng rồi ra không gian.
 Không quay đầu, không chèn quả cầu sáng lên showcase. Nối miệng từ cuối

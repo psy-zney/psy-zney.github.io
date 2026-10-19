@@ -106,7 +106,15 @@ export function SingularityPassage({ onComplete, onHandoff, onReverse, direction
         if(crossing>0){ctx.fillStyle=`rgba(1,2,4,${crossing*crossing*(3-2*crossing)})`;ctx.fillRect(0,0,w,h);}
       } else if (time < SINGULARITY_THROAT_END) {
         const p = (time - SINGULARITY_ORBIT_END) / (SINGULARITY_THROAT_END-SINGULARITY_ORBIT_END);
-        if(lens){if(p>.65)lens.drawExit(ctx,w,h,p-1,time);else lens.drawTunnel(ctx,w,h,p,time);}
+        if(lens){
+          // Both surfaces share absolute passage time, including during rollback.
+          const blend = Math.max(0, Math.min(1, (p - .58) / .18));
+          if (blend < 1) lens.drawTunnel(ctx,w,h,p,time);
+          if (blend > 0) {
+            ctx.save(); ctx.globalAlpha = blend * blend * (3 - 2 * blend);
+            lens.drawExit(ctx,w,h,p-1,time); ctx.restore();
+          }
+        }
         else {ctx.fillStyle='#03040b';ctx.fillRect(0,0,w,h);paintThroat(ctx,w/2,h/2,unit*(.65+p*.55),time,'#9caedc',p*2);}
         // Near/far dust follows the wall's helical flow, sampled backwards for trails.
         ctx.save();ctx.globalCompositeOperation='screen';
@@ -140,9 +148,22 @@ export function SingularityPassage({ onComplete, onHandoff, onReverse, direction
       if (direction > 0) onReverse(singularitySample(elapsed, direction).t);
     };
     // Keyboard and wheel reversal is handled by the owning passage state.
+    let touchY: number | null = null;
+    const touchStart = (event: TouchEvent) => { touchY = event.touches[0]?.clientY ?? null; };
+    const touchEnd = (event: TouchEvent) => {
+      const end = event.changedTouches[0]?.clientY;
+      if (touchY !== null && end !== undefined && end - touchY > 45 && direction > 0) {
+        event.preventDefault(); onReverse(singularitySample(elapsed, direction).t);
+      }
+      touchY = null;
+    };
+    const touchCancel = () => { touchY = null; };
+    node.addEventListener('touchstart', touchStart, { passive: true });
+    node.addEventListener('touchend', touchEnd, { passive: false });
+    node.addEventListener('touchcancel', touchCancel);
     node.addEventListener('wheel', reverse, {passive:false}); window.addEventListener('keydown', reverse, true);
     raf = requestAnimationFrame(draw);
-    return () => { cancelAnimationFrame(raf); stopCapture(); lens?.dispose(); const page=node.closest<HTMLElement>('.virgo-page');page?.removeAttribute('data-singularity-return');page?.removeAttribute('data-singularity-time'); node.removeEventListener('wheel', reverse); window.removeEventListener('keydown', reverse, true); };
+    return () => { cancelAnimationFrame(raf); stopCapture(); lens?.dispose(); const page=node.closest<HTMLElement>('.virgo-page');page?.removeAttribute('data-singularity-return');page?.removeAttribute('data-singularity-time'); node.removeEventListener('wheel', reverse); window.removeEventListener('keydown', reverse, true); node.removeEventListener('touchstart', touchStart); node.removeEventListener('touchend', touchEnd); node.removeEventListener('touchcancel', touchCancel); };
   }, [onComplete, onHandoff, onReverse, direction, initialTime]);
   return <canvas className="singularity-dust singularity-passage" ref={canvas} aria-label="Accretion, wormhole passage and white-hole exit"/>;
 }

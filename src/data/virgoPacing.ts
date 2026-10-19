@@ -102,3 +102,12 @@ export function storyWheelTarget(delta: number, target: number, rendered: number
   const origin = Math.sign(delta) !== Math.sign(target - rendered) ? rendered : target;
   return clamp(origin + storyWheelDelta(delta, origin, rendered, height), minimum, maximum);
 }
+
+/** Cross quiet gaps with fewer rolls, easing back to reading speed at each sentence. */
+export function storyWheelScale(position: number) {
+  let reading = 0;
+  for (const beat of NARRATIVE_BEATS) {
+    reading = Math.max(reading, smooth(beat.from - .12, beat.from, position) * (1 - smooth(beat.to, beat.to + .12, position)));
+  }
+  return 1 + 1.4 * (1 - reading);
+}

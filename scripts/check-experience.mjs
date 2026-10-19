@@ -182,6 +182,28 @@ try {
   journey.update(2.1,.02,false,false,0);assert.equal(gains[1].gain.value,0,'Mute applies to movement and doorway layers');
   journey.dispose();assert.equal(journeyStops,3);assert.equal(journeyCloses,1);
   document.dispatchEvent(new Event('pointerdown'));assert.equal(journeyContexts,1,'Unmount removes unlock listeners');
+  // Exercise the actual portfolio mixer with dense wheel input, mute and hidden tabs.
+  const { portfolioAudio } = await server.ssrLoadModule('/src/utils/portfolioAudio.ts');
+  const automation = () => ({ value:0, setValueAtTime(v){this.value=v;}, setTargetAtTime(v){this.value=v;}, linearRampToValueAtTime(v){this.value=v;}, exponentialRampToValueAtTime(v){this.value=v;}, cancelAndHoldAtTime(){} });
+  let wheelVoices=0, wheelClosed=0; const wheelGains=[];
+  window.AudioContext = class {
+    state='running'; currentTime=1; sampleRate=256; destination={};
+    createGain(){const gain={...connection,gain:automation()};wheelGains.push(gain);return gain;}
+    createOscillator(){wheelVoices++;return {...connection,frequency:automation(),detune:automation(),start(){},stop(){}};}
+    createBuffer(channels,length){return {getChannelData(){return new Float32Array(length);}};}
+    createBufferSource(){return {...connection,start(){},stop(){}};}
+    createBiquadFilter(){return {...connection,frequency:automation(),Q:automation()};}
+    async close(){wheelClosed++;}
+  };
+  portfolioAudio.playScroll(0);portfolioAudio.playScroll(NaN);assert.equal(wheelVoices,0,'Empty wheel input never starts audio');
+  portfolioAudio.playScroll(36);const voiceCount=wheelVoices;
+  for(let i=0;i<1000;i++)portfolioAudio.playScroll(i%2 ? 1 : -1);
+  assert.equal(wheelVoices,voiceCount,'Dense trackpad input reuses one scroll voice');
+  assert.equal(voiceCount,6,'Five ambient oscillators and one wheel voice share the mixer');
+  portfolioAudio.setMuted(true);assert.equal(wheelGains[0].gain.value,0,'Mute silences music and scroll together');
+  portfolioAudio.playScroll(120);assert.equal(wheelVoices,voiceCount);
+  portfolioAudio.setMuted(false);document.hidden=true;portfolioAudio.playScroll(120);assert.equal(wheelVoices,voiceCount,'Hidden wheel input is dropped');
+  document.hidden=false;portfolioAudio.dispose();assert.equal(wheelClosed,1,'The mixer closes its context');
   globalThis.window=priorWindow;
   delete globalThis.document; delete globalThis.AudioContext;
   console.log('PASS: public/workspace routes, state transitions, overlapping desktop/mobile/reduced timelines, 1000 orbit phases, collision envelopes, proxy occlusion, tap/drag cancellation, all asset hashes/anchors/budgets, 40 documents, invalid sensor samples/quaternion normalization, and workspace/journey gesture, motion, mute, hidden and audio cleanup lifecycle.');

@@ -83,9 +83,6 @@ Zney-Portfolio/
 │   │   ├── visitorTracker.ts    # Frontend telemetry and session tracking
 │   │   └── audioPreloader.ts    # Audio management
 │   └── App.tsx                  # Routing and global state
-├── analytics-backend/           # Full-stack backend for visitor tracking
-│   ├── index.ts                 # Hono/Bun REST API endpoints
-│   └── analytics.sqlite         # SQLite database
 ├── public/
 │   ├── CNAME                    # Custom domain mapping (zney295.id.vn)
 │   ├── main.glb                 # Active 3D workspace model

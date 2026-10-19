@@ -1,5 +1,63 @@
 # Các tính năng cần giữ khi đổi model
 
+**Cuộn và âm nền, 19/10/2026:** nhận cả wheel nhỏ dưới 2px ở hành trình
+đọc. Vùng không có câu đọc tăng độ nhạy tối đa 2,4 lần, hòa về mức cũ
+trong 0,12 đơn vị trước/sau câu; vẫn giữ trần input, pacing, đường bay
+và đảo chiều. Vì input có trần, quãng đi thực tế không luôn tăng đủ 2,4 lần.
+Giữ nhạc ambient có sẵn, hạ bus nền từ 0,14 xuống 0,10. Wheel ở Virgo,
+intro và bộ chọn thế giới phát pulse sine nhẹ, cao độ tiến/lùi khác nhau;
+trackpad làm mới một voice cố định, không tạo tiếng chồng vô hạn.
+Mute áp dụng chung nền/SFX; bỏ input âm khi tab ẩn, trong reader/live app
+và khi Ctrl+wheel. Không thay âm workspace hoặc nhạc intro gốc.
+Check bổ sung độ nhạy vùng đọc/chuyển tiếp, tính liên tục, 1.000 input
+trackpad dùng một voice, mute/hidden và đóng AudioContext.
+`pnpm run check` PASS. `check:ui` đã chạy bằng Chrome, còn dừng ở assertion
+con trỏ baseline dòng 99; không ghi PASS bộ tổng. Kiểm tra cảm giác nghe
+và thiết bị touch thật chưa được thực hiện.
+`node scripts/check-scroll-ui.mjs` tự mở/đóng Vite khi không truyền URL;
+lượt cuối PASS desktop/phone/reduced, gồm phản hồi tiến/lùi, orbit đọc,
+dừng input dừng bay và Contact không có đuôi trắng. Đã xem ảnh desktop
+đọc, phone Contact và reduced đọc ở `artifacts/scroll-response/`.
+Lượt trước reduced từng trượt seek Contact; lượt chạy lại qua cùng assertion,
+chưa xác định được nguyên nhân timing, không bỏ hoặc nới assertion.
+
+**Phòng triển lãm sau chân trời, 19/10/2026:** cửa được chọn mở thành mặt
+xem rộng, ảnh gốc dùng `contain` để không bị cắt; tám cửa xa giữ địa chỉ,
+chiều sâu và khả năng chọn. Giảm sáng ảnh nền và dây nối, dùng tiêu đề serif
+nghiêng, CTA sáng để phân cấp rõ. Thay riêng cửa tròn ở trạng thái được chọn.
+Desktop dùng bố cục triển lãm bất đối xứng: mặt xem lớn bên trái, tiêu đề,
+mô tả, hành động và điều hướng bên phải; các cổng xa nằm trong trường sâu
+phía sau. Tablet/phone dùng mặt xem gần toàn chiều rộng, caption căn trái và
+giữ thứ tự dọc. Metadata `FIELD / FOCUS` chỉ là ngôn ngữ thị giác của phòng
+quan sát, không thay nội dung hay route sản phẩm.
+Cuối hầm hòa shader hầm/miệng thoát trong khoảng progress 0,58–0,76 theo
+cùng thời gian tuyệt đối, giữ các mốc orbit/handoff/thoát và rollback.
+Vuốt xuống khi đang vào hố đen đảo chiều tại vị trí hiện tại; vuốt xuống
+ở thế giới đầu trở về Virgo như wheel. Escape hủy động tác vào sản phẩm
+đang chờ. Giữ gallery cong, live preview, chín URL và route case study.
+Đây là diễn họa nghệ thuật lấy cảm hứng từ hấp dẫn; không khẳng định hố
+trắng hoặc chuyến xuyên hố đen là hiện tượng đã được quan sát.
+Kiểm tra worlds bổ sung ảnh không crop, khung xem nằm trong viewport,
+khoảng trống với chữ và hủy entry bằng Escape.
+Kiểm chứng: `pnpm run check` PASS trên source cuối. Worlds PASS desktop/
+tablet; sau sửa fixture TouchEvent, phone/landscape/reduced PASS gồm vuốt
+hủy và không có runtime error. Ảnh/report ở `artifacts/worlds-exhibition-final/`
+và thư mục con `mobile-reduced/`; report lượt đầu giữ lỗi fixture để đối chiếu.
+Đã xem ảnh desktop/tablet/phone/landscape và pha thoát lỗ trắng.
+`check:ui` vẫn dừng ở assertion con trỏ baseline dòng 99; không ghi PASS.
+Build còn cảnh báo chunk >500 kB; chưa đo FPS/touch/âm thanh thiết bị thật.
+
+**Bố cục Observatory, 19/10/2026:** nâng cấp rõ cấu trúc showcase thay vì
+chỉ đổi trang trí. Desktop dùng preview lớn chiếm trường trái và một cột biên
+tập độc lập bên phải; tablet/phone dùng tiêu đề góc, preview rộng và caption
+căn trái. Thêm nhãn quan sát cùng FIELD/FOCUS tiết chế, giảm portal nền để
+tác phẩm chính là điểm nhìn. Giữ chín portal thật, mặt cầu lõm, route, ảnh gốc,
+gallery cong và toàn bộ logic ra/vào đã có. `pnpm run check` PASS; worlds PASS
+desktop/tablet/phone/landscape/reduced, gồm điều hướng, rollback, shader và
+không chồng vùng nội dung. Ảnh/report: `artifacts/worlds-observatory/`.
+Đã xem trực tiếp ảnh desktop, tablet và phone. `check:ui` vẫn dừng đúng assertion
+con trỏ baseline dòng 99; chưa chạy tới các bước sau nên không ghi bộ tổng PASS.
+
 Cập nhật ngày 18/10/2026. Đây là baseline của bản build hiện tại, áp dụng cho
 Codex, Gemini và model khác. Các thay đổi đang nằm trong working tree cũng là
 công việc của chủ repo; không quay về bản Git cũ để làm check chạy qua.
@@ -10,25 +68,6 @@ chỉ tiến/lùi theo Z lúc chuyển trạm. Chủ repo xác nhận sau đó: 
 sao lúc đọc; phép quay góc nhìn cục bộ không làm bẻ hướng camera lúc bay.
 
 ## Những gì cần giữ
-
-**Hệ thống âm thanh nền vũ trụ và hiệu ứng tương tác (BGM & SFX), 18/10:**
-tích hợp hệ thống âm thanh không gian procedural Web Audio API (`src/utils/portfolioAudio.ts`)
-kết hợp `VirgoJourneyAudio`:
-- Nhạc nền vũ trụ (Cosmic Ambient Pad & Sub-drone) đa tầng (55Hz sub-bass,
-  harmonic chord pad A2-E3-G3-B3 và stardust shimmer) vận hành mượt mà,
-  không độ trễ (0ms latency), không phụ thuộc tải file ngoài.
-- Khi vào Hố đen (`singularityEnter`): Tần số BGM được lọc qua low-pass filter
-  (hạ xuống 180-250Hz) mô phỏng không gian bị nén lại bởi lực hấp dẫn; khi ra Lỗ Trắng
-  (`singularityExit`): Tiếng bừng sáng giải phóng năng lượng và phục hồi âm phổ.
-- Bộ Sound Effects (SFX) cho từng event: `hover` (micro-tick tinh thể siêu nhẹ
-  1750Hz với decay 18ms trên các thẻ dự án, tab kỹ năng, link và nút điều khiển),
-  `click` (tactile blip 620Hz->280Hz), `drawerOpen`/`drawerClose` (menu Chapters),
-  `modalOpen`/`modalClose` (modal Case Study & CV), `cardSlide` (chuyển đổi 9 sản phẩm
-  trong 3D Worlds Showcase), `muteOn`/`muteOff` (chime báo trạng thái âm thanh),
-  và `loaderComplete` (chime hoàn tất trang loading).
-- Đảm bảo nghiêm ngặt: Chờ tương tác người dùng trước khi phát âm thanh (no autoplay),
-  ngắt tiếng ngay dưới 100ms khi Mute (`journey-audio-muted`), tự động tạm dừng khi
-  chuyển tab (`document.hidden`), an toàn với SSR và pass toàn bộ bài kiểm tra.
 
 **Miệng lỗ trắng có chiều sâu, màu hầm tiết chế, 18/10:** bỏ quầng thoát
 Canvas; shader chiếu tia từ camera đang tiến trong một họng hữu hạn đến

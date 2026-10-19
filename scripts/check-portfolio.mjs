@@ -350,7 +350,10 @@ try {
     }
   }
   assert(advanceFlightPosition(0, 3, 30) < 1, "Resuming after a long idle frame must not jump to the target");
-  const { STORY_PACING, narrativePacing, storyTimeAt, storyPositionAt, advancePacedFlightPosition, storyWheelDelta, storyWheelTarget } = await server.ssrLoadModule("/src/data/virgoPacing.ts");
+  const { STORY_PACING, narrativePacing, storyTimeAt, storyPositionAt, advancePacedFlightPosition, storyWheelDelta, storyWheelTarget, storyWheelScale } = await server.ssrLoadModule("/src/data/virgoPacing.ts");
+  for (const beat of NARRATIVE_BEATS) assert.equal(storyWheelScale((beat.from + beat.to) / 2), 1, 'Sentences retain their reading sensitivity');
+  for (const p of [2.6, 4.5, 5.56]) assert(storyWheelScale(p) > 2, 'Quiet transit takes fewer wheel rolls');
+  for (let p = 1.92; p < 6; p += .001) assert(Math.abs(storyWheelScale(p + .001) - storyWheelScale(p)) < .025, 'Wheel sensitivity blends continuously in both directions');
   for (let i = 0; i <= 600; i++) {
     const p = i / 100;
     assert(Math.abs(storyPositionAt(storyTimeAt(p)) - p) < 1e-9, "Pacing must preserve exact scroll positions in both directions");

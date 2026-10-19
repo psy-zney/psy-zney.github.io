@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
+import { createServer } from 'vite';
 
 const output = 'artifacts/scroll-response';
 await mkdir(output, { recursive: true });
+const server = process.argv[2] ? null : await createServer({ server: { host:'127.0.0.1', port:5182, strictPort:true } });
+if (server) await server.listen();
 const browser = await chromium.launch({ headless: true, executablePath: process.env.UI_CHROME_PATH });
 const report = [];
 try {
@@ -77,7 +80,7 @@ try {
 
     await seek(6); const contact = await read();
     assert(Math.abs(contact.limit - contact.contactTop) <= 1, 'Contact is exactly the native scroll limit, with no blank tail');
-    assert(Math.abs(contact.p - 6) < .002);
+    assert(Math.abs(contact.p - 6) < .002, `${name}: Contact seek must reach the endpoint: ${JSON.stringify(contact)}`);
     await wheel(-36); const returnFromContact = await read();
     assert(returnFromContact.p < contact.p && returnFromContact.pose[2] > contact.pose[2], 'The very first reverse wheel at Contact leaves the endpoint');
     await page.screenshot({ path: `${output}/${name}-contact-reverse.png` });
@@ -85,4 +88,4 @@ try {
     report.push({ name, status: 'passed', gestures, readingAngle: last.orbit[1] - first.orbit[1], contactTailPixels: contact.limit - contact.contactTop });
     console.log(`PASS scroll response: ${name}`); await page.close();
   }
-} finally { await writeFile(`${output}/report.json`, JSON.stringify(report, null, 2)); await browser.close(); }
+} finally { await writeFile(`${output}/report.json`, JSON.stringify(report, null, 2)); await browser.close(); await server?.close(); }

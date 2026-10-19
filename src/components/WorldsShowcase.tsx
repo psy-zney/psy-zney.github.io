@@ -19,6 +19,7 @@ export function WorldsShowcase({ index, lang, reducedMotion, onSelect, onClose, 
   const root = useRef<HTMLDivElement>(null);
   const [diving, setDiving] = useState(false);
   const enter = () => {
+    if (diving) return;
     playPortfolioSfx('singularityEnter');
     reducedMotion ? onInsideChange(true) : setDiving(true);
   };
@@ -65,8 +66,10 @@ export function WorldsShowcase({ index, lang, reducedMotion, onSelect, onClose, 
   return <div ref={root} className={`worlds-showcase${reducedMotion ? ' is-reduced' : ''}${diving ? ' is-diving' : ''}`} role="region" aria-label={vi ? 'Các thế giới sản phẩm' : 'Product worlds'} tabIndex={-1}
     style={{ '--world-color': product.color, '--world-focal': `${WORLD_FIELD_FOCAL}px` } as CSSProperties}
     onTouchStart={event => { touch.current = event.touches[0]?.clientY ?? null; }}
-    onTouchEnd={event => { if (touch.current !== null) { const delta = touch.current - event.changedTouches[0].clientY; if (Math.abs(delta) > 45) select(selected + Math.sign(delta)); } touch.current = null; }}
+    onTouchEnd={event => { if (touch.current !== null && !diving) { const delta = touch.current - event.changedTouches[0].clientY; if (delta < -45 && selected === 0) onClose(); else if (Math.abs(delta) > 45) select(selected + Math.sign(delta)); } touch.current = null; }}
+    onTouchCancel={() => { touch.current = null; }}
     onKeyDown={event => {
+      if (diving) { if (event.key === 'Escape') { event.preventDefault(); setDiving(false); } return; }
       if ((event.target as HTMLElement).closest('button,a')) return;
       if (['ArrowDown', 'ArrowRight', 'PageDown', 'ArrowUp', 'ArrowLeft', 'PageUp', 'Home', 'End', 'Enter', 'Escape'].includes(event.key)) event.preventDefault();
       if (['ArrowDown', 'ArrowRight', 'PageDown'].includes(event.key)) select(selected + 1);
@@ -79,7 +82,7 @@ export function WorldsShowcase({ index, lang, reducedMotion, onSelect, onClose, 
     <CosmicPortalField host={root} reduced={reducedMotion} entering={diving} selected={selected}/>
     
     <header className="worlds-header"><span>ZNEY / OTHER WORLDS</span><button onMouseEnter={() => playPortfolioSfx('hover')} onClick={() => { playPortfolioSfx('click'); onClose(); }}><X size={16}/>{vi ? 'Về Virgo' : 'Back to Virgo'}</button></header>
-    <div className="worlds-heading"><p>{vi ? 'PHÍA BÊN KIA ĐƯỜNG CHÂN TRỜI' : 'BEYOND THE EVENT HORIZON'}</p><h1>{vi ? 'Mỗi ý tưởng. Một thế giới.' : 'Every idea. A world.'}</h1></div>
+    <div className="worlds-heading"><p>{vi ? 'BỘ SƯU TẬP / 09 THẾ GIỚI' : 'SELECTED WORK / 09 WORLDS'}</p><h1>{vi ? 'Phía bên kia chân trời.' : 'Beyond the horizon.'}</h1></div>
     <div className="worlds-orbits" aria-label={vi ? 'Chọn thế giới' : 'Choose a world'}>
       {showcaseProducts.map((item, i) => {
         const pose=worldPortalPose(i,selected),active=i===selected;
@@ -96,7 +99,8 @@ export function WorldsShowcase({ index, lang, reducedMotion, onSelect, onClose, 
       })}
     </div>
     <section className="worlds-caption" aria-live="polite" aria-atomic="true">
-      <p className="worlds-category">{product.category[lang]}</p><h2>{product.name}</h2><p>{product.description[lang]}</p>
+      <div className="worlds-meta-row"><p className="worlds-category">{product.category[lang]}</p><span className="worlds-coordinate" aria-hidden="true">FIELD {String(selected + 1).padStart(2, '0')} / 09 · FOCUS 1.00</span></div>
+      <h2>{product.name}</h2><p>{product.description[lang]}</p>
       <div className="worlds-actions"><button onMouseEnter={() => playPortfolioSfx('hover')} onClick={enter}>{vi ? 'Đi vào thế giới' : 'Enter world'}<ArrowRight size={17}/></button><a onMouseEnter={() => playPortfolioSfx('hover')} onClick={() => playPortfolioSfx('click')} href={product.url} target="_blank" rel="noreferrer">{vi ? 'Mở website' : 'Open website'}<ArrowUpRight size={16}/></a>{product.caseStudy && <a onMouseEnter={() => playPortfolioSfx('hover')} onClick={() => playPortfolioSfx('click')} href={`#/project/${product.caseStudy}`}>Case study</a>}</div>
     </section>
     <footer className="worlds-footer"><button onMouseEnter={() => playPortfolioSfx('hover')} disabled={selected === 0} onClick={() => select(selected - 1)} aria-label={vi ? 'Thế giới trước' : 'Previous world'}><ArrowLeft/></button><div><span>{String(selected + 1).padStart(2, '0')} / 09</span><p>{vi ? 'Cuộn để chọn · Enter để khám phá' : 'Scroll to choose · Enter to explore'}</p></div><button onMouseEnter={() => playPortfolioSfx('hover')} disabled={selected === 8} onClick={() => select(selected + 1)} aria-label={vi ? 'Thế giới tiếp' : 'Next world'}><ArrowRight/></button></footer>

@@ -41,6 +41,7 @@ class PortfolioAudioSystem {
   private isUnlocked = false;
   private lastHoverTime = 0;
   private customAudioElement: HTMLAudioElement | null = null;
+  private scrollVoice: { oscillator: OscillatorNode; gain: GainNode } | null = null;
 
   constructor() {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
@@ -98,7 +99,7 @@ class PortfolioAudioSystem {
       this.bgmFilter.Q.setValueAtTime(1.0, ctx.currentTime);
 
       this.bgmGain = ctx.createGain();
-      this.bgmGain.gain.setValueAtTime(0.14, ctx.currentTime);
+      this.bgmGain.gain.setValueAtTime(0.10, ctx.currentTime);
 
       this.bgmGain.connect(this.bgmFilter);
       this.bgmFilter.connect(this.masterGain);
@@ -269,6 +270,27 @@ class PortfolioAudioSystem {
     // Map intensity (0 = normal space, 1 = deep black hole)
     const freq = Math.max(180, 1400 - intensity * 1150);
     this.bgmFilter.frequency.setTargetAtTime(freq, now, 0.15);
+  }
+
+  /** One reusable voice: trackpad packets renew a soft pulse instead of stacking sounds. */
+  public playScroll(delta: number): void {
+    if (!Number.isFinite(delta) || delta === 0 || this.muted || typeof document === 'undefined' || document.hidden) return;
+    this.unlockContext();
+    if (!this.context || !this.sfxGain) return;
+    const ctx = this.context, now = ctx.currentTime;
+    if (!this.scrollVoice) {
+      const oscillator = ctx.createOscillator(), gain = ctx.createGain();
+      oscillator.type = 'sine'; gain.gain.value = 0;
+      oscillator.connect(gain).connect(this.sfxGain); oscillator.start();
+      this.scrollVoice = { oscillator, gain };
+    }
+    const { oscillator, gain } = this.scrollVoice;
+    const strength = Math.min(1, Math.abs(delta) / 120);
+    oscillator.frequency.setTargetAtTime(delta > 0 ? 330 : 261.63, now, .025);
+    // Hold the current envelope before retriggering, avoiding clicks on dense input.
+    gain.gain.cancelAndHoldAtTime(now);
+    gain.gain.linearRampToValueAtTime(.008 + strength * .016, now + .018);
+    gain.gain.exponentialRampToValueAtTime(.0001, now + .16);
   }
 
   /**
@@ -560,6 +582,10 @@ class PortfolioAudioSystem {
   }
 
   public dispose(): void {
+    this.scrollVoice?.oscillator.stop();
+    this.scrollVoice?.oscillator.disconnect();
+    this.scrollVoice?.gain.disconnect();
+    this.scrollVoice = null;
     this.stopCosmicAmbient();
     if (this.context && this.context.state !== 'closed') {
       void this.context.close().catch(() => {});

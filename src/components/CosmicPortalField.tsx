@@ -85,7 +85,7 @@ const fragment = /* glsl */ `
       sky+=rim(pixel,portals[i],portalMaps[i],colors[i])*visibility[i];
       int next=i==8?0:i+1;
       sky+=connection(pixel,portals[i],portals[next],colors[i],colors[next],float(i))
-        *sqrt(visibility[i]*visibility[next])*.65;
+        *sqrt(visibility[i]*visibility[next])*.12;
     }
     sky+=opticalCone(vUv,resolution,1.+travel*.16,time)*sin(travel*3.14159)*2.;
     gl_FragColor=vec4(pow(1.-exp(-sky),vec3(1./2.2)),1.);
@@ -133,7 +133,8 @@ export function CosmicPortalField({ host, reduced, entering, selected }: { host:
                 m.m12*sx+oy*g,m.m22*sy+oy*h,oy*k+cy-oy+m.m42,g,h,k).invert();
               uniforms.portals.value[i].set(box.x+box.width/2,box.y+box.height/2,box.width/2,box.height/2);
               uniforms.colors.value[i].set(style.getPropertyValue('--accent').trim());
-              uniforms.visibility.value[i]=Number(style.opacity)**1.6;
+              // The focused work is a clear viewing plane; light belongs to the distant apertures.
+              uniforms.visibility.value[i]=i===config.current.selected?0:Number(style.opacity)**1.6*.4;
             }
             renderer.render(scene,camera);node.dataset.portals=String(gates.length);node.dataset.centerProtected='true';
           }

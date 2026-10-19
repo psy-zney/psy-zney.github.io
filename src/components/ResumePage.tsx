@@ -2,7 +2,6 @@ import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { ArrowLeft, Download, Printer } from "lucide-react";
 import type { Language } from "../data/portfolio";
 import { DocumentContents } from './documents/DocumentContents';
-import { playPortfolioSfx } from '../utils/portfolioAudio';
 
 const headingId = (title: string) => `resume-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
 
@@ -154,7 +153,7 @@ export function ResumePage({
   return (
     <article className="resume-page page-enter">
       <div className="resume-toolbar">
-        <a className="text-link" onMouseEnter={() => playPortfolioSfx('hover')} onClick={() => playPortfolioSfx('click')} href={backPath}>
+        <a className="text-link" href={backPath}>
           <ArrowLeft size={16} />
           {t("Quay lại", "Back")}
         </a>
@@ -164,8 +163,6 @@ export function ResumePage({
               <a
                 key={value}
                 className="text-link"
-                onMouseEnter={() => playPortfolioSfx('hover')}
-                onClick={() => playPortfolioSfx('click')}
                 href={`${basePath}/${value}`}
                 aria-current={(track === value || (track === 'web' && value === 'fullstack')) ? 'page' : undefined}
               >
@@ -173,15 +170,14 @@ export function ResumePage({
               </a>
             ))}
           </nav>
-          <a className="text-link" onMouseEnter={() => playPortfolioSfx('hover')} onClick={() => playPortfolioSfx('click')} href={resumeFiles[targetTrack]} download>
+          <a className="text-link" href={resumeFiles[targetTrack]} download>
             <Download size={15} />
             Download source
           </a>
           <button
             className="primary-link"
             disabled={!content}
-            onMouseEnter={() => playPortfolioSfx('hover')}
-            onClick={() => { playPortfolioSfx('click'); window.print(); }}
+            onClick={() => window.print()}
           >
             <Printer size={15} />
             {t("In / Lưu PDF", "Print / Save PDF")}
@@ -201,9 +197,7 @@ export function ResumePage({
               ['SUMMARY', 'EDUCATION', 'TECHNICAL PROJECTS', 'SKILLS'].map(title => (
                 <button
                   key={title}
-                  onMouseEnter={() => playPortfolioSfx('hover')}
                   onClick={() => {
-                    playPortfolioSfx('click');
                     const headings = Array.from(document.querySelectorAll<HTMLElement>('.section-title'));
                     const target = headings.find(h => h.textContent?.trim().toUpperCase().includes(title));
                     if (target) {
@@ -218,9 +212,7 @@ export function ResumePage({
               content.split(/\r?\n/).filter(line => line.startsWith('## ')).map(line => (
                 <button
                   key={line}
-                  onMouseEnter={() => playPortfolioSfx('hover')}
                   onClick={event => {
-                    playPortfolioSfx('click');
                     const heading = event.currentTarget.closest('.resume-page')?.querySelector<HTMLElement>(`#${headingId(line.slice(3))}`);
                     if (heading) {
                       heading.scrollIntoView({ block: 'start', behavior: 'instant' });
