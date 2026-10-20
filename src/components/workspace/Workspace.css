@@ -37,6 +37,8 @@
 .workspace-experience[data-input=touch] .room-hud footer{max-width:480px;gap:10px}
 .workspace-experience[data-input=touch] .room-reticle i{width:8px;height:8px;border-color:#ffffffa6;box-shadow:0 0 6px #000}
 .workspace-experience[data-input=touch] .room-reticle.has-target i{width:14px;height:14px;border-color:#bddfff}
+/* Keep header targets stable when a hybrid device changes pointer type on press. */
+@media(max-width:360px){.room-hud header button span{display:none}.room-hud header{gap:8px}.room-hud header>div{gap:6px}}
 .room-help h1{font:clamp(30px,4vw,44px)/1.15 Georgia,serif;text-wrap:balance;margin:12px 0 24px}
 .room-help h2{font-size:19px;margin:28px 0 10px}
 .room-help p{font-size:16px;line-height:1.75;max-width:640px}

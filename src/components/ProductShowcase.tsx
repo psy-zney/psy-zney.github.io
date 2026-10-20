@@ -502,6 +502,27 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
     .map((item, globalIndex) => ({ ...item, globalIndex }))
     .filter(item => item.kind === kind);
 
+  // Keep the native browsing context outside the transformed gallery tree.
+  const liveDialog = (
+    <dialog
+      ref={liveRef}
+      className="screening-live"
+      aria-label={vi ? `Trải nghiệm ${product.name}` : `Try ${product.name}`}
+      onCancel={event => { event.stopPropagation(); setLive(false); }}
+      onKeyDown={event => event.stopPropagation()}
+    >
+      {live && <>
+        <header>
+          <span>{product.name}</span>
+          <button onClick={() => setLive(false)} aria-label={vi ? 'Đóng trải nghiệm' : 'Close live preview'}><X size={20} /></button>
+        </header>
+        <ShowcaseLiveFrame key={product.url} url={product.url} title={product.name} loadingLabel={vi ? 'Đang tải trang...' : 'Loading live preview...'} />
+        <footer><a href={product.url} target="_blank" rel="noopener noreferrer">
+          {vi ? 'Mở toàn màn hình ở tab mới' : 'Open in a new tab'}<ArrowUpRight size={15} />
+        </a></footer>
+      </>}
+    </dialog>
+  );
   const content = (
     <div ref={setPreviewControlsHost} className="screening-content" data-world-url={product.url} data-world-route={`#/showcase/${product.id}`} style={{ '--product-color': product.color } as CSSProperties}>
       <div className="screening-core-flash" aria-hidden="true" />
@@ -657,31 +678,7 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
         </>
       )}
 
-      <dialog
-        ref={liveRef}
-        className="screening-live"
-        aria-label={vi ? `Trải nghiệm ${product.name}` : `Try ${product.name}`}
-        onCancel={event => { event.stopPropagation(); setLive(false); }}
-        onKeyDown={event => event.stopPropagation()}
-      >
-        {live && (
-          <>
-            <header>
-              <span>{product.name}</span>
-              <button onClick={() => setLive(false)} aria-label={vi ? 'Đóng trải nghiệm' : 'Close live preview'}>
-                <X size={20} />
-              </button>
-            </header>
-            <ShowcaseLiveFrame url={product.url} title={product.name} />
-            <footer>
-              <a href={product.url} target="_blank" rel="noopener noreferrer">
-                {vi ? 'Mở toàn màn hình ở tab mới' : 'Open in a new tab'}
-                <ArrowUpRight size={15} />
-              </a>
-            </footer>
-          </>
-        )}
-      </dialog>
+      {typeof document === 'undefined' ? liveDialog : createPortal(liveDialog, document.body)}
     </div>
   );
 

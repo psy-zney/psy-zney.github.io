@@ -7,6 +7,79 @@ import ts from 'typescript';
 
 // Behavior and integration checks for the current build. Visual QA lives in check-ui.mjs.
 export async function checkCurrentFeatures(server) {
+  const { universeFrame, universeInput, followUniverse, introTunnelFrame, showcaseSlideFrame, SHOWCASE_HANDOFF, nebulaWallRadius, nebulaCenter, rotateUniversePoint } = await server.ssrLoadModule('/src/data/universeTransition.ts');
+  assert.deepEqual(universeFrame(0), { progress: 0, slide: 0, bend: 0 });
+  assert.equal(universeFrame(1).slide, 0, 'Intro stays in the viewport while the tunnel crosses to Home');
+  assert.equal(showcaseSlideFrame(0).showcase, false);
+  assert.equal(showcaseSlideFrame(SHOWCASE_HANDOFF).showcase, true);
+  assert.equal(showcaseSlideFrame(1).slide, 1);
+  assert(introTunnelFrame(1).travel > 150, 'The intro crosses its finite exit before Home appears');
+  for (const frameAt of [introTunnelFrame, showcaseSlideFrame]) {
+    let previous = -1;
+    for (let i = 0; i <= 100; i++) {
+      const p = i / 100, frame = frameAt(p);
+      const coordinate = frame.slide ?? frame.travel / 158;
+      assert(coordinate >= previous && coordinate <= 1); previous = coordinate;
+      if ('bend' in frame) assert(frame.bend >= 0 && frame.bend <= .025, 'The initial scene bend stays subtle');
+      assert(!('z' in frame) && !('camera' in frame) && !('roll' in frame), 'Page transitions cannot drive the flight camera');
+      const reverse = frameAt(1 - (1 - p));
+      assert(Math.abs(coordinate - (reverse.slide ?? reverse.travel / 158)) < 1e-12, 'Forward/back use the same absolute coordinate');
+    }
+  }
+  for (const p of [[.4,.2,-1],[-2,.7,1]]) {
+    const fullTurn = rotateUniversePoint(...p,Math.PI*2,0);
+    assert(Math.abs(fullTurn.x-p[0])+Math.abs(fullTurn.y-p[1])+Math.abs(fullTurn.z-p[2])<1e-12,'Dragging through 360 degrees restores the same sky');
+  }
+  const centers = Array.from({length:100},(_,i)=>nebulaCenter(i));
+  assert(Math.max(...centers.map(p=>p.y))-Math.min(...centers.map(p=>p.y))>1.5,'Intro flight has visible vertical undulation');
+  for(let i=1;i<centers.length;i++)assert(Math.hypot(centers[i].x-centers[i-1].x,centers[i].y-centers[i-1].y)<.2,'The tunnel curve has no camera jumps');
+  for (const z of [-146, -100, -50, 0, 4]) for (let i = 0; i < 64; i++) {
+    const angle = i / 64 * Math.PI * 2, radius = nebulaWallRadius(angle, z);
+    assert(radius > 4 && radius < 8, 'Folded gas never pinches off the flight corridor');
+    assert(Math.abs(radius - nebulaWallRadius(angle + Math.PI * 2, z)) < 1e-12, 'The 3D wall closes without an angular seam');
+    assert(Math.abs(radius - nebulaWallRadius(angle, z + .001)) < .001, 'Adjacent depths form a continuous surface');
+  }
+  assert.equal(universeInput(.2, .4, -95), .1, 'Reverse input discards pending forward travel');
+  assert.equal(universeInput(.2, .2, 9500), .5, 'A large wheel event has a bounded lead');
+  assert.equal(universeInput(.2, .4, NaN), .4);
+  const followed = [];
+  for (const fps of [30, 60, 120]) {
+    let p = 0; for (let i = 0; i < fps * 2; i++) p = followUniverse(p, .8, 1 / fps);
+    followed.push(p); assert.equal(p, .8, 'The page settles and stops without further scroll input');
+  }
+  assert.equal(followUniverse(.4, .4, .05), .4);
+  assert(followed.every(p => p === followed[0]), 'Refresh rate does not change the final scroll destination');
+  const { advanceCelestialClocks } = await server.ssrLoadModule('/src/data/celestialMotion.ts');
+  const clocksAt = (fps, focused = null) => {
+    const clocks = { ambient: 0, orbits: [0, 0, 0] };
+    for (let i = 0; i < fps * 4; i++) advanceCelestialClocks(clocks, 1 / fps, { focused, reduced: false, paused: false });
+    return clocks;
+  };
+  for (const fps of [30, 60, 120]) {
+    const active = clocksAt(fps, 1);
+    assert(Math.abs(active.ambient - 4) < 1e-9, 'Ambient motion stays independent of refresh rate');
+    assert.equal(active.orbits[1], 0, 'A focused planet can hold its orbit for reading');
+    assert(Math.abs(active.orbits[0] - 4) < 1e-9 && Math.abs(active.orbits[2] - 4) < 1e-9, 'Other planets continue moving while one is focused');
+    const before = structuredClone(active);
+    advanceCelestialClocks(active, 30, { focused: null, reduced: false, paused: true });
+    advanceCelestialClocks(active, 30, { focused: null, reduced: true, paused: false });
+    advanceCelestialClocks(active, NaN, { focused: null, reduced: false, paused: false });
+    assert.deepEqual(active, before, 'Dialogs, hidden tabs, reduced motion and invalid samples do not advance ambient clocks');
+    advanceCelestialClocks(active, 1 / fps, { focused: null, reduced: false, paused: false });
+    assert(Math.abs(active.orbits[1] - 1 / fps) < 1e-9, 'Releasing focus resumes the held phase without jumping to another orbit');
+  }
+  for (const size of [1024, 2048]) {
+    let bytes = 0;
+    for (const name of ['earth', 'jupiter', 'moon', 'mars', 'clouds', 'milkyway']) {
+      const resolution = name === 'milkyway' ? size * 2 : size;
+      const file = await readFile(`public/img/celestial/${name}-${resolution}.webp`);
+      const meta = await sharp(file).metadata();
+      assert.equal(meta.width, resolution, 'Celestial maps have an explicit resolution; the sky needs twice the planetary map width');
+      assert.equal(meta.height, resolution / 2, 'Celestial maps retain their spherical projection');
+      bytes += file.length;
+    }
+    assert(bytes < (size === 1024 ? 700_000 : 2_100_000), 'The optional texture set stays inside its mobile/desktop transfer budget');
+  }
   const {nebulaDustParticle}=await server.ssrLoadModule('/src/data/nebulaDust.ts');
   for(let i=0;i<30;i++)for(const time of [3.4,4.1,5.2]){
     const a=nebulaDustParticle(i,time),b=nebulaDustParticle(i,time+.015);
@@ -17,7 +90,20 @@ export async function checkCurrentFeatures(server) {
   }
   const nebulaAsset=await sharp('public/img/fx/wormhole-nebula-v1.webp').metadata();
   assert(nebulaAsset.width>=1536&&nebulaAsset.height>=768,'The tunnel uses an authored, detailed nebula wall texture');
-  const {worldPortalPose}=await server.ssrLoadModule('/src/data/worldsConstellation.ts');
+  const {worldPortalPose,clampWorldIndex}=await server.ssrLoadModule('/src/data/worldsConstellation.ts');
+  assert.equal(clampWorldIndex(9),8,'Forward input stops at the last world');
+  assert.equal(clampWorldIndex(-1),0,'Backward input stops at the first world');
+  const {WorldsShowcase}=await server.ssrLoadModule('/src/components/WorldsShowcase.tsx');
+  for(const index of [0,4,8]) {
+    const html=renderToStaticMarkup(React.createElement(WorldsShowcase,{index,lang:'eng',reducedMotion:true,onSelect(){},onClose(){},inside:false,onInsideChange(){}}));
+    assert.equal((html.match(/class="worlds-slide"/g)||[]).length,9,'Every product occupies a real horizontal slide');
+    assert.equal((html.match(/inert=""/g)||[]).length,8,'Only the selected slide accepts interactions');
+    assert.equal((html.match(/is-featured is-selected/g)||[]).length,1,'Exactly one preview is selected');
+    assert(html.includes(`--world-index:${index}`),'The route positions the entire preview-and-copy track');
+  }
+  for(let index=-36;index<=36;index++){
+    assert.equal(clampWorldIndex(index),index<0?0:index>8?8:index,'Every valid destination is preserved, and excess input stays at its boundary');
+  }
   for(let selected=0;selected<9;selected++)for(let i=0;i<9;i++){
     const pose=worldPortalPose(i,selected);
     if(i===selected)assert.deepEqual([pose.x,pose.y,pose.z,pose.pitch,pose.yaw,pose.roll],[0,0,0,0,0,0],'Every chosen world advances to the same clear focal plane');
@@ -303,6 +389,8 @@ export async function checkCurrentFeatures(server) {
   assert.equal(new Set([3, 4, 5, 6, 7].map(narrativeRevealStyle)).size, 4, 'Narrative ink uses four scroll-driven reveal modes');
   for (const reduced of [false, true]) for (const p of [5.94, 5.98, 6]) assert.equal(contactPresence(p, reduced), 1, 'Contact stays visible through the endpoint');
   assert.equal(contactPresence(5.8), 0);
+  assert.equal(chapterReadingPosition(6), 6, 'Contact links land at the completed journey endpoint');
+  assert.equal(contactPresence(chapterReadingPosition(6)), 1, 'Direct Contact navigation cannot stop on a half-hidden, inert panel');
   const stellarEffects = await server.ssrLoadModule('/src/data/virgoStellarEffects.ts');
   const { stellarProminence, prominenceSample, prominenceTiming } = stellarEffects;
   assert(!('supernovaSample' in stellarEffects) && !('stellarEmission' in stellarEffects), 'The removed explosion must not dissolve the last star');
@@ -332,12 +420,10 @@ export async function checkCurrentFeatures(server) {
   ];
   assert.deepEqual(showcaseProducts.map(({ id, url }) => [id, url]), destinations, 'Keep all nine owner-supplied product destinations');
   assert.equal(projects.length, 10, 'Keep the ten-case-study archive');
-  for (const cursor of ['arrow', 'hand']) {
-    const metadata = await sharp(await readFile(`public/cursors/deep-space-${cursor}.png`)).metadata();
-    assert.equal(metadata.width, 32);
-    assert.equal(metadata.height, 32);
-    assert(metadata.hasAlpha, 'Native cursor images keep their transparent background');
-  }
+  const cursorCss = await readFile('src/cursor.css', 'utf8');
+  assert(/html, body, #root, #root \*\s*\{\s*cursor: default;/.test(cursorCss), 'The current baseline uses the native system arrow');
+  for (const cursor of ['pointer', 'text', 'not-allowed', 'none']) assert(cursorCss.includes(`cursor: ${cursor}`), `Preserve ${cursor} for controls, editing and pointer lock`);
+  assert(!cursorCss.includes('url('), 'System cursors must not depend on removed image assets');
   assert((await readFile('src/main.tsx', 'utf8')).includes("import './cursor.css'"), 'The selected cursor style stays connected to the application');
   assert.equal(showcaseProducts.filter(product => product.kind === 'website').length, 6);
   assert.equal(showcaseProducts.filter(product => product.kind === 'download').length, 3);
@@ -551,13 +637,23 @@ export async function checkCurrentFeatures(server) {
   };
   for (const [path, components] of [
     ['src/App.tsx', ['WavePageLoader']],
-    ['src/components/VirgoPortfolio.tsx', ['WorldsShowcase', 'SingularityDust', 'VirgoSceneBoundary', 'VirgoScene']],
-    ['src/components/VirgoScene.tsx', ['PortalGate', 'BlackHoleVortex', 'StellarPlasma']],
+    ['src/components/VirgoPortfolio.tsx', ['WorldsShowcase', 'UniverseIntro', 'ShowcasePassage', 'VirgoSceneBoundary', 'VirgoScene']],
+    ['src/components/VirgoScene.tsx', ['PortalGate', 'BlackHoleVortex', 'StellarPlasma', 'VirgoDepth']],
     ['src/components/VirgoTransit.tsx', ['VirgoPlanet', 'points']],
-    ['src/components/BlackHoleVortex.tsx', ['BlackHoleAccretionMesh']],
+    ['src/components/BlackHoleVortex.tsx', ['BlackHoleAccretionMesh', 'BlackHoleLensing']],
   ]) {
     const { names, calls, attributes } = await jsxNames(path);
     for (const component of components) assert(names.has(component), `${path} must still render ${component}`);
+    if (path.endsWith('VirgoPortfolio.tsx')) {
+      assert(!names.has('SingularityDust') && !names.has('VirgoIntroFlight'), 'The archived intro and ring passage are never mounted by the active journey');
+      const source = await readFile(path, 'utf8');
+      assert(source.includes('entering={false}') && source.includes('openingVisible || entering || passageVisible'), 'The showcase page slide freezes Virgo and never enables the old camera spiral');
+      const intro = await readFile('src/components/UniverseIntro.tsx','utf8');
+      const passage = await readFile('src/components/PagePassage.tsx','utf8');
+      assert(intro.includes('IntroUniverseBackdrop') && intro.includes('view.current.yaw = yaw') && intro.includes('originalIntroMedia'), 'Intro uses the owner-authored sky, full-turn controls and verified media configuration');
+      assert(intro.includes('universe-start') && !intro.includes('INTRO_VIDEO') && !intro.includes('new NebulaTunnel'), 'Only the explicit start button enters original media; the simulated tunnel and screen recording stay inactive');
+      assert(!passage.includes('NebulaTunnel') && !passage.includes('PageLens') && passage.includes('showcaseSlideFrame'), 'Contact uses only the vertical DOM page transition');
+    }
     if (path.endsWith('VirgoScene.tsx')) assert(!names.has('FlightTrails'), 'The camera speed-line overlay stays removed');
     if (path.endsWith('VirgoTransit.tsx')) assert(!names.has('lineSegments'), 'Transit uses soft particles instead of hard white meteor segments');
     if (path.endsWith('VirgoScene.tsx')) assert(!names.has('VirgoSupernova') && !calls.has('stellarEmission'), 'Neither the removed explosion nor its early stellar fade can be remounted');
@@ -578,6 +674,7 @@ export async function checkCurrentFeatures(server) {
       assert(ownedMaterial && attachedMaterial && updatesOwnedUniforms && disposesMaterial, 'The stellar material owns its uniform containers, is attached as one object, and is disposed on replacement; hot updates must not leave cached opacity behind');
     }
     if (path.endsWith('VirgoScene.tsx')) assert(calls.has('straightFlightPose'), 'The straight path must remain connected to the rendered camera');
+    if (path.endsWith('VirgoScene.tsx')) assert(calls.has('advanceCelestialClocks'), 'Independent celestial clocks must be connected to the live renderer');
     if (path.endsWith('VirgoScene.tsx')) assert(calls.has('contactPresence'), 'The live Contact panel has independent persistent visibility');
     if (path.endsWith('VirgoScene.tsx')) assert(calls.has('readingOrbitAngle') && calls.has('readingOrbitPoint'), 'Both station meshes and labels use the local reading orbit');
     if (path.endsWith('VirgoPortfolio.tsx')) {

@@ -1,3 +1,393 @@
+## Intro, 21/10/2026
+
+Rừng Contact có cây đung đưa và cáo SVG tự vẽ đi ngang vùng đất, chân bước,
+thân nhún và đuôi ve vẩy. Decoration không nhận click; dùng cùng cơ chế
+dừng ngoài viewport/ẩn tab. Reduced motion giữ cáo đứng yên, không ẩn.
+
+Contact có nhịp xuất hiện khi 18% section vào viewport: nền mở dần, chữ
+trượt lên và nét dần, tiếp đến email/nav/footer với delay 0,1–0,6s.
+Chỉ reset sau khi section ra khỏi viewport; focus bàn phím chủ động hiện
+nội dung. Reduced motion hiện ngay, không blur/trượt. Giữ mọi đích liên kết.
+
+Contact landing thêm cực quang cyan/tím/hồng, hành tinh có vành sáng,
+sao băng và đom đóm, nút email viền màu/ánh sáng khi hover và focus.
+Giữ nội dung, email/GitHub/LinkedIn/CV và lối về universe. Decoration không
+nhận pointer; animation dừng khi ngoài viewport/ẩn tab và reduced motion.
+
+Showcase 9/9 nhả cuộn dọc xuống Contact khi bắt đầu gesture mới. Burst
+vừa chọn sản phẩm cuối vẫn bị giữ đến khi ngắt 180ms, tránh đà trackpad
+bỏ qua trang cuối. Cuộn ngang vẫn chặn ở biên, không lặp; cuộn ngược từ
+Contact về selector và nút Liên hệ vẫn hoạt động. Audit kiểm cả hai hướng.
+
+Ghim góc intro vùng trời tối theo ảnh: yaw 0,53979 rad, pitch -0,01338 rad.
+Mỗi lần mở/tải lại intro dùng góc này; Home/double click cũng trả về góc
+đã ghim. Kéo/vuốt 360° vẫn hoạt động; góc nền các trạm giữ riêng.
+
+Nền các trạm xoay cầu gốc Euler [2,43817; -0,54534; 1,30230] rad để đổi vùng nền
+đang nhìn thấy. Chỉ xoay sky và điểm sao nền cùng nhau, không đổi camera,
+hệ hành tinh, texture GLB gốc hoặc góc intro có thể kéo 360°.
+
+Start khi thiếu video gốc dùng chuyển cảnh DOM 0,95s: nền gốc phóng nhẹ
+1→1,16, chữ mờ trước rồi intro crossfade vào Home chuẩn bị sẵn. Không tạo
+hầm giả hay đổi camera. Escape hủy và trả focus Start; chặn lặp, ẩn tab
+dừng thời gian, unmount hủy RAF. Reduced motion vào Home ngay như trước.
+
+Tất cả sao dạng cầu dùng chung viền photosphere sáng hẹp và lớp corona 3D.
+Lượt tăng độ chói: năng lượng bề mặt ×1,65, viền nóng trắng hơn, corona
+additive tới 1,36R với dải lửa suy giảm không đều theo góc và clock hiện có;
+quầng rộng 5,4R. Giữ sắc xanh/cam riêng, reduced motion dùng clock đứng yên.
+Corona theo presence/reveal, không thêm clock hoặc che hành tinh bằng depth;
+dispose material khi unmount. Nâng quầng ngoài của cả ba sao chính.
+
+Theo chỉnh sửa mới nhất, tên nằm gần vị trí Welcome cũ: cụm giới thiệu top
+43% desktop, 37% mobile và 31% màn thấp, nâng cả cụm lên 5px từ các mốc này.
+Giữ Hello/Welcome, giảm cỡ tên tổng cộng 7pt (thêm 4pt so với lượt trước)
+ở mọi breakpoint, thu margin tên còn 10px/12px (màn thấp 5px).
+
+Home tăng độ nổi khối của sao xanh bằng limb darkening và giảm nhiễu hạt;
+quầng sáng rộng hơn, nền GLB/điểm sao giảm sáng riêng quanh Home rồi phục hồi
+dần trước trạm tiếp theo. Giữ asset, hình học, quỹ đạo, camera và đường bay.
+
+Theo yêu cầu chủ repo, bỏ đoạn giới thiệu “I build web applications…” dưới
+tiêu đề intro ở cả hai ngôn ngữ; giữ tiêu đề và nút Start.
+Nút chỉ hiển thị “Start”, bỏ mũi tên và căn chữ giữa; giữ hành vi thử lại khi video lỗi.
+Mixer kiểm tra hỗ trợ `cancelAndHoldAtTime` trước khi dùng; trình duyệt thiếu
+API dùng `cancelScheduledValues` và giữ giá trị hiện tại. SFX không còn ném
+lỗi vì thiếu API này khi bấm Start. Kiểm hồi quy intro có chế độ
+`INTRO_LEGACY_AUDIO=1` loại API khỏi trình duyệt thật để tái hiện lỗi.
+
+## Rà soát toàn website, 20/10/2026
+
+Giữ cầu GLB/ảnh/đích sản phẩm, các case study/CV, đường bay thẳng và orbit
+đọc. Bổ sung hướng dẫn ngắn **sau Start** tại Home, tự ẩn khi cuộn vào nội
+dung; menu Destinations có trên desktop và phone, có lối vào workspace gốc,
+đóng bằng Escape, chọn đích hoặc bấm ra ngoài. Không thêm lại lời nhắc mở
+intro đã bỏ. Điều khiển phía sau intro/showcase/reader trở thành inert;
+nút âm thanh vẫn truy cập được trong showcase, ở góc trên bên phải.
+
+Preview thật trên phone cao được mở rộng gần toàn chiều ngang, vẫn contain.
+Phone thấp có bố cục riêng để giữ tiêu đề/ảnh/mô tả/nav không chạm nhau.
+Sao shader dùng kích thước pixel riêng cho hai trục, không bị kéo dọc khi
+viewport hẹp. Contact cao tối thiểu một viewport để nút liên hệ cuộn tới
+đầu trang hoàn toàn. Âm portfolio dừng khi vào workspace/admin và phục hồi
+khi trở lại; không thay lựa chọn mute hay bus riêng của workspace.
+Contact từ menu/deep link đi tới vị trí 6, liên kết hiện đầy đủ và bấm được.
+HUD workspace giữ Help/Settings trên cả mouse và touch: đổi loại pointer
+không dời nút Contents ngay trong một lần nhấn. Phone ≤360px thu chữ ở HUD
+thành icon nhưng giữ accessible name và vùng bấm 44px. Landscape giảm đệm
+khung kính để chừa khoảng cách với nav. Kiểm UI bổ sung ở
+`scripts/check-site-audit-ui.mjs`: sáu viewport, bốn trạm, chín thế giới,
+menu/Escape/outside click, Contact/CV, workspace và camera thẳng.
+Modal “Try it live” giữ scene/mặt CSS3D nhưng đặt iframe DOM trên viewport
+phẳng trùng mặt xem, ngoài chuỗi transform. Tránh lệch hit-test click của
+Chromium; giữ nguồn website, crop scrollbar, nhập phím/cuộn native và trả focus.
+Live preview có trạng thái tải song ngữ/aria-busy; sau load chờ hai lần paint
+để surface iframe tham gia hit-test, rồi mới mở tương tác. Đổi URL tạo lại
+vòng đời; đóng sớm hủy callback paint, không để cập nhật sau unmount.
+Dialog live được portal ra body, ra khỏi cây gallery có transform. Giữ
+font/focus ring và hành vi Escape/đóng/trả focus; SSR vẫn có dialog dự phòng.
+Bloom không cộng ánh sáng dư vào ray bị hố đen bắt giữ và không phát xạ;
+đĩa tiền cảnh vẫn đi ngang bóng theo ray tracing. Kiểm silhouette tìm phần
+trong của từng cực thay điểm seed cố định có thể trúng đĩa khí, giữ nguyên
+ngưỡng RGB, tỷ lệ bóng tối và độ gần tròn. Bóng cực được đo trong bao lồi
+co biên 2 pixel của từng cực: không giả định đĩa khí ở tâm, vẫn bao gồm
+mọi đốm sáng nằm bên trong. Giữ ngưỡng tối 98,5% và diện tích tối thiểu,
+thêm yêu cầu cả hai cực có diện tích kiểm được. Kiểm chuyển Contact→showcase
+theo chốt DOM dọc hiện hành: camera đứng yên, offset/progress đi thuận.
+Góc nhìn hố đen do người xem chọn được giữ đến hết `passageVisible`, kể
+cả sau mốc đổi route 0,04. Chỉ reset khi chuyển cảnh hoàn tất, tránh cảnh
+còn hiện nhưng góc đã giật về mặc định. UI kiểm camera/orbit từng frame
+trọn 1,1 giây, không chỉ trước handoff.
+Nút đi tiếp dưới hố đen dành inset đáy 12px cho nút cao 44px; khi nhìn
+từ dưới lên, không bị kẹt ở cap cũ gây khoảng cách với đĩa khí chỉ 8px.
+Gallery ngang chừa khoảng riêng trước nút đóng để chọn được sản phẩm cuối.
+Pagination ở màn ngang hẹp cuộn trong vùng riêng, giữ vùng bấm 44px.
+Ở landscape ≤760px, action nằm bên trái, Archive/CV/reset nằm bên phải;
+Story không còn chồng lên Archive (lỗi 20px tại 667×375). Không ẩn đích.
+Lớp kéo hố đen ở dưới overlay liên kết: chuột trong cửa sổ thấp bấm email/
+Contact thay vì bị vùng orbit chặn. Vùng lõi trống vẫn kéo và nhận bàn phím.
+
+Con trỏ hệ thống trong working tree hiện hành là baseline: default, pointer,
+text, not-allowed và ẩn khi pointer lock. Kiểm tra cập nhật chính xác các
+trạng thái này, không còn đòi hai cursor PNG chủ repo đã xóa; không phục hồi
+asset hoặc kiểu con trỏ cũ. Các assertion ảnh/GLB/đích và chuyển cảnh giữ nguyên.
+
+## Âm nền và SFX nghe rõ, 20/10/2026
+
+Giữ bộ tổng hợp Web Audio hiện có (drone, pad, giai điệu A minor và SFX),
+tăng mức bus nền theo cảnh lên intro/showcase 0,28, journey 0,34, contact
+0,22; SFX bus 0,85 và pulse cuộn rõ hơn. Các mức này thay mức nền 0,10
+trong ghi chú cũ. Không thêm file âm thanh hoặc dependency.
+Chỉ bắt đầu nhạc khi AudioContext thực sự running; resume bị chặn không
+đánh dấu đã unlock hoặc xếp âm chờ. Gesture tiếp theo thử lại trên context cũ.
+Nút bật tiếng chủ động unlock và phát chime xác nhận; lựa chọn mute được
+lưu localStorage (không bắt buộc khi storage bị chặn). Hidden/mute tiếp tục
+áp dụng toàn mixer; dispose gỡ listeners và đóng context. Kiểm tra bổ sung
+trong `check:experience` cho resume thất bại/phục hồi, cue và lưu mute.
+Trang dev `scripts/check-audio-browser.html` đo nền, 13 cue, typing, scroll,
+mute/unmute và dispose bằng AudioContext/AnalyserNode thật. Lượt kiểm này
+PASS, nền intro RMS peak 0,02336; ảnh/report tại `artifacts/audio/`.
+Các assertion audio trong `check:experience` chạy riêng PASS; `check:universe`
+và build PASS (vẫn cảnh báo chunk >500 kB). `pnpm run check` dừng vì cursor
+PNG đã thiếu trong baseline; `check:ui` thiếu Chromium, chạy lại với Chrome
+có sẵn thì bị ERR_NETWORK_ACCESS_DENIED ở origin local 5181. Không ghi
+hai bộ tổng PASS. Kiểm tra tự động không chứng minh chất lượng nghe trên
+loa/tai nghe thật.
+
+## Main universe, giới thiệu và Contact, 20/10/2026 — chốt hiện hành
+
+Chốt này thay phần intro dùng cuộn/hầm mô phỏng ở các bản ghi bên dưới.
+Intro giữ nút liquid glass **Start my universe**, chữ Newsreader gõ dần,
+âm bàn phím sau gesture, nhìn 360° từ tâm bằng kéo/vuốt ngang. Camera không
+tự bay. Nội dung giới thiệu song ngữ chỉ dùng thông tin dự án đã có.
+
+- Blender 5.2 tách riêng Sphere_0 từ `main.glb`, bỏ bàn/tủ và các nhánh khác
+  trong **bản dẫn xuất** `public/model/universe-only.glb`. File gốc và workspace
+  không đổi; kiểm bằng SHA-256. Bản `.blend` có camera tại tâm để xem lại.
+  Intro và các trạm dùng chung cầu này, có thêm điểm sao sắc và nhấp nháy nhẹ;
+  reduced/hidden không chạy clock. Texture gốc 8K giảm còn 4K WebP.
+- Sao chính dùng texture Mặt Trời và vi hạt phát sáng, tối dần ở rìa,
+  quầng/plasma riêng; không dùng ánh phản chiếu nhựa. Không đổi quỹ đạo đọc.
+- Video chỉ nhận nguồn gốc qua `public/media/intro-source.json`. Hiện URL
+  **chưa có**: Browser bị tắt trong Work settings, chưa inspect được trang Bilal.
+  Bản quay màn hình đã bỏ khỏi public và luồng phát. Khi chưa có nguồn,
+  Start đi thẳng tới Home tại 1,92; không giả có hầm. Video hợp lệ có skip,
+  retry/lối vào Home, pause khi ẩn tab; unmount hủy callback.
+- Contact→showcase giữ trượt DOM dọc thuận/ngược, camera hành trình đứng yên.
+  Theo ảnh mới, bộ chọn là dải ngang chín trang sản phẩm cùng kích thước:
+  ảnh thật và mô tả trượt đồng bộ theo X, kéo tay có phản hồi trực tiếp.
+  Không thu cổng theo chiều sâu hoặc đổi vị trí quanh mặt cầu. Nền sao tiếp
+  tục chuyển động độc lập; trang ngoài màn hình inert/aria-hidden. Reduced
+  đổi trang ngay, không trượt. Back và thanh điều hướng đứng yên.
+  Showcase giữ ảnh thật, liquid glass, Back mũi tên trái và nav giữa đáy;
+  kéo/vuốt ngang, wheel dọc/ngang và phím trái/phải duyệt chín thế giới,
+  dừng ở hai đầu, không lặp vòng. Nút trước/tiếp bị vô hiệu tại đầu/cuối;
+  input vượt biên không đổi route hoặc phát âm thanh chuyển dự án.
+  Wheel dọc tại đầu showcase đổi dự án theo ngang. Nút “Đi tới liên hệ” hoặc
+  PageDown tới Contact; khi đã cuộn xuống, wheel dọc đọc trang bình thường,
+  không đổi dự án. Contact có chân
+  trời minh họa riêng, email/GitHub/LinkedIn/CV thật, lối quay lại vũ trụ.
+- Mixer chung có drone, pad, giai điệu A minor tự soạn và SFX; nhạc hạ nhẹ
+  khi có tiếng gõ/chuyển cảnh, đổi mức theo cảnh. Mute/hidden áp dụng toàn bus;
+  wheel tái dùng một voice; melody một buffer loop, không xếp note khi tab ẩn.
+
+Kiểm bổ sung: `node scripts/check-universe-upgrade.mjs`. Tái tạo sky:
+`node scripts/extract-main-universe.mjs`, Blender chạy
+`scripts/prepare-main-universe.py`, rồi `node scripts/optimize-main-universe.mjs`.
+Ảnh từ tâm Blender: `artifacts/blender-universe/centre-preview.png`;
+đây không phải ảnh kiểm giao diện. Bộ UI đã cập nhật nhưng chưa chạy vì Browser
+bị tắt. `pnpm run check` vẫn phải báo lỗi cursor PNG đã bị xóa nếu chưa được
+chủ repo xử lý; không nới assertion hoặc phục hồi thay đổi ngoài yêu cầu.
+
+## Phản hồi 10 đánh dấu Browser, 20/10/2026 — bản trước
+
+Các ghi chú mới thay vị trí chuyển cảnh đã chốt trước đó: hầm nằm giữa
+intro universe và Home; Contact→showcase chỉ kéo trang xuống. Đường bay
+giữa trạm và orbit đọc giữ nguyên.
+
+- Intro: các thiên hà tự quay rõ hơn, nền sao được chiếu từ các điểm trên
+  cầu. Kéo chuột/pen hoặc vuốt ngang để nhìn đủ 360°, không giới hạn yaw;
+  lên/xuống khi kéo chuột có giới hạn pitch để tránh lật ngược. Home/
+  double-click đặt lại; phím trái/phải đổi hướng. Vuốt dọc/wheel/bàn phím
+  vẫn đi vào hầm, không cộng tiến độ khi đang vuốt ngang.
+- Intro không trượt tấm hero để lộ đường nối ngang nữa. Cùng progress cuộn
+  dựng hầm full-screen, có vách gấp bất quy tắc, camera cục bộ uốn lên/xuống
+  theo đường tâm liên tục và cửa thoát hữu hạn vào Home tại 1,92. Camera
+  này chỉ thuộc intro; mọi chuyển trạm giữ đường bay cũ. Hidden/reduced,
+  rollback và hủy callback khi đổi route giữ nguyên.
+- Sao: bỏ nhiễu đối lưu tần số 230×150 với tương phản 68%, chuyển sang
+  cấu trúc nhiệt rộng và vi hạt 6%; Spica/Vindemiatrix xanh sáng, Porrima
+  ấm, giữ limb darkening và plasma ngoài. Kiểm tra ảnh đổi từ yêu cầu
+  nhiều pixel cạnh gắt sang cấu trúc màu rộng + giới hạn nhiễu; vẫn giữ
+  ngưỡng sáng, màu xanh, chuyển động và khôi phục sau đọc.
+- Hố đen: lớp lens lấy framebuffer ngay trước khi vẽ đĩa, khúc xạ nền sao
+  trong một trường mềm quanh bóng, không đổi shader đĩa/GR ray tracer hoặc
+  bẻ chữ DOM. Linear sampling, biên mềm và tán sắc rất nhẹ; không thêm
+  lớp kính màu đặc. Texture được thay/giải phóng theo kích thước viewport.
+- Showcase: chuyển tiếp DOM dọc 1,1s, giữ tọa độ ngược khi Back/hủy. Có thể
+  cuộn tiếp ở cuối Contact để sang showcase; điều khiển orbit bằng touch/
+  bàn phím vẫn được ưu tiên khi focus trong vùng hố đen.
+- Bộ đếm/trước/sau tách khỏi cột caption, căn giữa đáy viewport. Back chỉ
+  hiện mũi tên, giữ tên truy cập và title. Nền giảm mật độ sao, bỏ dây sáng
+  nối cổng và tia điện gắt; tinh vân xanh tím trầm ở mép, cổng xa mờ nhẹ,
+  vùng đọc thoáng. Preview gốc, kính, 9 đích/cuộn vòng và gallery giữ nguyên.
+
+Browser vẫn từ chối đọc localhost theo quyền đã lưu; không dùng browser
+khác để vượt quyền. Đối chiếu từ ảnh đánh dấu, chưa xác nhận render/FPS
+hoặc chạy check:ui. TypeScript và production build PASS, kiểm tra portfolio
+PASS; script UI qua kiểm tra cú pháp và diff không có lỗi whitespace.
+`pnpm run check` vẫn dừng ở asset con trỏ đã bị xóa trong working tree
+(`public/cursors/deep-space-arrow.png`), không nới assertion hoặc phục hồi
+thay đổi ngoài phạm vi. Build còn cảnh báo chunk chính >500 kB.
+
+## Intro universe và hầm showcase theo clip mới, 20/10/2026 (đã được thay vị trí ở chốt trên)
+
+Chốt mới: giữ intro universe, dùng hầm theo video Bilal khi vào showcase.
+Đây là thay thế riêng yêu cầu plasma intro và orbit/throat/white-hole cũ,
+không thay đường bay giữa trạm, orbit đọc, GLB, preview hoặc đích sản phẩm.
+
+- Intro có nền sao lõi rõ và ba cụm thiên hà particle nằm trên các mặt
+  phẳng nghiêng, quay/trôi khác pha. Giữ tên/lời chào song ngữ. Cuộn wheel,
+  vuốt và bàn phím điều khiển tiến độ trượt trang, có độ cong nhẹ; đứng yên
+  không tự qua Home. Không khôi phục nút bắt đầu hoặc lời nhắc đã bỏ.
+  Home giữ vị trí đọc 1,92; cuộn ngược có thể đưa intro trở xuống.
+- Hầm showcase dùng CylinderGeometry mở, vách biến dạng liên tục theo góc
+  và độ sâu, shader khí có noise nhiều tần số và atlas nebula local hiện có.
+  Vách dùng depth và tự che khuất; màu xanh trắng phát sáng, rãnh tím tối.
+  Cửa cuối hữu hạn mở bằng phối cảnh khi camera hầm đi qua, không thêm lỗ
+  trắng. Camera chính Virgo không bị gán orbit/roll/dive của passage cũ.
+- Forward/Back dùng cùng tọa độ tuyệt đối 0–1 trong 4,8s; Escape/wheel ngược/
+  vuốt xuống hủy giữa chừng. Đổi route ngoài passage hủy callback đang chờ.
+  Hidden dừng tiến độ; reduced chuyển trực tiếp. Texture lỗi giữ khí
+  procedural; thiếu context GPU giữ chuyển route, không khóa trang.
+- Các hàm và renderer intro/passage cũ chỉ còn dùng trong kiểm tra lịch sử;
+  chúng không được mount ở luồng chính. Kiểm tra mới giữ đường bay/orbit
+  và thêm input đảo chiều, mặt vách kín/không bịt hành lang, finite exit,
+  wiring scene, route, kính, cuộn vòng và gallery.
+
+TypeScript + production build PASS; check portfolio PASS. `pnpm run check`
+dừng trong check experience vì hai asset con trỏ đã bị xóa trong working
+tree: `public/cursors/deep-space-arrow.png` và `deep-space-hand.png`; không
+tự phục hồi hoặc bỏ assertion này khi sửa intro/hầm. Build vẫn cảnh báo
+chunk chính >500 kB. Các script UI đã qua kiểm tra cú pháp, chưa chạy.
+Browser tiếp tục từ chối localhost và trang tham khảo bằng quyền đã lưu;
+clip local đã được trích khung hình để đối chiếu. Chưa chạy `check:ui` hoặc
+xác nhận hình render, shader trên GPU và FPS. Kiểm tra worlds có thêm pixel
+brightness/open core/finite exit/animated gas cho renderer thật, chờ quyền
+Browser. Không coi build tĩnh là bằng chứng đạt thẩm mỹ theo clip.
+
+## Nguồn sáng thiên thể và bỏ lớp che tối, 20/10/2026
+
+Theo ảnh phản hồi mới về universe quá tối: photosphere dùng radiance tự
+phát sáng và ánh xạ năng lượng `1-exp(-radiance)`, giữ granulation/sunspot
+và màu plasma xanh của Vindemiatrix. Không tiếp tục nhân màu texture tối
+qua nhiều hệ số làm sao trông như hành tinh đá. Corona bỏ tone mapping,
+fill lạnh tăng nhẹ; point light tại sao tăng 2000→8000 và phủ 120→240 đơn
+vị để các hành tinh ngoài vẫn nhận sáng có hướng và có vùng đêm.
+Giảm vignette desktop từ tối đa ~50% xuống 16% theo cạnh; radial từ 30%
+xuống 12%. Trên phone bỏ gradient tới đen hoàn toàn ở đáy, còn tối đa 33%.
+Ảnh bầu trời tăng exposure tuyến tính 0,7→2,6, giữ nền đen và chi tiết nguồn
+4K/2K. Sao điểm tăng đường kính lõi trắng và kích thước 5,2/4,2/3,4px để
+không bị chìm do lõi nhỏ hơn một pixel. Không thêm màn sáng phủ nội dung,
+đổi camera hay cơ chế cuộn.
+UI stellar bổ sung ngưỡng sáng tại trạm đầy đủ bên cạnh các assertion về
+chi tiết/màu/chuyển động đang có. Browser vẫn từ chối quyền truy cập local
+và trang tham khảo; đối chiếu thẩm mỹ dựa trên ảnh người dùng cung cấp,
+chưa xác nhận pixel render hoặc hiệu năng bằng trình duyệt trong lượt này.
+
+## Kính trong, căn giữa và tinh giản nút showcase, 20/10/2026
+
+Theo hai ảnh tham chiếu mới: bỏ lớp nền xanh đậm của caption, dùng lớp
+phủ trắng 1–5% và blur nhẹ 2px để thấy sao/nền xuyên qua. Viền phản sáng
+hai lớp trôi chậm theo chu kỳ 9 giây và phản ứng với con trỏ; chữ và ảnh
+gốc đứng yên, không đưa qua displacement. Đây là hiệu ứng ánh sáng CSS,
+không phải mô phỏng khúc xạ vật lý. Reduced motion tắt chuyển động viền;
+trình duyệt thiếu backdrop-filter vẫn dùng nền dự phòng dễ đọc.
+
+Desktop căn giữa cả cụm tiêu đề/caption/điều hướng theo cùng tâm dọc với
+preview; tablet/phone căn giữa chữ và hành động. CTA thu về pill vừa nội
+dung, bỏ mũi tên thừa; hai nút trước/sau bỏ viền lồng. Giữ nhãn hành động,
+hit target 44px, focus, liên kết website/case study, chín URL, ảnh contain,
+cuộn vòng, Enter/Escape, gallery bên trong và rollback về Contact.
+
+Check worlds bổ sung độ trong của lớp phủ, blur nhẹ, căn giữa cụm desktop,
+CTA gọn và viền dừng ở reduced motion; fixture vuốt cung cấp đầy đủ
+targetTouches như TouchEvent thật. Khoảng hở tablet tính cả viền kính;
+khoảng trống trong cụm không chặn click tới các cổng phía sau.
+
+Kiểm chứng: worlds đầy đủ từng PASS 5 viewport trước các thay đổi chuyển
+cảnh đồng thời trong workspace (`artifacts/worlds-clear-glass/final/`).
+Bản khoảng hở cuối PASS kiểm tra bố cục, kính, pointer và reduced trên
+cả 5 viewport với `WORLDS_LAYOUT_ONLY=1`; mode này công khai không kiểm
+tra điều hướng/passage, mặc định script vẫn chạy đầy đủ. Report và ảnh ở
+`artifacts/worlds-clear-glass/layout-final/`; đã xem ảnh desktop Mpoly,
+phone, landscape và tablet sau chỉnh khoảng hở.
+
+`pnpm run check` từng PASS gồm build; lượt cuối sau thay đổi đồng thời
+ngoài showcase dừng do thiếu `public/cursors/deep-space-arrow.png` trong
+check-current-features. `check:ui` vẫn dừng assertion con trỏ dòng 99.
+Chạy build riêng trên mã cuối PASS TypeScript/production build; còn cảnh
+báo chunk >500 kB đã có từ trước.
+Lượt worlds đầy đủ sau đó chờ `.singularity-passage` và timeout khi phần
+chuyển cảnh đang được thay đổi; không ghi các lượt này PASS. Chưa đo FPS,
+touch hoặc cảm giác chuyển động kính trên thiết bị thật.
+
+## Liquid glass và cuộn vòng showcase, 20/10/2026
+
+Theo yêu cầu mới: bộ chọn thế giới dùng viền kính nhiều lớp, phản sáng theo
+con trỏ, nền kính blur/saturation cho caption và controls, có nền dự phòng
+khi không hỗ trợ backdrop-filter. Ảnh thật vẫn contain, không biến dạng;
+hiệu ứng phản sáng chỉ nằm ở mép kính, không phủ nội dung preview.
+Nút Back/Về Virgo chuyển lên góc trên trái, thay icon X bằng mũi tên lùi.
+Wheel/vuốt/mũi tên/nút trước-sau lặp 09→01 và 01→09; không còn cuộn/vuốt
+ngược từ thế giới đầu để thoát. Đây là thay đổi yêu cầu, thay riêng quy tắc
+thoát bằng wheel/vuốt ở baseline cũ. Back giữ hành trình rollback về Contact;
+Escape vẫn là lối thoát bàn phím, Enter và case-study return giữ nguyên.
+Gallery tương tác bên trong, route, asset và camera Virgo không đổi.
+Check logic bổ sung wrap nhiều vòng; UI bổ sung hai biên, nút, wheel/vuốt,
+vị trí Back và kính, giữ các kiểm tra đọc ảnh, passage và rollback cũ.
+`pnpm run check` PASS; script worlds qua kiểm tra cú pháp Node. Kiểm tra
+hình và `check:ui` vẫn chờ gỡ quyền Browser local đã lưu từ lượt trước;
+chưa xác nhận chất lượng kính hay hiệu năng backdrop-filter trên thiết bị thật.
+
+## Sao nền rõ và sáng hơn, 20/10/2026
+
+Theo phản hồi ảnh nền mờ và sao tối: lớp sao Virgo dùng texture riêng có lõi
+trắng gọn, kích thước theo pixel màn hình, opacity 1/0,9/0,8 và không qua
+tone mapping. Không tăng quầng glow dùng chung của plasma/thiên thể.
+Giảm haze tinh vân để giữ tương phản. Bầu trời dùng bản 4K desktop/2K phone
+từ nguồn 8K thật, tăng hệ số sáng từ 0,32 lên 0,7. Bầu trời vẫn vẽ phía sau
+cảnh, không có lớp sáng phủ nội dung. Nền intro sáng hơn, lõi pixel tối thiểu
+1px và độ nhấp nháy nhẹ; các sao chòm và tiến độ cuộn giữ nguyên.
+Showcase dùng lõi sao theo pixel có khử răng cưa và tăng mức sáng; viền cổng,
+camera, asset sản phẩm và hành vi tương tác giữ nguyên.
+Kiểm tra kích thước map mới dùng đúng 4K/2K và giữ nguyên ngân sách truyền tải.
+Browser local vẫn bị quyền đã lưu chặn từ lượt trước; chưa duyệt hình mới.
+
+## Nâng cấp chiều sâu và chuyển động độc lập, 20/10/2026
+
+Theo yêu cầu nâng cấp hình ảnh và để thế giới tự hoạt động khi ngừng cuộn:
+
+- Giữ GLB, tám preview gốc, chín đích sản phẩm, case study, CV, workspace,
+  plasma intro, đường bay thẳng và orbit đọc theo cuộn.
+- Bổ sung texture Earth/Jupiter/Moon/Mars/mây và bầu trời từ Solar System
+  Scope / INOVE, CC BY 4.0. Bản WebP 1K cho phone, 2K cho desktop, tải local
+  và giữ map procedural nếu lỗi. Nguồn/biến đổi ở `celestial-asset-sources.md`;
+  credit truy cập được trong About và showcase desktop.
+- Mây nằm trên cầu riêng, quay khác bề mặt; khí quyển có vùng chạng vạng.
+  Bổ sung fill sáng lạnh, giảm sợi plasma đều trên photosphere, tăng cấu trúc
+  hạt. Vành đai và thiên thạch có tốc độ riêng; reduced giữ pose tĩnh.
+- `VirgoDepth` vẽ bầu trời trước các vật thể (opaque, không ghi depth), và
+  bụi trong tọa độ thế giới. Không dùng lớp ảnh đè làm tối sản phẩm/thiên thể.
+- Clock môi trường tách khỏi từng quỹ đạo dự án. Hover giữ riêng hành tinh
+  đang đọc; các quỹ đạo còn lại, bề mặt, mây và môi trường vẫn chạy. Thả hover
+  tiếp tục cùng phase, không nhảy bù giờ. Hidden/dialog/reduced dừng clock.
+- Intro có tên và giới thiệu ngắn, mờ trước khi xuyên cổng; không thêm nút
+  bắt đầu, không khôi phục lời nhắc đã gỡ. Thứ tự nối sao/bắn tia/cuộn giữ cũ.
+- Showcase giữ mặt ảnh thật phẳng, contain, đứng yên. Cổng xa trôi XYZ nhẹ
+  khác pha; shader viền dùng chính transform đang hiển thị. Khí và bụi nền
+  có nhịp riêng; reduced không chạy clock hoặc vẽ GPU lặp khi không đổi cảnh.
+  Caption dùng scope/stack sẵn có, bỏ metadata FOCUS trang trí, hoàn thiện
+  hover/nhấn/focus và phân cấp chữ. Các route/Enter/Escape/vuốt giữ nguyên.
+
+Kiểm tra logic bổ sung độc lập 30/60/120 Hz, pause/reduced/input lỗi, giữ và
+thả quỹ đạo, kích thước và ngân sách asset, wiring renderer thật. Kiểm tra
+UI bổ sung `scripts/check-celestial-ui.mjs` và ambient trong worlds.
+`pnpm run check` PASS trên source cuối (portfolio, experience, TypeScript,
+production build); build vẫn cảnh báo chunk >500 kB. Hai script UI mới/sửa
+đã qua kiểm tra cú pháp Node, chưa phải bằng chứng đã chạy trình duyệt.
+Browser hiện từ chối origin local bằng quyền đã lưu dù chủ repo đồng ý;
+chưa chạy `check:ui`/bộ UI mới và chưa xác nhận hình ảnh/chuyển động mới.
+Không coi kiểm tra tĩnh là bằng chứng chất lượng hình ảnh hoặc FPS thiết bị.
+
+## Dọn repo, 20/10/2026
+
+`AGENTS.md` là đầu mối chỉ dẫn chung; `GEMINI.md` chỉ trỏ tới đó.
+Đã bỏ QualityGauge/CSS, virgoSpaceRiftRenderer và virgoFracture cũ:
+không còn được import từ ứng dụng hoặc script kiểm tra. Không bỏ các màn
+legacy vẫn được regression dùng, dữ liệu nội dung hay asset gốc.
+Tài liệu scrollytelling cũ được đánh dấu lịch sử để tránh áp dụng nhầm.
+
 # Các tính năng cần giữ khi đổi model
 
 **Cuộn và âm nền, 19/10/2026:** nhận cả wheel nhỏ dưới 2px ở hành trình
@@ -945,7 +1335,7 @@ pnpm exec playwright install chromium
 pnpm run check:ui
 ```
 
-`check` chạy portfolio, experience rồi TypeScript/production build.
+`check` chạy portfolio, experience, universe rồi TypeScript/production build.
 `check:experience` gọi `scripts/check-current-features.mjs`, nên lệnh cũ của
 Gemini tự kiểm tra thêm các tính năng mới. Pipeline deploy chạy hai bộ kiểm tra
 trước khi build/upload; regression không được xuất bản qua pipeline này.

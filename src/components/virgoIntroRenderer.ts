@@ -88,11 +88,12 @@ export function drawIntro(ctx: CanvasRenderingContext2D, width: number, height: 
   const renderSky = () => {
     ctx.fillStyle = black; ctx.fillRect(-width * 2, -height, width * 4, height * 3);
     sky.forEach((star, i) => {
-      const twinkle = 0.6 + 0.4 * Math.sin(idleTime * 2.5 + i * 1.7);
-      ctx.fillStyle = violet;
-      ctx.globalAlpha = star.size * 0.36 * twinkle;
+      const twinkle = .86 + .14 * Math.sin(idleTime * 2.5 + i * 1.7);
+      ctx.fillStyle = i % 7 === 0 ? '#ffe4cf' : '#dbe9ff';
+      ctx.globalAlpha = (.55 + star.size * .16) * twinkle;
       const p = warp(star.x * width, star.y * height);
-      ctx.fillRect(p.x, p.y, star.size, star.size);
+      const size = star.size > 1.15 ? 1.5 : 1;
+      ctx.fillRect(Math.round(p.x), Math.round(p.y), size, size);
     });
     ctx.globalAlpha = 1;
     OPENING_EDGES.forEach(([a, b], index) => {

@@ -9,8 +9,9 @@
     "build": "tsc -b && vite build",
     "check:portfolio": "node scripts/check-portfolio.mjs",
     "check:experience": "node scripts/check-experience.mjs",
+    "check:universe": "node scripts/check-universe-upgrade.mjs",
     "check:ui": "node scripts/check-ui.mjs",
-    "check": "pnpm run check:portfolio && pnpm run check:experience && pnpm run build",
+    "check": "pnpm run check:portfolio && pnpm run check:experience && pnpm run check:universe && pnpm run build",
     "prepare:workspace": "node scripts/prepare-workspace.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },

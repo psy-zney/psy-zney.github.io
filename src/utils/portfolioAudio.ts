@@ -22,7 +22,20 @@ export type PortfolioSfxType =
   | 'muteOff'
   | 'loaderComplete';
 
-class PortfolioAudioSystem {
+const MUSIC_LEVELS = { intro: .28, journey: .34, showcase: .28, contact: .22 };
+const SOUND_PREFERENCE = 'portfolio-sound';
+
+/** Firefox may lack cancelAndHoldAtTime; preserve today's value before rescheduling. */
+function holdAudioParam(param: AudioParam, now: number): void {
+  if (typeof param.cancelAndHoldAtTime === 'function') param.cancelAndHoldAtTime(now);
+  else {
+    const value = param.value;
+    param.cancelScheduledValues(now);
+    param.setValueAtTime(value, now);
+  }
+}
+
+export class PortfolioAudioSystem {
   private context: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   private sfxGain: GainNode | null = null;
@@ -32,6 +45,8 @@ class PortfolioAudioSystem {
   // BGM Oscillators & Nodes
   private bgmVoices: AudioScheduledSourceNode[] = [];
   private bgmPlaying = false;
+  private melodyBuffer: AudioBuffer | null = null;
+  private musicLevel = MUSIC_LEVELS.journey;
 
   // Active SFX source tracking
   private activeSfxSources = new Set<AudioScheduledSourceNode>();
@@ -42,38 +57,36 @@ class PortfolioAudioSystem {
   private lastHoverTime = 0;
   private customAudioElement: HTMLAudioElement | null = null;
   private scrollVoice: { oscillator: OscillatorNode; gain: GainNode } | null = null;
+  private typingBuffer: AudioBuffer | null = null;
+  private typingTick = 0;
+  private disposed = false;
+  private active = true;
+  private handleUnlock = () => { this.unlockContext(); };
+  private handleMute = (event: Event) => { this.setMuted(Boolean((event as CustomEvent<boolean>).detail)); };
+  private handleVisibility = () => {
+    if (document.hidden) this.pauseOnHidden();
+    else this.resumeOnVisible();
+  };
 
   constructor() {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
     this.muted = document.documentElement.dataset.journeySound === 'off';
+    try {
+      const saved = window.localStorage.getItem(SOUND_PREFERENCE);
+      if (saved === 'off' || saved === 'on') this.muted = saved === 'off';
+    } catch { /* Storage may be unavailable in private or embedded contexts. */ }
+    document.documentElement.dataset.journeySound = this.muted ? 'off' : 'on';
 
-    const handleUnlock = () => {
-      if (this.isUnlocked) return;
-      this.unlockContext();
-    };
-
-    window.addEventListener('pointerdown', handleUnlock, { passive: true });
-    window.addEventListener('wheel', handleUnlock, { passive: true });
-    window.addEventListener('keydown', handleUnlock, { passive: true });
-    window.addEventListener('touchstart', handleUnlock, { passive: true });
-
-    window.addEventListener('journey-audio-muted', (e: Event) => {
-      const isMuted = Boolean((e as CustomEvent<boolean>).detail);
-      this.setMuted(isMuted);
-    });
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        this.pauseOnHidden();
-      } else {
-        this.resumeOnVisible();
-      }
-    });
+    for (const event of ['pointerdown', 'wheel', 'keydown', 'touchstart']) {
+      window.addEventListener(event, this.handleUnlock, { passive: true });
+    }
+    window.addEventListener('journey-audio-muted', this.handleMute);
+    document.addEventListener('visibilitychange', this.handleVisibility);
   }
 
   private initContext(): boolean {
-    if (typeof window === 'undefined') return false;
+    if (this.disposed || typeof window === 'undefined') return false;
     if (this.context && this.context.state !== 'closed') return true;
 
     try {
@@ -89,7 +102,7 @@ class PortfolioAudioSystem {
 
       // SFX Bus
       this.sfxGain = ctx.createGain();
-      this.sfxGain.gain.setValueAtTime(0.7, ctx.currentTime);
+      this.sfxGain.gain.setValueAtTime(0.85, ctx.currentTime);
       this.sfxGain.connect(this.masterGain);
 
       // BGM Bus with Low-pass Filter for cosmic immersion
@@ -99,7 +112,7 @@ class PortfolioAudioSystem {
       this.bgmFilter.Q.setValueAtTime(1.0, ctx.currentTime);
 
       this.bgmGain = ctx.createGain();
-      this.bgmGain.gain.setValueAtTime(0.10, ctx.currentTime);
+      this.bgmGain.gain.setValueAtTime(this.musicLevel, ctx.currentTime);
 
       this.bgmGain.connect(this.bgmFilter);
       this.bgmFilter.connect(this.masterGain);
@@ -112,9 +125,15 @@ class PortfolioAudioSystem {
   }
 
   public unlockContext(): void {
+    if (!this.active || typeof document === 'undefined' || document.hidden || this.muted) return;
     if (!this.initContext() || !this.context) return;
-    if (this.context.state === 'suspended') {
-      void this.context.resume().catch(() => {});
+    const ctx = this.context;
+    if (ctx.state !== 'running') {
+      // A failed or pending resume is not an unlock. A later gesture can retry.
+      void ctx.resume().then(() => {
+        if (this.context === ctx && !this.disposed && ctx.state === 'running') this.unlockContext();
+      }).catch(() => {});
+      return;
     }
     this.isUnlocked = true;
 
@@ -126,10 +145,13 @@ class PortfolioAudioSystem {
 
   public setMuted(muted: boolean): void {
     this.muted = muted;
+    if (typeof document !== 'undefined') document.documentElement.dataset.journeySound = muted ? 'off' : 'on';
+    try { window.localStorage.setItem(SOUND_PREFERENCE, muted ? 'off' : 'on'); } catch { /* Optional persistence. */ }
     if (this.context && this.masterGain) {
       const now = this.context.currentTime;
       // Fast fade-out within 0.08s (strictly under 100ms per requirements)
-      this.masterGain.gain.setTargetAtTime(muted ? 0 : 0.65, now, 0.025);
+      holdAudioParam(this.masterGain.gain, now);
+      this.masterGain.gain.linearRampToValueAtTime(muted || document.hidden || !this.active ? 0 : 0.65, now + .08);
     }
     if (this.customAudioElement) {
       this.customAudioElement.muted = muted;
@@ -139,9 +161,20 @@ class PortfolioAudioSystem {
     }
   }
 
+  /** Portfolio and workspace own separate soundscapes; changing view is not a mute preference. */
+  public setActive(active: boolean): void {
+    this.active = active;
+    if (!active) {
+      this.pauseOnHidden();
+      this.stopCosmicAmbient();
+    } else if (this.isUnlocked) this.resumeOnVisible();
+  }
+
   private pauseOnHidden(): void {
     if (this.context && this.masterGain) {
-      this.masterGain.gain.setTargetAtTime(0, this.context.currentTime, 0.03);
+      const now = this.context.currentTime;
+      holdAudioParam(this.masterGain.gain, now);
+      this.masterGain.gain.linearRampToValueAtTime(0, now + .03);
     }
     if (this.customAudioElement && !this.customAudioElement.paused) {
       try { this.customAudioElement.pause(); } catch {}
@@ -149,13 +182,13 @@ class PortfolioAudioSystem {
   }
 
   private resumeOnVisible(): void {
-    if (this.context && this.masterGain && !this.muted) {
-      this.masterGain.gain.setTargetAtTime(0.65, this.context.currentTime, 0.1);
-      if (this.context.state === 'suspended') {
-        void this.context.resume().catch(() => {});
-      }
+    if (this.context && this.masterGain && !this.muted && this.active && !document.hidden) {
+      const now = this.context.currentTime;
+      holdAudioParam(this.masterGain.gain, now);
+      this.masterGain.gain.linearRampToValueAtTime(0.65, now + .1);
+      this.unlockContext();
     }
-    if (this.customAudioElement && !this.muted && this.isUnlocked) {
+    if (this.customAudioElement && !this.muted && this.active && !document.hidden && this.isUnlocked) {
       try { void this.customAudioElement.play().catch(() => {}); } catch {}
     }
   }
@@ -167,13 +200,10 @@ class PortfolioAudioSystem {
    * Layer 3: Filtered cosmic stardust shimmer
    */
   public startCosmicAmbient(): void {
-    if (this.bgmPlaying || this.muted || typeof window === 'undefined') return;
-    if (!this.initContext() || !this.context || !this.bgmGain) return;
+    if (!this.active || this.bgmPlaying || this.muted || !this.isUnlocked || typeof window === 'undefined' || document.hidden) return;
+    if (!this.context || this.context.state !== 'running' || !this.bgmGain) return;
 
     const ctx = this.context;
-    if (ctx.state === 'suspended') {
-      void ctx.resume().catch(() => {});
-    }
 
     try {
       this.stopCosmicAmbient();
@@ -241,6 +271,22 @@ class PortfolioAudioSystem {
       noise.start(now);
       this.bgmVoices.push(noise);
 
+      // An original, quiet A-minor motif. A single looping buffer has no timer,
+      // accumulating voices or catch-up notes when a hidden tab resumes.
+      if (!this.melodyBuffer) {
+        const rate=12000, beat=1.6, notes=[440,523.251,659.255,493.883,440,391.995,329.628,391.995];
+        this.melodyBuffer=ctx.createBuffer(1,Math.round(rate*beat*notes.length),rate);
+        const samples=this.melodyBuffer.getChannelData(0);
+        for(let i=0;i<samples.length;i++) {
+          const seconds=i/rate, note=Math.floor(seconds/beat), t=seconds%beat;
+          const frequency=notes[note], phase=2*Math.PI*frequency*t;
+          const envelope=Math.min(1,t/.09)*Math.exp(-t*2.5)*Math.min(1,(beat-t)/.15);
+          samples[i]=.17*envelope*(Math.sin(phase)+.14*Math.sin(phase*2)+.05*Math.sin(phase*3));
+        }
+      }
+      const melody=ctx.createBufferSource();melody.buffer=this.melodyBuffer;melody.loop=true;
+      melody.connect(this.bgmGain);melody.start(now);this.bgmVoices.push(melody);
+
       this.bgmPlaying = true;
     } catch (e) {
       console.warn('Failed to start cosmic ambient generator:', e);
@@ -272,11 +318,46 @@ class PortfolioAudioSystem {
     this.bgmFilter.frequency.setTargetAtTime(freq, now, 0.15);
   }
 
+  public setScene(scene: 'intro' | 'journey' | 'showcase' | 'contact'): void {
+    this.musicLevel = MUSIC_LEVELS[scene];
+    if(this.context && this.bgmGain) this.bgmGain.gain.setTargetAtTime(this.musicLevel,this.context.currentTime,.6);
+  }
+
+  private duckMusic(): void {
+    if(!this.context || !this.bgmGain)return;
+    const now=this.context.currentTime, gain=this.bgmGain.gain;
+    holdAudioParam(gain, now);gain.setTargetAtTime(this.musicLevel*.6,now,.025);
+    gain.setTargetAtTime(this.musicLevel,now+.22,.24);
+  }
+
   /** One reusable voice: trackpad packets renew a soft pulse instead of stacking sounds. */
+  /** Mechanical key tap. No autoplay attempts, hidden-tab backlog or sound while muted. */
+  public playTypingTick(): void {
+    const ctx = this.context;
+    if (!this.active || this.muted || !this.isUnlocked || !ctx || ctx.state !== 'running' || !this.sfxGain || document.hidden) return;
+    this.duckMusic();
+    if (!this.typingBuffer) {
+      this.typingBuffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * .032), ctx.sampleRate);
+      const samples = this.typingBuffer.getChannelData(0);
+      for (let i = 0; i < samples.length; i++) {
+        const t = i / ctx.sampleRate, second = t > .012 ? Math.exp(-(t - .012) * 450) * .28 : 0;
+        samples[i] = (Math.random() * 2 - 1) * (Math.exp(-t * 300) + second);
+      }
+    }
+    const source = ctx.createBufferSource(), filter = ctx.createBiquadFilter(), gain = ctx.createGain();
+    source.buffer = this.typingBuffer; source.playbackRate.value = .94 + (this.typingTick++ % 5) * .03;
+    filter.type = 'bandpass'; filter.frequency.value = 1650; filter.Q.value = .7;
+    gain.gain.setValueAtTime(.028, ctx.currentTime);
+    source.connect(filter); filter.connect(gain); gain.connect(this.sfxGain);
+    this.activeSfxSources.add(source);
+    source.onended = () => { this.activeSfxSources.delete(source); source.disconnect(); filter.disconnect(); gain.disconnect(); };
+    source.start();
+  }
+
   public playScroll(delta: number): void {
-    if (!Number.isFinite(delta) || delta === 0 || this.muted || typeof document === 'undefined' || document.hidden) return;
+    if (!this.active || !Number.isFinite(delta) || delta === 0 || this.muted || typeof document === 'undefined' || document.hidden) return;
     this.unlockContext();
-    if (!this.context || !this.sfxGain) return;
+    if (!this.context || this.context.state !== 'running' || !this.sfxGain) return;
     const ctx = this.context, now = ctx.currentTime;
     if (!this.scrollVoice) {
       const oscillator = ctx.createOscillator(), gain = ctx.createGain();
@@ -288,8 +369,8 @@ class PortfolioAudioSystem {
     const strength = Math.min(1, Math.abs(delta) / 120);
     oscillator.frequency.setTargetAtTime(delta > 0 ? 330 : 261.63, now, .025);
     // Hold the current envelope before retriggering, avoiding clicks on dense input.
-    gain.gain.cancelAndHoldAtTime(now);
-    gain.gain.linearRampToValueAtTime(.008 + strength * .016, now + .018);
+    holdAudioParam(gain.gain, now);
+    gain.gain.linearRampToValueAtTime(.014 + strength * .024, now + .018);
     gain.gain.exponentialRampToValueAtTime(.0001, now + .16);
   }
 
@@ -297,13 +378,12 @@ class PortfolioAudioSystem {
    * Play High-Precision Procedural Sound Effects
    */
   public playSfx(type: PortfolioSfxType): void {
-    if (this.muted || typeof window === 'undefined' || document.hidden) return;
+    if (!this.active || this.muted || !this.isUnlocked || typeof window === 'undefined' || document.hidden) return;
     if (!this.initContext() || !this.context || !this.sfxGain) return;
+    if (this.context.state !== 'running') return;
+    if(type !== 'hover') this.duckMusic();
 
     const ctx = this.context;
-    if (ctx.state === 'suspended') {
-      void ctx.resume().catch(() => {});
-    }
 
     const now = ctx.currentTime;
 
@@ -582,6 +662,14 @@ class PortfolioAudioSystem {
   }
 
   public dispose(): void {
+    this.disposed = true;
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      for (const event of ['pointerdown', 'wheel', 'keydown', 'touchstart']) window.removeEventListener(event, this.handleUnlock);
+      window.removeEventListener('journey-audio-muted', this.handleMute);
+      document.removeEventListener('visibilitychange', this.handleVisibility);
+    }
+    for (const source of this.activeSfxSources) { try { source.stop(); } catch { /* Already ended. */ } }
+    this.activeSfxSources.clear(); this.typingBuffer = null; this.melodyBuffer=null;
     this.scrollVoice?.oscillator.stop();
     this.scrollVoice?.oscillator.disconnect();
     this.scrollVoice?.gain.disconnect();

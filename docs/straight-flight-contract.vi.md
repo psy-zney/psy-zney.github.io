@@ -1,5 +1,46 @@
 # Chuyển cảnh đã chốt: luôn bay thẳng
 
+21/10: tới 9/9, gesture cuộn dọc xuống kế tiếp cuộn native tới Contact
+bên dưới selector. Giữ đà của gesture vừa chọn 9/9; cuộn ngang dừng ở biên.
+
+21/10: nút Start thiếu video gốc có crossfade DOM 0,95s và scale nền gốc
+1→1,16 trước Home 1,92; camera giữ nguyên, không dựng hầm thay video.
+Escape hủy; reduced motion đi thẳng Home không zoom.
+
+20/10, chốt tiếp theo: intro dùng **Start my universe**, không cuộn để vào.
+Nền là cầu tách từ main.glb bằng Blender, camera đứng tại tâm nhìn 360°.
+Hầm chỉ được phát bằng video gốc đã xác minh; chưa có URL thì đi trực tiếp
+Home 1,92. Không dùng bản quay màn hình hoặc hầm giả thay nguồn gốc.
+Contact→showcase tiếp tục trượt DOM dọc 1,1s và Back ngược cùng progress;
+không bay/xoắn camera. Showcase đổi thế giới theo ngang bằng cả con lăn dọc
+và ngang, dừng ở đầu/cuối, không lặp vòng; nút liên hệ/PageDown tới Contact. Sau khi rời đầu showcase, wheel
+dọc đọc Contact bình thường. Đường bay thẳng và orbit đọc giữ nguyên.
+
+Chốt ảnh mới: bên trong showcase, chín sản phẩm nằm trên dải ngang phẳng;
+preview và mô tả trượt cùng nhau theo X. Không dùng bowl/orbit để đổi dự án.
+Đây là chuyển động DOM cục bộ, không đổi camera Virgo hoặc Contact→showcase.
+
+20/10, chốt hiện hành theo 10 ghi chú Browser: **intro universe → hầm →
+Home; Contact → trượt xuống showcase**. Intro có xoay nền 360° bằng kéo/
+vuốt ngang và thiên hà quay độc lập. Camera bên trong hầm được phép uốn
+nhẹ lên/xuống theo mẫu video, chỉ trong renderer intro. Cuộn dọc điều khiển
+progress thuận/ngược; không lộ đường nối giữa hai tấm page ở intro.
+Contact/showcase chuyển DOM dọc 1,1s, không đi qua hầm; Back chạy ngược.
+Hố đen có lens khúc xạ nền, không đổi góc camera. Các quy tắc bay thẳng
+giữa trạm và orbit đọc bên dưới vẫn áp dụng; chốt này thay vị trí hầm và
+chuyển cảnh ghi ở các bản trước.
+
+20/10, chốt mới của chủ repo sau clip Bilal: **giữ intro universe, dùng hầm
+theo mẫu khi vào showcase**. Intro không còn cổng plasma/hầm; sao và các
+cụm thiên hà tự chuyển động, cuộn để trượt trang lên và lộ Home tại 1,92.
+Đoạn Contact→showcase dùng hầm khí xanh trắng có vách 3D liên tục, nếp gấp
+che khuất theo depth và cửa thoát hữu hạn. Camera của riêng hầm tiến thẳng;
+camera Virgo đứng yên trong chuyển cảnh. Không dùng lại orbit vào hố đen,
+vòng vẽ Canvas hoặc pha lỗ trắng cũ. Back và thao tác hủy retrace cùng
+progress tuyệt đối; reduced chuyển trực tiếp. Mốc handoff 0,66 của hành trình
+4,8 giây. Đây là thay thế riêng intro và passage cũ bên dưới; đường bay giữa
+các trạm và orbit đọc theo cuộn giữ nguyên.
+
 19/10: mặt xem sản phẩm được chọn mở rộng, giữ nguyên mặt phẳng ảnh;
 các cửa xa vẫn nằm trên mặt cầu lõm. Nối hầm và họng thoát bằng crossfade
 theo progress tuyệt đối 0,58–0,76, không đổi camera hoặc các mốc passage.

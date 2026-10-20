@@ -1,0 +1,80 @@
+.contact-landing{position:relative;min-height:690px;min-height:max(690px,100dvh);overflow:hidden;isolation:isolate;background:radial-gradient(ellipse at 60% 5%,#132c3b66,transparent 55%),#030609;color:#e9edf4}
+.contact-horizon{position:absolute;inset:0;z-index:-1;pointer-events:none;background-image:radial-gradient(1px 1px at 17% 16%,#fff,transparent),radial-gradient(1px 1px at 82% 21%,#a6d9ff,transparent),radial-gradient(1px 1px at 54% 6%,#fff9,transparent);background-size:173px 211px,281px 257px,373px 337px}
+.contact-horizon svg{position:absolute;bottom:0;width:100%;height:62%;opacity:.85}.horizon-far{fill:#162430}.horizon-near{fill:#0c141e}.horizon-trees{fill:#070e15}
+.contact-moon{position:absolute;width:72px;aspect-ratio:1;right:16%;top:12%;border-radius:50%;background:radial-gradient(circle at 33% 29%,#c5d3d7,#879da6 45%,#233c4d 79%);box-shadow:0 0 28px #accbdd16;opacity:.5}
+.contact-landing-content{position:relative;margin:auto;padding:110px 24px 24px;max-width:1080px;text-align:center}.contact-eyebrow{font-size:10px;letter-spacing:.22em;color:#9fb0bf}.contact-landing h2{font:400 clamp(48px,6vw,82px)/1.06 Newsreader,Georgia,serif;letter-spacing:-.035em;margin:30px 0 20px}.contact-landing h2 em{color:#b7c8cb;font-weight:400}.contact-invitation{color:#b6c3cf;font-size:15px;margin:0 auto 32px;max-width:43ch;line-height:1.6}
+.contact-mail{display:inline-flex;align-items:center;justify-content:center;gap:14px;padding:15px 23px;min-height:52px;border:1px solid #c1e0ed42;border-radius:40px;text-decoration:none;background:linear-gradient(125deg,#d7e7ff12,#b1d6e505);box-shadow:inset 0 1px 2px #fff3,0 10px 32px #0004;backdrop-filter:blur(16px);font-size:16px}.contact-mail:hover{background:#d7e7ff1a}.contact-mail:focus-visible,.contact-landing a:focus-visible{outline:2px solid #cbe6f2;outline-offset:5px}
+.contact-landing nav{display:flex;justify-content:center;flex-wrap:wrap;gap:10px 26px;margin:22px 0 90px}.contact-landing nav a{display:flex;align-items:center;gap:8px;min-height:44px;color:#becad6;text-decoration:none;font-size:13px}.contact-landing a{color:inherit}.contact-landing footer{border-top:1px solid #c7d8e51a;padding-top:20px;display:flex;align-items:center;justify-content:space-between;gap:18px;font-size:11px;color:#8f9eac}.contact-landing footer a{display:flex;align-items:center;min-height:44px;text-decoration:none}
+@media(max-width:600px){.contact-landing-content{padding-top:95px}.contact-mail{font-size:13px;padding:13px 16px;gap:9px}.contact-landing footer{flex-direction:column;gap:0}.contact-moon{right:8%;width:48px;top:6%}.contact-landing nav{margin-bottom:65px}}
+
+/* An aurora over the original forest: colour lives in the sky, links stay clear. */
+.contact-landing{background:radial-gradient(ellipse at 20% 45%,#3c155344,transparent 55%),radial-gradient(ellipse at 85% 25%,#123d5555,transparent 55%),#040818}
+.contact-horizon{background-color:transparent}
+.contact-aurora{position:absolute;inset:0;overflow:hidden;opacity:.85}
+.contact-aurora i{position:absolute;left:-12%;top:5%;width:125%;height:44%;border-radius:50%;background:linear-gradient(110deg,transparent 8%,#23d5c630 22%,#48f4d697 38%,#764bf8a6 58%,#ed62d778 77%,transparent 94%);filter:blur(36px);transform:rotate(-14deg) scaleY(.6);animation:contact-aurora-flow 19s ease-in-out infinite alternate}
+.contact-aurora i:nth-child(2){top:20%;left:-25%;opacity:.7;background:linear-gradient(105deg,transparent 15%,#6936df99 36%,#ed60b080 52%,#ffba643d 65%,transparent 86%);animation-delay:-8s;animation-duration:25s}
+.contact-aurora i:nth-child(3){top:35%;left:20%;width:90%;height:25%;opacity:.45;background:linear-gradient(100deg,transparent,#51c7ff99,#5b68fb88,transparent);animation-delay:-13s;animation-duration:22s}
+.contact-horizon svg{opacity:1;filter:drop-shadow(0 -8px 30px #6a60f333)}
+.contact-horizon .horizon-far{fill:#27294d}.contact-horizon .horizon-near{fill:#151d37}.contact-horizon .horizon-trees{fill:#080f22}
+.contact-moon{width:84px;opacity:1;background:radial-gradient(circle at 30% 24%,#fff0ff,#d9bfff 24%,#8578e4 48%,#343783 73%,#161c47 88%);box-shadow:inset -13px -7px 20px #0a123399,0 0 24px #b19dff80,0 0 85px #b77cff45;animation:contact-planet-float 12s ease-in-out infinite alternate}
+.contact-moon:before{content:'';position:absolute;inset:25% -38%;border:2px solid #cfacff88;border-top-color:#bdf5ffcc;border-radius:50%;transform:rotate(-28deg);box-shadow:0 0 12px #a1c4ff55}
+.contact-moon:after{content:'';position:absolute;inset:-14px;border:1px solid #adbbff20;border-radius:50%}
+.contact-shooting-star{position:absolute;top:12%;left:75%;width:150px;height:2px;background:linear-gradient(90deg,transparent,#d0e9ff);border-radius:50%;opacity:0;transform:rotate(-27deg);animation:contact-meteor 13s linear infinite;filter:drop-shadow(0 0 5px #bce3ff)}
+.contact-shooting-star.is-second{top:32%;left:46%;width:90px;animation-delay:-6s;animation-duration:19s}
+.contact-fireflies{position:absolute;inset:0}
+.contact-fireflies i{position:absolute;left:var(--spark-x);top:var(--spark-y);width:3px;height:3px;border-radius:50%;background:var(--spark-color);box-shadow:0 0 7px 2px var(--spark-color);animation:contact-spark 7s ease-in-out var(--spark-delay) infinite alternate}
+.contact-landing-content{z-index:1}
+.contact-landing .contact-eyebrow{color:#d1c5f2;text-shadow:0 0 14px #ba8fff66}
+.contact-landing h2{text-shadow:0 3px 35px #0c102f99}
+.contact-landing h2 em{color:#b9eaff;background:linear-gradient(100deg,#97f7e3 5%,#aed7ff 42%,#f5a8ed 85%);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 18px #ad92ff33)}
+.contact-landing .contact-invitation{color:#d2d5e9;margin-inline:auto;text-align:center}
+.contact-mail{position:relative;border-color:transparent;background:linear-gradient(125deg,#172039,#11182e) padding-box,linear-gradient(110deg,#77e9de,#a99aff,#ed9edf) border-box;box-shadow:inset 0 1px 2px #fff3,0 0 25px #8b83ff26,0 12px 45px #05091888;transition:transform .25s,box-shadow .25s}
+.contact-mail:before{content:'';position:absolute;inset:-8px;border-radius:inherit;pointer-events:none;background:linear-gradient(110deg,#43e2cc44,#9475ff66,#f478c444);filter:blur(16px);opacity:0;transition:opacity .25s;z-index:-1}
+.contact-mail:hover,.contact-mail:focus-visible{transform:translateY(-3px);background:linear-gradient(125deg,#22314e,#201a3d) padding-box,linear-gradient(110deg,#77e9de,#a99aff,#ed9edf) border-box;box-shadow:inset 0 1px 2px #fff5,0 0 35px #9e85ff55,0 15px 40px #05091888}
+.contact-mail:hover:before,.contact-mail:focus-visible:before{opacity:1}
+.contact-mail>svg:last-child,.contact-landing nav a>svg:last-child{transition:transform .25s}
+.contact-mail:hover>svg:last-child,.contact-landing nav a:hover>svg:last-child{transform:translate(2px,-2px)}
+.contact-landing nav a{padding:0 13px;border:1px solid #c7bcff2b;border-radius:30px;background:#111c364d;transition:color .2s,background .2s,border-color .2s,transform .2s}
+.contact-landing nav a:nth-child(1){color:#dfc4ff}.contact-landing nav a:nth-child(2){color:#a2e1ff}.contact-landing nav a:nth-child(3){color:#a5f2db}
+.contact-landing nav a:hover,.contact-landing nav a:focus-visible{color:#fff;background:#7764bf33;border-color:#c4b3ff99;transform:translateY(-2px)}
+.contact-landing footer{border-color:#b3a6f733;color:#bcc2dc}.contact-landing footer a:hover{color:#a3f2e4}
+.contact-horizon *{animation-play-state:paused!important}.contact-landing[data-awake=true] .contact-horizon *{animation-play-state:running!important}
+@keyframes contact-aurora-flow{from{transform:translate3d(-2%,0,0) rotate(-14deg) scaleY(.6)}to{transform:translate3d(4%,8%,0) rotate(-7deg) scaleY(.85)}}
+@keyframes contact-planet-float{to{transform:translateY(-12px)}}
+@keyframes contact-meteor{0%,83%{opacity:0;transform:translate(0,0) rotate(-27deg)}85%{opacity:.9}94%,100%{opacity:0;transform:translate(-390px,200px) rotate(-27deg)}}
+@keyframes contact-spark{from{opacity:.12;transform:translateY(8px) scale(.6)}to{opacity:.8;transform:translateY(-15px) scale(1)}}
+@media(max-width:600px){.contact-moon{width:48px}.contact-aurora i{filter:blur(24px);height:34%;top:10%}.contact-aurora i:nth-child(2){top:30%}.contact-aurora i:nth-child(3){top:45%}.contact-landing nav{gap:9px}.contact-landing nav a{padding-inline:10px}.contact-fireflies i:nth-child(n+9){display:none}}
+@media(prefers-reduced-motion:reduce){.contact-landing .contact-horizon *{animation:none!important}.contact-shooting-star{display:none}.contact-mail,.contact-mail:before,.contact-landing nav a,.contact-mail>svg,.contact-landing nav a>svg{transition:none}.contact-mail:hover,.contact-mail:focus-visible,.contact-landing nav a:hover,.contact-landing nav a:focus-visible{transform:none}}
+
+/* Replay only after leaving the section, rather than on every scroll packet. */
+.contact-landing[data-revealed=false] .contact-landing-content>*{opacity:0;transform:translateY(26px);filter:blur(5px)}
+.contact-landing[data-revealed=false] .contact-horizon{opacity:0}
+.contact-landing[data-revealed=true] .contact-horizon{animation:contact-sky-arrive 1.2s ease-out both}
+.contact-landing[data-revealed=true] .contact-landing-content>*{animation:contact-content-arrive .85s cubic-bezier(.16,1,.3,1) both}
+.contact-landing[data-revealed=true] .contact-landing-content>h2{animation-delay:.10s}
+.contact-landing[data-revealed=true] .contact-invitation{animation-delay:.24s}
+.contact-landing[data-revealed=true] .contact-mail{animation-delay:.36s}
+.contact-landing[data-revealed=true] .contact-landing-content>nav{animation-delay:.48s}
+.contact-landing[data-revealed=true] .contact-landing-content>footer{animation-delay:.60s}
+@keyframes contact-content-arrive{from{opacity:0;transform:translateY(26px);filter:blur(5px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
+@keyframes contact-sky-arrive{from{opacity:0;transform:scale(1.035)}to{opacity:1;transform:scale(1)}}
+.contact-landing:focus-within .contact-landing-content>*{animation:none!important;opacity:1;transform:none;filter:none}
+@media(prefers-reduced-motion:reduce){.contact-landing[data-revealed] .contact-landing-content>*,.contact-landing[data-revealed] .contact-horizon{animation:none;opacity:1;transform:none;filter:none}}
+
+.horizon-trees path{transform-box:fill-box;transform-origin:50% 100%;animation:contact-tree-sway var(--tree-duration,6s) ease-in-out var(--tree-delay,0s) infinite alternate}
+.contact-forest-walker{position:absolute;bottom:11%;left:0;width:clamp(68px,7vw,100px);height:auto;aspect-ratio:104/66;transform:translateX(24vw);animation:contact-fox-cross 48s linear -12s infinite;pointer-events:none}
+.contact-horizon .contact-fox-art{position:relative;bottom:auto;display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 0 5px #eaa27e22)}
+.fox-shadow{fill:#030818;opacity:.5;transform-origin:53px 59px;animation:contact-fox-shadow .7s ease-in-out infinite alternate}
+.fox-body{animation:contact-fox-bob .7s ease-in-out infinite}
+.fox-leg{fill:#cf7956;transform-box:view-box;transform-origin:40px 39px;animation:contact-fox-step .7s ease-in-out infinite alternate}
+.fox-leg.is-front{transform-origin:67px 39px;animation-delay:-.7s}
+.fox-leg.is-far{fill:#915775;animation-delay:-.7s}
+.fox-leg.is-front.is-far{animation-delay:0s}
+.fox-tail{transform-box:view-box;transform-origin:39px 38px;animation:contact-fox-tail 2.1s ease-in-out infinite alternate}
+@keyframes contact-tree-sway{from{transform:skewX(-1.2deg)}to{transform:skewX(1.6deg)}}
+@keyframes contact-fox-cross{from{transform:translateX(-110px)}to{transform:translateX(calc(100vw + 10px))}}
+@keyframes contact-fox-bob{0%,50%,100%{transform:translateY(0)}25%,75%{transform:translateY(-1.5px)}}
+@keyframes contact-fox-step{from{transform:rotate(-18deg)}to{transform:rotate(18deg)}}
+@keyframes contact-fox-tail{from{transform:rotate(-5deg)}to{transform:rotate(8deg)}}
+@keyframes contact-fox-shadow{from{transform:scaleX(.9);opacity:.4}to{transform:scaleX(1.05);opacity:.55}}
+@media(max-width:600px){.contact-forest-walker{bottom:12%;animation-duration:30s;animation-delay:-9s}}

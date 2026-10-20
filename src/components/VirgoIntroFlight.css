@@ -16,6 +16,14 @@
   display: block;
   pointer-events: none;
 }
+.virgo-intro-signature,.virgo-intro-identity{position:absolute;z-index:1;pointer-events:none;opacity:var(--intro-interface,1);font-family:Outfit,sans-serif}
+.virgo-intro-signature{top:max(32px,env(safe-area-inset-top));left:4.5vw;right:4.5vw;display:flex;justify-content:space-between;align-items:center;color:#aab7c8;font-size:12px;letter-spacing:.015em}
+.virgo-intro-signature>span:first-child{font:500 23px/1 Outfit,sans-serif;letter-spacing:-.07em;color:#ede9e2}
+.virgo-intro-identity{left:4.5vw;bottom:max(70px,10vh)}
+.virgo-intro-identity h1{font:400 clamp(30px,4vw,58px)/1.1 Newsreader,Georgia,serif;letter-spacing:-.035em;color:#ede9e2;margin:0 0 10px}
+.virgo-intro-identity p{font-size:13px;line-height:1.6;color:#aab7c8;margin:0;letter-spacing:.01em}
+@media(max-width:700px){.virgo-intro-signature{top:26px;left:24px;right:24px}.virgo-intro-signature>span:last-child{max-width:160px;text-align:right;font-size:11px}.virgo-intro-identity{left:24px;bottom:65px}.virgo-intro-identity h1{font-size:36px}.virgo-intro-identity p{font-size:12px}}
+@media(max-height:500px){.virgo-intro-signature{top:20px}.virgo-intro-identity{bottom:28px}.virgo-intro-identity h1{font-size:30px}}
 /* The visible glyphs are projected onto the canvas cylinder. Keep semantic text. */
 .virgo-intro-captions {
   position: absolute;

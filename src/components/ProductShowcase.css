@@ -561,7 +561,7 @@
   background: #14243e;
   transform: scale(1.05);
 }
-.screening-room :focus-visible { outline: 2px solid #eee4ce; outline-offset: 4px; }
+.screening-room :focus-visible,.screening-live :focus-visible { outline: 2px solid #eee4ce; outline-offset: 4px; }
 .screening-rail:focus-visible { outline-offset: -6px; }
 
 .screening-not-found {
@@ -590,6 +590,7 @@
 }
 
 .screening-live {
+  font-family: 'Outfit', sans-serif;
   width: min(1280px, 96vw);
   height: 90dvh;
   padding: 0;
@@ -637,6 +638,9 @@
   border: 0;
   background: #fff;
 }
+.screening-live-native{position:absolute;inset:0;overflow:hidden;z-index:1}
+.screening-live-native[data-ready=false]{pointer-events:none}
+.screening-live-loading{position:absolute;inset:0;z-index:2;display:grid;place-items:center;background:#090e17;color:#b7c8dd;font:13px 'Outfit',sans-serif}
 .screening-live footer a {
   display: inline-flex;
   align-items: center;
@@ -729,9 +733,22 @@
   .screening-web-controls { top: 76px; right: 20px; }
   .screening-reading-links { top: auto; bottom: 8px; right: 20px; gap: 12px; }
   .screening-hint-badge { display: none; }
-  .screening-pagination { top: 14px; bottom: auto; right: 24px; left: auto; transform: none; }
+  .screening-pagination {
+    top: 14px; bottom: auto; right: 84px; left: auto; transform: none;
+    max-width: max(44px, calc(100vw - 440px)); overflow-x: auto;
+    justify-content: flex-start; scrollbar-width: none;
+  }
+  .screening-pagination::-webkit-scrollbar { display: none; }
+  .screening-dot { flex: 0 0 44px; }
   .screening-dot-tooltip { top: calc(100% + 8px); bottom: auto; }
   .screening-actions-row { bottom: 8px; }
+}
+
+@media (max-width: 760px) and (max-height: 580px) and (orientation: landscape) {
+  .screening-actions-row {
+    left: 24px; right: 180px; width: auto; transform: none;
+    justify-content: flex-start;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

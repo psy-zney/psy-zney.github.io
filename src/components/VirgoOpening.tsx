@@ -78,11 +78,11 @@ export function VirgoOpening({ flight }: { flight: OpeningFlight }) {
       previous.reveal = flight.reveal;
     }
     if (lines.current) lines.current.opacity = .28;
-    if (points.current) points.current.opacity = .78;
+    if (points.current) points.current.opacity = 1;
   });
   return <group ref={anchor}>
     <group>
-      <points geometry={field} frustumCulled={false}><pointsMaterial ref={points} color="#bbcaeb" size={.075} transparent depthWrite={false} /></points>
+      <points geometry={field} frustumCulled={false}><pointsMaterial ref={points} color="#dbe9ff" size={.085} transparent depthWrite={false} toneMapped={false} /></points>
       <lineSegments geometry={edges} frustumCulled={false}><lineBasicMaterial ref={lines} color="#9abde9" transparent depthWrite={false} /></lineSegments>
       <group ref={lights}>{OPENING_STARS.map((star, i) => <group key={i} position={star.position as [number, number, number]}>
         <sprite><spriteMaterial map={glow} color={star.color} transparent blending={THREE.AdditiveBlending} depthWrite={false} /></sprite>

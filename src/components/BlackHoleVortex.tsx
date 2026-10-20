@@ -8,6 +8,7 @@ import { BlackHoleRenderPipeline } from './blackHoleRendering';
 import { BLACK_HOLE_SCALE } from '../data/virgoSpace';
 import { blackHoleResolution } from '../data/renderQuality';
 import { singularityView, SINGULARITY_ORBIT_END } from '../data/singularityMotion';
+import { BlackHoleLensing } from './BlackHoleLensing';
 
 interface BlackHoleProps {
   flight: {
@@ -186,6 +187,7 @@ function BlackHoleAccretionMesh({ flight, orbit }: Pick<BlackHoleProps, "flight"
 export function BlackHoleVortex({ flight, orbit }: BlackHoleProps) {
   // Gas, spiral trails and dust share the ray's intersection with one disk.
   return <group scale={flight.mobile ? BLACK_HOLE_SCALE.mobile : BLACK_HOLE_SCALE.desktop} userData={{ preserveOpacity: true }}>
+    <BlackHoleLensing flight={flight}/>
     <BlackHoleAccretionMesh flight={flight} orbit={orbit} />
   </group>;
 }

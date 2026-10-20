@@ -1,6 +1,7 @@
 import { Fragment, lazy, Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { ArrowDown, ArrowUpRight, Github, Linkedin, Monitor, Volume2, VolumeX, X } from "lucide-react";
-import { WorldsShowcase, SingularityDust } from "./WorldsShowcase";
+import { WorldsShowcase } from "./WorldsShowcase";
+import { ShowcasePassage } from './PagePassage';
 import { VirgoSceneBoundary } from "./VirgoSceneFallback";
 import { SHOWCASE_ENABLED, visiblePortfolioHash, showcaseIndexForHash, showcaseProducts } from "../data/productShowcase";
 import { stopIntroAudio } from "../utils/audioPreloader";
@@ -18,7 +19,7 @@ import { FLIGHT_TRACK_VH } from "../data/virgoSpace";
 import { storyWheelTarget, storyWheelScale } from "../data/virgoPacing";
 import { portfolioAudio } from "../utils/portfolioAudio";
 import { NARRATIVE_BEATS, chapterReadingPosition, narrativeRevealStyle } from "../data/virgoNarrative";
-import { VirgoIntroFlight } from './VirgoIntroFlight';
+import { UniverseIntro } from './UniverseIntro';
 import "./VirgoPortfolio.css";
 import { motionStyle } from '../data/motionTokens';
 import { BlackHoleOrbitControls, createBlackHoleOrbit } from './BlackHoleOrbitControls';
@@ -40,7 +41,7 @@ function stationFromChapter(chapter: number) {
   return chapter > 4 ? chapter - 3 : chapter - 2;
 }
 
-export function VirgoPortfolio({ lang }: {
+export function VirgoPortfolio({ lang, onEnterWorkspace }: {
   lang: Language;
   onToggleLang?: () => void;
   onPrepareWorkspace?: () => void;
@@ -53,6 +54,7 @@ export function VirgoPortfolio({ lang }: {
   const overlayRef = useRef<HTMLElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const portalRef = useRef<HTMLButtonElement>(null);
+  const chaptersRef = useRef<HTMLDivElement>(null);
   const blackHoleControlRef = useRef<HTMLDivElement>(null);
   const blackHoleOrbit = useRef(createBlackHoleOrbit());
   const labelsRef = useRef<HTMLDivElement>(null);
@@ -65,7 +67,6 @@ export function VirgoPortfolio({ lang }: {
   const [hash, setHash] = useState(() => visiblePortfolioHash(window.location.hash));
   const [openingVisible, setOpeningVisible] = useState(() => !window.location.hash || window.location.hash === '#/' || window.location.hash === '#/cosmos');
   const [openingDirection, setOpeningDirection] = useState<1 | -1>(1);
-  const [openingAssembled, setOpeningAssembled] = useState(false);
   const [active, setActive] = useState(() => chapterFromHash(window.location.hash));
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
   const projectHoverTimer = useRef(0), projectHoverCandidate = useRef<number | null>(null);
@@ -88,23 +89,47 @@ export function VirgoPortfolio({ lang }: {
   const [passageVisible, setPassageVisible] = useState(false);
   const [passageDirection, setPassageDirection] = useState<1 | -1>(1);
   const [passageStart, setPassageStart] = useState<number | undefined>();
+  const passageRoute = useRef(hash);
   const finishPassage = useCallback(() => { setPassageVisible(false); setEntering(false); }, []);
   const reversePassage = useCallback((time: number) => {
     setPassageStart(time); setPassageDirection(-1); setEntering(false);
   }, []);
   const [showcaseInside, setShowcaseInside] = useState(false);
   useEffect(() => {
+    const page=pageRef.current;if(!page)return;
+    const target=(event:Event)=>event.target instanceof Element?event.target.closest('.virgo-overlay a,.virgo-overlay button,.virgo-dialog a,.virgo-dialog button,.virgo-chapters a,.virgo-chapters button,.virgo-home-guide a'):null;
+    const hover=(event:Event)=>{
+      const node=target(event),related=(event as PointerEvent|FocusEvent).relatedTarget;
+      if(node && !(related instanceof Node && node.contains(related)))portfolioAudio.playSfx('hover');
+    };
+    const click=(event:Event)=>{
+      const node=target(event);if(!node)return;
+      portfolioAudio.playSfx(node.matches('.virgo-close')?'modalClose':node.matches('a[href^="#/project/"],a[href^="#/cv/"]')?'modalOpen':'click');
+    };
+    page.addEventListener('pointerover',hover);page.addEventListener('focusin',hover);page.addEventListener('click',click);
+    return()=>{page.removeEventListener('pointerover',hover);page.removeEventListener('focusin',hover);page.removeEventListener('click',click);};
+  },[]);
+  useEffect(() => {
     const page = pageRef.current;
     if (!page) return;
     const wheelSound = (event: WheelEvent) => {
-      if (event.ctrlKey || showcaseInside || event.target instanceof Element && event.target.closest('dialog,[data-lenis-prevent],input,textarea,select,[contenteditable="true"]')) return;
+      if (openingVisible || event.ctrlKey || showcaseInside || event.target instanceof Element && event.target.closest('dialog,[data-lenis-prevent],input,textarea,select,[contenteditable="true"]')) return;
       const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
       portfolioAudio.playScroll(delta * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? page.clientHeight : 1));
     };
     page.addEventListener('wheel', wheelSound, { capture: true, passive: true });
     return () => page.removeEventListener('wheel', wheelSound, true);
-  }, [showcaseInside]);
+  }, [showcaseInside, openingVisible]);
   const [chaptersOpen, setChaptersOpen] = useState(false);
+  useEffect(() => {
+    if (!chaptersOpen) return;
+    const dismiss = (event: PointerEvent) => {
+      if (event.target instanceof Node && !chaptersRef.current?.contains(event.target)) setChaptersOpen(false);
+    };
+    document.addEventListener('pointerdown', dismiss, true);
+    return () => document.removeEventListener('pointerdown', dismiss, true);
+  }, [chaptersOpen]);
+  useEffect(() => { setChaptersOpen(false); }, [hash, openingVisible]);
   const [readingFocus, setReadingFocus] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const documentRoute = parsePublicDocumentRoute(hash);
@@ -116,8 +141,26 @@ export function VirgoPortfolio({ lang }: {
   const isShowcase = SHOWCASE_ENABLED && hash.startsWith('#/showcase');
   const [showcaseActive, setShowcaseActive] = useState(() => showcaseIndex ?? 0);
   const [soundMuted, setSoundMuted] = useState(() => typeof document !== "undefined" && document.documentElement.dataset.journeySound === "off");
+  useEffect(() => {
+    portfolioAudio.setScene(openingVisible?'intro':isShowcase?'showcase':hash.startsWith('#/contact')?'contact':'journey');
+  },[openingVisible,isShowcase,hash]);
 
   const showDialog = !!documentRoute && documentRoute.kind !== 'capability';
+  // Keep scene controls out of the keyboard/reader tree beneath a covering page.
+  useEffect(() => {
+    const page = pageRef.current;
+    if (!page) return;
+    const selector = '.virgo-scroll,.virgo-canvas,.virgo-overlay,.virgo-orbit-labels,.virgo-black-hole-orbit,.virgo-star-portal,.virgo-chapters,.virgo-home-guide';
+    const sync = () => {
+      for (const child of Array.from(page.children)) {
+        if (child.matches(selector)) child.toggleAttribute('inert', openingVisible || isShowcase || showDialog);
+      }
+    };
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(page, { childList: true });
+    return () => { observer.disconnect(); for (const child of Array.from(page.children)) if (child.matches(selector)) child.removeAttribute('inert'); };
+  }, [openingVisible, isShowcase, showDialog]);
   const returnHash = useRef(hash.startsWith('#/cv') ? '#/contact' : hash.startsWith('#/skills') ? '#/skills' : '#/projects');
   const previousFocus = useRef<HTMLElement | null>(null);
   useEffect(() => { if (!showDialog && hash) returnHash.current = hash; }, [hash, showDialog]);
@@ -147,18 +190,16 @@ export function VirgoPortfolio({ lang }: {
     if (lenisRef.current) lenisRef.current.scrollTo(0, { immediate: true });
     else scrollerRef.current?.scrollTo({ top: 0, behavior: 'instant' });
     setOpeningDirection(1);
-    setOpeningAssembled(true);
     setOpeningVisible(true);
     navigatedHash.current = '#/cosmos';
     navigateHash('#/cosmos', true);
   }, []);
   useEffect(() => {
-    if ((!hash || hash === '#/' || hash === '#/cosmos') && navigatedHash.current !== hash) setOpeningAssembled(false);
     setOpeningDirection(1);
     setOpeningVisible(!hash || hash === '#/' || hash === '#/cosmos');
   }, [hash]);
 
-  // At Home, an intentional reverse gesture re-enters the same scroll-driven tunnel.
+  // At Home, an intentional reverse gesture brings the universe page back down.
   useEffect(() => {
     const page = pageRef.current; if (!page) return;
     let reversePixels = 0, lastInput = 0, touchY = 0;
@@ -191,13 +232,40 @@ export function VirgoPortfolio({ lang }: {
     overlay?.addEventListener('focusin', sync); overlay?.addEventListener('focusout', out);
     return () => { overlay?.removeEventListener('focusin', sync); overlay?.removeEventListener('focusout', out); };
   }, []);
-  const enterWorlds = () => {
-    if (entering) return;
+  const enterWorlds = useCallback(() => {
+    if (entering || passageVisible) return;
+    portfolioAudio.playSfx('singularityEnter');
+    passageRoute.current = window.location.hash;
     setShowcaseInside(false);
     setPassageDirection(1); setPassageStart(undefined);
     setPassageVisible(!reducedMotion);
     setEntering(true);
-  };
+  }, [entering, passageVisible, reducedMotion]);
+  useEffect(() => {
+    const page = pageRef.current; if (!page) return;
+    let pixels = 0, last = 0, touchY = 0;
+    const advance = (event: Event, delta: number) => {
+      const position = Number(page.style.getPropertyValue('--flight-progress')) * 6;
+      if (interactionPaused.current || position < 5.995 || delta <= 0) { pixels = 0; return; }
+      if (event.target instanceof Element && (event.target.closest('a,button,input,textarea,[data-lenis-prevent]')
+        || event.type !== 'wheel' && event.target.closest('.virgo-black-hole-orbit'))) return;
+      const now = performance.now(); pixels = now - last > 350 ? delta : pixels + delta; last = now;
+      event.preventDefault(); event.stopImmediatePropagation();
+      if (pixels >= 80) { pixels = 0; enterWorlds(); }
+    };
+    const wheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && Math.abs(event.deltaY) >= Math.abs(event.deltaX)) advance(event, event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? page.clientHeight : 1));
+    };
+    const key = (event: KeyboardEvent) => { if (['ArrowDown', 'PageDown', ' '].includes(event.key)) advance(event, 80); };
+    const start = (event: TouchEvent) => { touchY = event.touches[0]?.clientY ?? 0; };
+    const move = (event: TouchEvent) => { const next = event.touches[0]?.clientY ?? touchY; advance(event, touchY - next); touchY = next; };
+    page.addEventListener('wheel', wheel, { capture: true, passive: false }); page.addEventListener('keydown', key, true);
+    page.addEventListener('touchstart', start, { passive: true }); page.addEventListener('touchmove', move, { capture: true, passive: false });
+    return () => {
+      page.removeEventListener('wheel', wheel, true); page.removeEventListener('keydown', key, true);
+      page.removeEventListener('touchstart', start); page.removeEventListener('touchmove', move, true);
+    };
+  }, [enterWorlds]);
   const scrollToChapter = useCallback((index: number, immediate = false, position = chapterReadingPosition(index)) => {
     nativeGestureUntil.current = 0;
     const scroller = scrollerRef.current;
@@ -231,6 +299,7 @@ export function VirgoPortfolio({ lang }: {
 
   const passageHandoff = useCallback(() => {
     const next = passageDirection > 0 ? `#/showcase/${showcaseProducts[0].id}` : '#/contact';
+    passageRoute.current = next;
     navigatedHash.current = next;
     navigateHash(next, true);
     if (passageDirection < 0) scrollToChapter(6, true, 6);
@@ -238,12 +307,18 @@ export function VirgoPortfolio({ lang }: {
   }, [passageDirection, scrollToChapter]);
   const returnThroughHole = useCallback(() => {
     if (passageVisible) return;
+    portfolioAudio.playSfx('singularityExit');
+    passageRoute.current = window.location.hash;
+    scrollToChapter(6, true, 6);
     if (reducedMotion) {
       navigatedHash.current = '#/contact'; navigateHash('#/contact', true); scrollToChapter(6, true, 6);
     } else {
       setPassageDirection(-1); setPassageStart(undefined); setPassageVisible(true);
     }
   }, [passageVisible, reducedMotion, scrollToChapter]);
+  useEffect(() => {
+    if (passageVisible && hash !== passageRoute.current) finishPassage();
+  }, [hash, passageVisible, finishPassage]);
   useEffect(() => {
     if (reducedMotion && (entering || passageVisible)) { passageHandoff(); finishPassage(); }
   }, [entering, passageVisible, reducedMotion, passageHandoff, finishPassage]);
@@ -427,8 +502,8 @@ export function VirgoPortfolio({ lang }: {
     }
   };
 
-  return <div ref={pageRef} data-showcase-enabled={SHOWCASE_ENABLED} style={motionStyle} className={`virgo-page${active === 0 ? " virgo-is-opening" : ""}${entering ? " virgo-is-entering" : ""}${reducedMotion ? " virgo-reduced-motion" : ""}`}>
-    <a className="virgo-skip" href="#/home" onClick={() => navigate(1)}>{t("Bỏ qua chòm sao mở đầu", "Skip constellation opening")}</a>
+  return <div ref={pageRef} data-showcase-enabled={SHOWCASE_ENABLED} data-worlds-open={isShowcase} style={motionStyle} className={`virgo-page${active === 0 ? " virgo-is-opening" : ""}${entering ? " virgo-is-entering" : ""}${reducedMotion ? " virgo-reduced-motion" : ""}`}>
+    {openingVisible && <a className="virgo-skip" href="#/home" onClick={() => navigate(1)}>{t("Bỏ qua universe mở đầu", "Skip universe opening")}</a>}
     <div ref={scrollerRef} className={`virgo-scroll${showDialog || entering ? " is-paused" : ""}`} role="region" tabIndex={0} aria-label={t("Cuộn để bay qua các ngôi sao", "Scroll to travel between stars")}>
       <div ref={contentRef} className="virgo-scroll-content" aria-hidden="true">
         {CHAPTERS.map((chapter, index) => <div className="virgo-scroll-step" key={chapter} data-chapter={chapter} style={{ height: `${FLIGHT_TRACK_VH[index]}dvh` }} />)}
@@ -447,8 +522,8 @@ export function VirgoPortfolio({ lang }: {
       blackHoleControlRef={blackHoleControlRef}
       blackHoleOrbit={blackHoleOrbit}
       labelsRef={labelsRef}
-      entering={entering}
-      paused={showDialog || isShowcase || openingVisible}
+      entering={false}
+      paused={showDialog || isShowcase || openingVisible || entering || passageVisible}
       showcaseApproach={false}
       readingFocus={readingFocus}
       onPlanetHover={(index, skills) => { if (skills) { if (index !== null) setSelectedSkill(index); } else hoverProject(index); }}
@@ -460,9 +535,9 @@ export function VirgoPortfolio({ lang }: {
       <small>{item.stack.slice(0, 3).join(" · ")}</small>
     </div>)}</div>
     <div className="virgo-vignette virgo-vignette-right" aria-hidden="true" />
-    {openingVisible && <VirgoIntroFlight key={openingDirection} initialDirection={openingDirection} initialAssemblyComplete={openingAssembled} lang={lang} pageRef={pageRef} reducedMotion={reducedMotion} onArrive={arriveFromIntro} onFinish={finishIntro} onReturn={returnFromIntro} />}
+    {openingVisible && <UniverseIntro key={openingDirection} initialDirection={openingDirection} lang={lang} pageRef={pageRef} reducedMotion={reducedMotion} onArrive={arriveFromIntro} onFinish={finishIntro} onReturn={returnFromIntro} />}
 
-    <main ref={overlayRef} className="virgo-overlay">
+    <main ref={overlayRef} className="virgo-overlay" aria-hidden={openingVisible || isShowcase || showDialog}>
       <svg className="virgo-reading-accent" aria-hidden="true"><path fill="none" stroke="#b9cde6" strokeWidth="1" /></svg>
       <div className="virgo-narrative" aria-label={t("Dẫn truyện", "Story")}>
         {NARRATIVE_BEATS.map((beat, index) => index >= 3 && index < 8 ? <p data-narrative-index={index} data-reveal={narrativeRevealStyle(index)} key={index} className={`virgo-narrative-line virgo-narrative-${beat.side} virgo-placement-${beat.placement}${index === 0 ? " virgo-identity" : ""}${index === 8 ? " virgo-contact-narrative" : ""}`} aria-hidden="true">
@@ -488,6 +563,7 @@ export function VirgoPortfolio({ lang }: {
           </div>
           <div className="virgo-origin-steps" aria-label={t('Các bước làm dự án', 'How I build')}>{originSteps.map((step, index) => <button key={step.title} aria-pressed={selectedOrigin === index} onMouseEnter={() => setSelectedOrigin(index)} onFocus={() => setSelectedOrigin(index)} onClick={() => setSelectedOrigin(index)} onMouseLeave={() => setSelectedOrigin(null)}>{step.title}</button>)}</div>
           <p className="virgo-origin-description" aria-live="polite">{selectedOrigin === null ? '' : originSteps[selectedOrigin][lang]}</p>
+          <a className="virgo-image-credit" href="https://cloud.solarsystemscope.com/textures/" target="_blank" rel="noreferrer">{t('Texture thiên thể', 'Celestial textures')}: Solar System Scope · CC BY 4.0</a>
         </div>
         <div className="virgo-single-link"><a href="#/cv/web">{t('Đọc CV', 'Read my CV')}<ArrowUpRight size={16} /></a></div>
       </section>
@@ -572,11 +648,18 @@ export function VirgoPortfolio({ lang }: {
     </main>
 
 
-    {active >= 2 && <div className="virgo-chapters"><button aria-expanded={chaptersOpen} onClick={() => setChaptersOpen(value => !value)}>Chapters</button>{chaptersOpen && <nav aria-label="Chapters">{CHAPTERS.map((chapter, index) => <a key={chapter} href={`#/${chapter}`} onClick={() => { setChaptersOpen(false); setReadingFocus(false); (document.activeElement as HTMLElement)?.blur(); navigate(index); }} aria-current={index === active ? 'page' : undefined}>{['Virgo', 'Home', 'About', 'Projects', 'More projects', 'Skills', 'Contact'][index]}</a>)}</nav>}</div>}
+    <aside className="virgo-home-guide" hidden aria-label={t('Bắt đầu khám phá', 'Begin exploring')}>
+      <p>{t('Khám phá theo nhịp của bạn.', 'Explore at your own pace.')}</p>
+      <span>{t('Cuộn để đi qua các ngôi sao, hoặc chọn một điểm đến.', 'Scroll to travel between stars, or choose a destination.')}</span>
+      <div><a href="#/story" onClick={() => navigate(2)}>{t('Giới thiệu', 'About me')}<ArrowUpRight size={15}/></a><a href="#/projects" onClick={() => navigate(3)}>{t('Xem dự án', 'View projects')}<ArrowUpRight size={15}/></a></div>
+    </aside>
+    {!openingVisible && !isShowcase && !showDialog && <div ref={chaptersRef} className="virgo-chapters" onKeyDown={event => {
+      if (event.key === 'Escape' && chaptersOpen) { event.preventDefault(); event.stopPropagation(); setChaptersOpen(false); chaptersRef.current?.querySelector('button')?.focus(); }
+    }}><button aria-expanded={chaptersOpen} aria-controls="virgo-destinations" onClick={() => setChaptersOpen(value => !value)}>{t('Điểm đến', 'Destinations')}<span aria-hidden="true">{chaptersOpen ? '−' : '+'}</span></button>{chaptersOpen && <nav id="virgo-destinations" aria-label={t('Điểm đến', 'Destinations')}>{CHAPTERS.map((chapter, index) => <a key={chapter} href={`#/${chapter}`} onClick={() => { setChaptersOpen(false); setReadingFocus(false); (document.activeElement as HTMLElement)?.blur(); navigate(index); }} aria-current={index === active ? 'page' : undefined}>{['Universe', 'Home', 'About', 'Projects', 'More projects', 'Skills', 'Contact'][index]}</a>)}<button onClick={onEnterWorkspace}><Monitor size={16}/>{t('Vào không gian làm việc', 'Open workspace')}</button></nav>}</div>}
 
     <BlackHoleOrbitControls controlRef={blackHoleControlRef} orbit={blackHoleOrbit}
       enabled={active === 6 && !entering && !showDialog && !isShowcase}
-      resetOnDisable={!entering}
+      resetOnDisable={!entering && !passageVisible}
       label={t("Góc nhìn hố đen: kéo chuột để xoay, nhấp đúp hoặc Home để đặt lại; dùng phím mũi tên để đổi góc", "Black hole view: drag to orbit, double-click or press Home to reset; arrow keys change the angle")} />
     <button ref={portalRef} className={`virgo-star-portal${active === 6 ? " is-active" : ""}`} type="button"
       aria-label={t("Khám phá các thế giới qua hố đen", "Explore worlds through the black hole")}
@@ -591,10 +674,13 @@ export function VirgoPortfolio({ lang }: {
       window.dispatchEvent(new CustomEvent("journey-audio-muted", { detail: muted }));
       if (muted) {
         stopIntroAudio();
+      } else {
+        portfolioAudio.unlockContext();
+        portfolioAudio.playSfx('muteOn');
       }
     }}>{soundMuted ? <VolumeX size={17} /> : <Volume2 size={17} />}</button>
 
-    {passageVisible && !reducedMotion && <SingularityDust direction={passageDirection} initialTime={passageStart} onComplete={finishPassage} onHandoff={passageHandoff} onReverse={reversePassage} />}
+    {passageVisible && !reducedMotion && <ShowcasePassage direction={passageDirection} initialTime={passageStart} onComplete={finishPassage} onHandoff={passageHandoff} onReverse={reversePassage} />}
     {isShowcase && (
       <WorldsShowcase
         inside={showcaseInside}

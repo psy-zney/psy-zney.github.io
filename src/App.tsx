@@ -3,6 +3,7 @@ import { VirgoPortfolio as IntroPage } from "./components/VirgoPortfolio";
 import { trackPageView } from "./utils/visitorTracker";
 import { isWorkspaceHash } from "./utils/appRoutes";
 import { WavePageLoader } from "./components/WavePageLoader";
+import { portfolioAudio } from './utils/portfolioAudio';
 
 type ViewMode = "intro" | "workspace" | "admin";
 const ModelAnalyzer = lazy(() =>
@@ -25,6 +26,8 @@ export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>(readViewMode);
   const [isIntroLoading, setIsIntroLoading] = useState(true);
   const lang = "eng" as const;
+
+  useEffect(() => { portfolioAudio.setActive(viewMode === 'intro'); }, [viewMode]);
 
   const navigateTo = (mode: ViewMode) => {
     let nextUrl = window.location.pathname;

@@ -14,7 +14,7 @@ const digest = async () => {
 };
 const sourceSha256 = await digest(), scenarios = [];
 const blackHoleSources = {};
-for (const file of ['BlackHoleVortex.tsx', 'blackHoleShader.ts', 'blackHoleRendering.ts', 'BlackHoleOrbitControls.tsx']) blackHoleSources[file] = createHash('sha256').update(await readFile(`src/components/${file}`)).digest('hex');
+for (const file of ['BlackHoleVortex.tsx', 'blackHoleShader.ts', 'blackHoleRendering.ts', 'BlackHoleOrbitControls.tsx', 'BlackHoleLensing.tsx']) blackHoleSources[file] = createHash('sha256').update(await readFile(`src/components/${file}`)).digest('hex');
 const browser = await chromium.launch({ headless: true, executablePath: process.env.UI_CHROME_PATH });
 let status = 'failed', failure;
 try {
@@ -119,16 +119,20 @@ try {
       const centerX = (1 + shift[0]) * viewport.width / 2, centerY = (1 - shift[1]) * viewport.height / 2;
       const diskRadius = [11.8, 10.4, 10.8][index] * viewport.height / (2 * Math.tan((viewport.width < 700 ? 49 : 46) * Math.PI / 360)) / (camera[2] + index * 480);
       const pixels = await sharp(shot).removeAlpha().raw().toBuffer({ resolveWithObject: true });
-      let min = 255, max = 0, count = 0, detail = 0, blue = 0;
+      let min = 255, max = 0, greenMin = 255, greenMax = 0, count = 0, detail = 0, blue = 0, peakSum = 0, luminous = 0;
       for (let y = Math.max(1, Math.ceil(centerY - diskRadius * .65)); y < Math.min(viewport.height - 1, centerY + diskRadius * .65); y++) for (let x = Math.max(1, Math.ceil(centerX - diskRadius * .65)); x < Math.min(viewport.width - 1, centerX + diskRadius * .65); x++) {
         if (Math.hypot(x - centerX, y - centerY) > diskRadius * .65) continue;
         const i = (y * pixels.info.width + x) * 3, light = Math.max(...pixels.data.subarray(i, i + 3));
-        min = Math.min(min, light); max = Math.max(max, light); count++;
+        min = Math.min(min, light); max = Math.max(max, light); count++; peakSum += light;
+        greenMin = Math.min(greenMin,pixels.data[i+1]); greenMax = Math.max(greenMax,pixels.data[i+1]);
+        if(light>220)luminous++;
         if (Math.abs(pixels.data[i + 2] - pixels.data[i + 5]) > 15) detail++;
         if (pixels.data[i + 2] > pixels.data[i] * 1.15) blue++;
       }
-      const metrics = { p, index, contrast: max - min, detail: detail / count, blue: blue / count };
-      assert(count > 100 && metrics.contrast > 50 && metrics.detail > .08, `${name}: photosphere ${index} keeps visible detail, not an empty halo: ${JSON.stringify(metrics)}`);
+      const metrics = { p, index, contrast: max - min, convectionContrast:greenMax-greenMin, detail: detail / count, blue: blue / count,meanPeak:peakSum/count,luminous:luminous/count };
+      // User rejected the previous white static. Require broad colour structure and bound pixel noise.
+      assert(count > 100 && metrics.convectionContrast > 4 && metrics.detail < .08, `${name}: photosphere ${index} has broad convection without harsh static: ${JSON.stringify(metrics)}`);
+      if([2.12,3.23,4.92].includes(p))assert(metrics.meanPeak>175&&metrics.luminous>.1,`${name}: a fully visible photosphere must read as a luminous source, not a dark planet: ${JSON.stringify(metrics)}`);
       if (index === 2) assert(metrics.blue > .8, `${name}: the last star keeps a blue plasma surface: ${JSON.stringify(metrics)}`);
       return metrics;
     };
@@ -156,6 +160,9 @@ try {
       const mute = await page.locator('.virgo-sound-toggle').boundingBox();
       for (const box of boxes) assert(box.right <= mute.x || box.x >= mute.x + mute.width || box.bottom <= mute.y || box.y >= mute.y + mute.height, `${name}: Contact links never overlap mute: ${JSON.stringify({ box, mute })}`);
     }
+    assert.equal(await root.getAttribute('data-black-hole-lensing'),'true','The background refraction is mounted at Contact');
+    const lensResolution=(await root.getAttribute('data-black-hole-lens-resolution')).split(',').map(Number);
+    assert(lensResolution[0]>=viewport.width&&lensResolution[1]>=viewport.height,'Lensing samples the actual rendered background at drawing-buffer resolution');
     await page.screenshot({ path: `${output}/${name}-contact-final.png` });
     await contact.locator('.virgo-email').focus();
     assert.equal(await contact.locator('.virgo-email').evaluate(el => el === document.activeElement), true, 'The persistent email link remains keyboard accessible');

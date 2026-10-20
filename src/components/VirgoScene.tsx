@@ -26,6 +26,8 @@ import { solarPassageSample } from '../data/solarShowcaseMotion';
 import { readingOrbitAngle, readingOrbitPoint } from '../data/virgoExperienceMotion';
 import { StellarPlasma } from './VirgoStellarEffects';
 import { STELLAR_NOISE_GLSL } from '../data/virgoStellarEffects';
+import { VirgoDepth } from './VirgoDepth';
+import { advanceCelestialClocks } from '../data/celestialMotion';
 
 export { VIRGO_STARS, VIRGO_SUPPORT_STARS } from "../data/virgoStations";
 
@@ -34,8 +36,8 @@ export const CAMERA_STOPS = [
   ...VIRGO_STARS.map(star => new THREE.Vector3(0, 0, star.position[2] + SPACE_LAYOUT.desktopCamera.distance)),
 ];
 
-type Flight = FlightSample & { speed: number; exit: number; time: number; reduced: boolean; mobile: boolean; tier: QualityTier; adaptive: boolean };
-type FlightProps = { flight: Flight; glow: THREE.Texture };
+type Flight = FlightSample & { speed: number; exit: number; time: number; orbits: number[]; reduced: boolean; mobile: boolean; tier: QualityTier; adaptive: boolean };
+type FlightProps = { flight: Flight; glow: THREE.Texture; solarMap?: THREE.Texture | null };
 const random = (seed: number) => {
   const n = Math.sin(seed * 127.1 + 31.7) * 43758.5453;
   return n - Math.floor(n);
@@ -57,9 +59,13 @@ const STAR_VERTEX = `
 `;
 const STAR_FRAGMENT = `
   uniform sampler2D surface;
+  uniform sampler2D solarMap;
+  uniform float solarReady;
   uniform float stellarTime;
   uniform float presence;
   uniform float coolStar;
+  uniform float homeStar;
+  uniform vec3 stellarTint;
   varying vec2 surfaceUv;
   varying vec3 surfaceNormal;
   varying vec3 viewDirection;
@@ -67,22 +73,55 @@ const STAR_FRAGMENT = `
   void main() {
     float facing = max(dot(normalize(surfaceNormal), normalize(viewDirection)), 0.0);
     float limb = 0.30 + 0.70 * pow(facing, 0.42);
+    limb = mix(limb, .10 + .90 * pow(facing, .85), homeStar);
     vec2 flowing = surfaceUv + vec2(stellarTime * .0018, sin(surfaceUv.x * 24.0 + stellarTime * .16) * .002);
-    vec3 granules = texture2D(surface, flowing).rgb;
     float cells = texture2D(surface, flowing * vec2(3.0, 2.0)).r;
+    vec3 actualSurface=texture2D(solarMap,surfaceUv+vec2(stellarTime*.0012,0.)).rgb;
+    float solarCell=dot(actualSurface,vec3(.2126,.7152,.0722));
     float spots = smoothstep(.24, .41, cells);
     float age=stellarTime*.16;
-    vec2 warp=vec2(stellarNoise(surfaceUv*11.0+age),stellarNoise(surfaceUv*13.0-age*.7));
-    float boiling=stellarFbm(surfaceUv*vec2(30.0,18.0)+warp*2.5+vec2(age,-age*.4));
-    float grain=stellarNoise(surfaceUv*vec2(140.0,80.0)+warp+age*2.0);
-    float filaments=pow(1.0-abs(sin(boiling*20.0+grain*2.5)),8.0);
-    vec3 hot=mix(granules,vec3(1.0,.96,.84),.35);
-    vec3 plasma=granules*mix(.3,1.35,smoothstep(.25,.78,boiling))+hot*filaments*.65;
-    if(coolStar>.5) {
-      vec3 coolHot=mix(granules,vec3(.65,.85,1.0),.25);
-      plasma=granules*mix(.18,1.25,smoothstep(.25,.78,boiling))+coolHot*filaments*.42;
-    }
-    gl_FragColor = vec4(plasma * limb * mix(.6, 1.2, spots), presence);
+    vec2 warp=vec2(stellarNoise(surfaceUv*7.0+age*.22),stellarNoise(surfaceUv*9.0-age*.17));
+    float boiling=stellarFbm(surfaceUv*vec2(16.0,10.0)+warp*1.3+vec2(age*.2,-age*.12));
+    float convection=stellarNoise(surfaceUv*vec2(380.0,240.0)+warp*.3+vec2(age*.5,-age*.3));
+    float micro=stellarNoise(surfaceUv*vec2(740.0,480.0)+vec2(age*.4,age*.2));
+    float footprint=max(fwidth(surfaceUv.x)*380.,fwidth(surfaceUv.y)*240.);
+    float granules=mix(.5,smoothstep(.25,.76,convection*.82+micro*.18),1.-smoothstep(.4,1.8,footprint));
+    float temperature=mix(smoothstep(.18,.82,boiling*.8+cells*.2),smoothstep(.015,.55,solarCell),solarReady);
+    temperature=temperature*.55+granules*.45;
+    // Resolve the solar granulation and active regions, rather than translucent cloud veins.
+    vec3 thermal=mix(vec3(1.,.25,.045),vec3(1.,.69,.28),temperature);
+    thermal=mix(thermal,stellarTint,.08);
+    if(coolStar>.5)thermal=mix(vec3(.07,.28,.85),vec3(.32,.64,1.),temperature);
+    thermal=mix(thermal,mix(vec3(.025,.12,.48),vec3(.40,.76,1.),temperature),homeStar);
+    float granulation=(.48+granules*.78)*mix(.8,1.15,smoothstep(.01,.5,solarCell)*solarReady);
+    granulation=mix(granulation,.72+granules*.42,homeStar);
+    float energy=(1.8+temperature*2.2)*granulation*limb*mix(.84,1.,spots);
+    vec3 radiance=thermal*(energy*1.65 + .32);
+    // A hot, narrow limb keeps the silhouette luminous rather than a dark cutout.
+    radiance += mix(thermal, vec3(1.), .42) * pow(1. - facing, 5.) * 5.0;
+    gl_FragColor = vec4(1.0-exp(-radiance), presence);
+    #include <colorspace_fragment>
+  }
+`;
+
+const CORONA_FRAGMENT = `
+  uniform vec3 coronaTint;
+  uniform float presence;
+  uniform float stellarTime;
+  varying vec3 surfaceNormal;
+  varying vec3 viewDirection;
+  void main() {
+    float facing = abs(dot(normalize(surfaceNormal), normalize(viewDirection)));
+    float radial = sqrt(max(0., 1. - facing * facing)) * 1.36;
+    if (radial < .997) discard;
+    float outside = max(0., radial - 1.);
+    float angle = atan(surfaceNormal.y, surfaceNormal.x);
+    float flame = .78 + .14*sin(angle*13. + stellarTime*.7)
+      + .08*sin(angle*29. - stellarTime*.5);
+    float rim = exp(-outside * 65.);
+    float halo = exp(-outside * (10. / flame)) * (1. - smoothstep(1.20, 1.36, radial));
+    vec3 fire = mix(coronaTint, vec3(1.), exp(-outside*55.)*.55);
+    gl_FragColor = vec4(fire*1.5, (rim * 1.15 + halo * 1.05) * presence);
     #include <colorspace_fragment>
   }
 `;
@@ -148,9 +187,25 @@ function useGlowTexture() {
   return texture;
 }
 
-function Starfield({ flight, glow }: FlightProps) {
+function Starfield({ flight }: FlightProps) {
   const { camera } = useThree();
   const group = useRef<THREE.Group>(null);
+  // Distant stars need a compact white core; the shared nebula glow blurs them.
+  const starPoint = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 128;
+    const context = canvas.getContext('2d')!;
+    const core = context.createRadialGradient(64, 64, 0, 64, 64, 64);
+    core.addColorStop(0, '#ffffffff');
+    core.addColorStop(.26, '#ffffffff');
+    core.addColorStop(.34, '#ffffffd9');
+    core.addColorStop(.42, '#ffffff14');
+    core.addColorStop(.55, '#ffffff00');
+    core.addColorStop(1, '#ffffff00');
+    context.fillStyle = core; context.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(canvas);
+  }, []);
+  useEffect(() => () => starPoint.dispose(), [starPoint]);
   const layers = useMemo(() => [0, 1, 2].map(layer => {
     const count = flight.mobile ? 280 : 520;
     const positions = new Float32Array(count * 3);
@@ -170,10 +225,12 @@ function Starfield({ flight, glow }: FlightProps) {
     group.current.position.z = camera.position.z;
     const blend = smooth(.82, 1.16, flight.position);
     group.current.visible = blend > .001;
-    group.current.children.forEach((child, i) => { ((child as THREE.Points).material as THREE.PointsMaterial).opacity = blend * (.85 - i * .12); });
+    group.current.children.forEach((child, i) => {
+      ((child as THREE.Points).material as THREE.PointsMaterial).opacity = blend * (1 - i * .10);
+    });
   });
   return <group ref={group}>{layers.map((geometry, i) => <points key={i} geometry={geometry} frustumCulled={false}>
-    <pointsMaterial map={glow} color={["#dbeaff", "#9db7e4", "#f7d5c0"][i]} size={i === 0 ? 2.4 : 1.8} transparent opacity={.85 - i * .12} blending={THREE.AdditiveBlending} depthWrite={false} />
+    <pointsMaterial map={starPoint} color={["#f6faff", "#deebff", "#ffeddd"][i]} size={[5.2, 4.2, 3.4][i]} sizeAttenuation={false} transparent opacity={1 - i * .10} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
   </points>)}</group>;
 }
 
@@ -187,7 +244,7 @@ function Nebula({ flight, glow }: FlightProps) {
     group.current.rotation.z = flight.reduced ? 0 : flight.position * .025 + flight.time * .006;
     group.current.children.forEach((child, i) => {
       const sprite = child as THREE.Sprite;
-      (sprite.material as THREE.SpriteMaterial).opacity = (.075 + i * .012) * smooth(.82, 1.16, flight.position);
+      (sprite.material as THREE.SpriteMaterial).opacity = (.045 + i * .008) * smooth(.82, 1.16, flight.position);
     });
   });
   return <group ref={group} scale={SPACE_LAYOUT.interstellar}>
@@ -197,20 +254,32 @@ function Nebula({ flight, glow }: FlightProps) {
   </group>;
 }
 
-function VirgoNode({ index, flight, glow, support = false }: FlightProps & { index: number; support?: boolean }) {
+function VirgoNode({ index, flight, glow, solarMap = null, support = false }: FlightProps & { index: number; support?: boolean }) {
   const star = support ? VIRGO_SUPPORT_STARS[index] : VIRGO_STARS[index];
   const group = useRef<THREE.Group>(null);
+  const corona = useRef<THREE.Mesh>(null);
   const { camera } = useThree();
   const radius = support ? 1.13 : VIRGO_STARS[index].radius;
-  const coolStar = !support && index === 2;
+  const coolStar = !support && (index === 0 || index === 2);
   const surface = useSurfaceTexture(coolStar ? '#add3ff' : star.color, index, true);
   // Keep the material and its uniform containers together. Replacing only the
   // uniforms can leave Three's compiled program reading the previous station opacity.
   const photosphere = useMemo(() => new THREE.ShaderMaterial({
-    uniforms: { surface: { value: surface }, stellarTime: { value: 0 }, presence: { value: 1 }, coolStar: { value: Number(coolStar) } },
+    uniforms: { surface: { value: surface }, solarMap: { value: surface }, solarReady: { value: 0 }, stellarTime: { value: 0 }, presence: { value: 1 }, coolStar: { value: Number(coolStar) }, homeStar: { value: Number(!support && index === 0) }, stellarTint: { value: new THREE.Color(star.color) } },
     vertexShader: STAR_VERTEX, fragmentShader: STAR_FRAGMENT, transparent: true, toneMapped: false,
-  }), [surface, coolStar]);
+  }), [surface, coolStar, star.color]);
   useEffect(() => () => photosphere.dispose(), [photosphere]);
+  const coronaMaterial = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: { presence: photosphere.uniforms.presence, stellarTime: photosphere.uniforms.stellarTime, coronaTint: { value: new THREE.Color(coolStar ? '#229dff' : '#ff7908') } },
+    vertexShader: STAR_VERTEX, fragmentShader: CORONA_FRAGMENT,
+    side: THREE.BackSide, transparent: true, depthWrite: false,
+    blending: THREE.AdditiveBlending, toneMapped: false,
+  }), [photosphere, coolStar, star.color]);
+  useEffect(() => () => coronaMaterial.dispose(), [coronaMaterial]);
+  useEffect(() => {
+    photosphere.uniforms.solarMap.value = solarMap ?? surface;
+    photosphere.uniforms.solarReady.value = Number(!!solarMap);
+  }, [photosphere, solarMap, surface]);
   useFrame(() => {
     if (!group.current) return;
     const uniforms = photosphere.uniforms;
@@ -227,10 +296,15 @@ function VirgoNode({ index, flight, glow, support = false }: FlightProps & { ind
     const pulse = flight.reduced ? 0 : Math.sin(flight.time * (support ? 1.4 : 2) + index) * (support ? .045 : .08);
     const distance = camera.position.distanceTo(group.current.position);
     sprite.scale.setScalar((support ? 7 + Math.min(28, distance * .04) : radius * (coolStar ? 3.5 + pulse * .2 : 5.2 + focus * .35 + pulse * .2)) * appearance);
-    (sprite.material as THREE.SpriteMaterial).opacity = appearance * presence * (support ? .42 : coolStar ? .20 + focus * .08 : .68 + focus * .26);
+    (sprite.material as THREE.SpriteMaterial).opacity = appearance * presence * (support ? .5 : coolStar ? .38 + focus * .14 : .8 + focus * .18);
+    if (!support) {
+      sprite.scale.setScalar(radius * (5.4 + pulse * .1) * appearance);
+      (sprite.material as THREE.SpriteMaterial).opacity = appearance * presence;
+    }
+    if (corona.current) corona.current.scale.setScalar(appearance);
     group.current.children[1].scale.setScalar(appearance);
     group.current.children[1].rotation.y = flight.time * .055;
-    for (let i = 2; i < Math.min(4, group.current.children.length); i++) {
+    for (let i = 2; !support && i < Math.min(4, group.current.children.length); i++) {
       const ring = group.current.children[i] as THREE.Mesh;
       ring.quaternion.copy(camera.quaternion);
       if (!support) ring.rotateY(readingOrbitAngle(index, flight.position, flight.reduced));
@@ -240,10 +314,11 @@ function VirgoNode({ index, flight, glow, support = false }: FlightProps & { ind
     }
   });
   return <group ref={group} position={star.position}>
-    <sprite><spriteMaterial map={glow} color={star.color} transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} /></sprite>
+    <sprite><spriteMaterial map={glow} color={star.color} transparent opacity={0} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} /></sprite>
     <mesh onClick={event => event.stopPropagation()} onPointerOver={event => event.stopPropagation()}><sphereGeometry args={[radius, support ? 16 : 48, support ? 12 : 32]} /><primitive object={photosphere} attach="material" /></mesh>
     {!support && [0, 1].map(i => <mesh key={i}><ringGeometry args={[radius * 1.06, radius * 1.06 + .025, 80]} /><meshBasicMaterial color={star.color} transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} /></mesh>)}
     {!support && <StellarPlasma index={index} radius={radius} color={coolStar ? '#8caeff' : star.color} flight={flight} glow={glow} />}
+    <mesh ref={corona} material={coronaMaterial}><sphereGeometry args={[radius * 1.36, support ? 24 : 64, support ? 16 : 48]} /></mesh>
   </group>;
 }
 
@@ -349,7 +424,7 @@ function OrbitingPlanet({ index, count, flight, glow, skills, selected, origin =
     visibility.current = appearance;
     group.current.visible = appearance > .005;
     if (!group.current.visible) return;
-    const position = orbitPosition(index, count, flight.reduced ? (skills ? 5 : 3) : flight.position, skills, 1, flight.time, flight.mobile);
+    const position = orbitPosition(index, count, flight.reduced ? (skills ? 5 : 3) : flight.position, skills, 1, flight.reduced ? 0 : skills ? flight.time : flight.orbits[index], flight.mobile);
     group.current.position.set(position[0], position[1], position[2]);
     const highlighted = selected === index;
     group.current.scale.setScalar(origin ? Math.max(.001, appearance) : .96 + appearance * .04);
@@ -394,9 +469,11 @@ function AsteroidBelt({ flight, skills }: { flight: Flight; skills: boolean }) {
     // Advance rocks along the same inclined plane as the orbital guides.
     // Rotating the whole group around Y would tip the belt across the star.
     rocks.forEach((rock, i) => {
-      const angle = rock.angle + (flight.reduced ? 0 : flight.time * .035);
+      const rate = .035 * Math.pow(52 / rock.radius, 1.5);
+      const angle = rock.angle + (flight.reduced ? 0 : flight.time * rate);
       transform.position.set(Math.cos(angle) * rock.radius, Math.sin(angle) * rock.radius * ORBIT_PLANE.vertical, Math.sin(angle) * rock.radius * ORBIT_PLANE.depth + rock.height);
-      transform.rotation.set(rock.rotation[0], rock.rotation[1] + flight.time * .08, rock.rotation[2]);
+      const spin = flight.reduced ? 0 : flight.time * (.035 + random(i + 850) * .09);
+      transform.rotation.set(rock.rotation[0] + spin * .23, rock.rotation[1] + spin, rock.rotation[2]);
       transform.scale.set(rock.scale * 1.6, rock.scale, rock.scale * .8);
       transform.updateMatrix();
       mesh.current!.setMatrixAt(i, transform.matrix);
@@ -547,9 +624,20 @@ export function createFlightPaths(mobile = false) {
 function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, selectedProject, selectedSkill, selectedOrigin, portalRef, blackHoleControlRef, blackHoleOrbit, labelsRef, entering, paused, readingFocus, showcaseApproach, onPlanetSelect, onPlanetHover }: SceneProps) {
   const { camera, size, invalidate } = useThree();
   const mobile = size.width < 700;
+  const [solarMap, setSolarMap] = useState<THREE.Texture | null>(null);
+  useEffect(() => {
+    let active = true, owned: THREE.Texture | null = null;
+    setSolarMap(null);
+    new THREE.TextureLoader().load(`./img/celestial/sun-${mobile ? 1024 : 2048}.webp`, texture => {
+      if (!active) { texture.dispose(); return; }
+      owned = texture; texture.colorSpace = THREE.SRGBColorSpace; texture.wrapS = THREE.RepeatWrapping;
+      texture.anisotropy = 4; setSolarMap(texture); invalidate();
+    }, undefined, () => { /* The existing procedural photosphere remains the fallback. */ });
+    return () => { active = false; owned?.dispose(); };
+  }, [mobile, invalidate]);
   const quality = useQualityTier(true);
-  const flight = useMemo<Flight>(() => ({ ...flightSample(0, reducedMotion), speed: 0, exit: 0, time: 0, reduced: reducedMotion, mobile, tier: quality.tier, adaptive: quality.preference === 'auto' }), [mobile, reducedMotion, quality.tier, quality.preference]);
-  const ambientTime = useRef(0);
+  const clocks = useRef({ ambient: 0, orbits: Array.from({ length: projects.length }, () => 0) });
+  const flight = useMemo<Flight>(() => ({ ...flightSample(0, reducedMotion), speed: 0, exit: 0, time: 0, orbits: clocks.current.orbits, reduced: reducedMotion, mobile, tier: quality.tier, adaptive: quality.preference === 'auto' }), [mobile, reducedMotion, quality.tier, quality.preference]);
   const scroll = useRef({ value: 0, target: 0, offsets: [0, 1] });
   const exit = useRef({ value: 0 });
   const previousZ = useRef(Number.NaN);
@@ -651,8 +739,10 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     // Freeze the ambient clock for dialogs/hidden tabs and reduced motion.
     const passageSeconds = showcaseApproach ? Number(overlay.parentElement?.style.getPropertyValue('--showcase-approach') || 0) : 0;
     const solar = solarPassageSample(passageSeconds);
-    if (!reducedMotion && (!paused || showcaseApproach) && !entering && (selectedProject === null || showcaseApproach)) ambientTime.current += dt * (showcaseApproach ? solar.orbitSpeed : 1);
-    flight.time = reducedMotion ? 0 : ambientTime.current;
+    advanceCelestialClocks(clocks.current, dt, { paused: document.hidden || entering || (paused && !showcaseApproach), reduced: reducedMotion, focused: showcaseApproach ? null : selectedProject, rate: showcaseApproach ? solar.orbitSpeed : 1 });
+    flight.time = reducedMotion ? 0 : clocks.current.ambient;
+    overlay.parentElement!.dataset.ambientTime = flight.time.toFixed(3);
+    overlay.parentElement!.dataset.orbitTimes = clocks.current.orbits.map(value => (reducedMotion ? 0 : value).toFixed(3)).join(',');
     let target = Math.max(1.92, scroll.current.target);
     const introArrival = overlay.parentElement!.dataset.introArrival;
     if (introArrival !== undefined) {
@@ -767,6 +857,8 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
       Object.assign(previousPresentation, { position, exit: flight.exit, previewDepth, paused, entering, reducedMotion });
     }
     const narrative = narrativeSample(entering ? -1 : position, reducedMotion);
+    const homeGuide = overlay.parentElement!.querySelector<HTMLElement>('.virgo-home-guide');
+    if (homeGuide) homeGuide.hidden = paused || entering || position < 1.919 || position > 1.96;
     const story = { shown: narrative.index >= 3 && narrative.index < 8 ? narrative.index : -1 };
     const amount = narrative.reveal;
     if (narrativeRendered.current.shown !== story.shown || narrativeRendered.current.amount !== amount) {
@@ -844,7 +936,7 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
         d = `M ${x} ${y} Q ${x + 72} ${y + 6} ${x + Math.min(180, bounds.lineWidth)} ${y}`;
         alpha = reducedMotion ? .08 : amount * (.08 + (1 - amount) * .2);
         if (selectedProject !== null && flight.projects > .9 && !mobile) {
-          const orbit = orbitPosition(selectedProject, projects.length, position, false, 1, flight.time);
+          const orbit = orbitPosition(selectedProject, projects.length, position, false, 1, flight.reduced ? 0 : flight.orbits[selectedProject]);
           const planet = new THREE.Vector3(...orbit).multiplyScalar(1.06).add(projectCenter);
           const ray = new THREE.Ray(camera.position, planet.clone().sub(camera.position).normalize());
           const obstruction = ray.intersectSphere(new THREE.Sphere(projectCenter, VIRGO_STARS[1].radius), new THREE.Vector3());
@@ -875,7 +967,8 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
       const diskZoom = (mobile ? BLACK_HOLE_SCALE.mobile : BLACK_HOLE_SCALE.desktop) / .62;
       projection.set(0, (23.6 + belowView * 5.8) * diskZoom * (mobile ? .78 : 1), 0).applyQuaternion(camera.quaternion).add(gate).project(camera);
       const labelOffset = Math.min(Math.abs(projection.y - gateY) * size.height / 2 + 30,
-        size.height - (-gateY * .5 + .5) * size.height - 50);
+        // The centred 44px control keeps a 12px viewport inset.
+        size.height - (-gateY * .5 + .5) * size.height - 34);
       portalRef.current.style.setProperty('--portal-label-offset', `${labelOffset}px`);
       if (blackHoleControlRef.current) {
         const control = blackHoleControlRef.current;
@@ -895,7 +988,7 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     }
     labels.forEach((label, i) => {
       if (mobile || i !== selectedProject || flight.projects < .9 || paused || entering) { label.style.opacity = "0"; return; }
-      const orbit = orbitPosition(i, projects.length, reducedMotion ? 3 : position, false, 1, flight.time);
+      const orbit = orbitPosition(i, projects.length, reducedMotion ? 3 : position, false, 1, flight.reduced ? 0 : flight.orbits[i]);
       projection.set(...readingOrbitPoint(orbit, 1, position, reducedMotion)).multiplyScalar(1.06).add(projectCenter);
       const labelRay = new THREE.Ray(camera.position, projection.clone().sub(camera.position).normalize());
       const obstruction = labelRay.intersectSphere(new THREE.Sphere(projectCenter, VIRGO_STARS[1].radius), new THREE.Vector3());
@@ -912,11 +1005,13 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
   return <PlanetTextureLibrary mobile={mobile} select={onPlanetSelect} hover={onPlanetHover}>
     <VirgoOpening flight={flight} />
     <Starfield flight={flight} glow={glow} /><Nebula flight={flight} glow={glow} />
-    <ambientLight intensity={.18} />
-    {VIRGO_STARS.map(star => <pointLight key={star.name} position={star.position} intensity={2000} distance={120} color={star.color} />)}
+    <VirgoDepth flight={flight} glow={glow} />
+    <ambientLight intensity={.22} />
+    <hemisphereLight args={['#9ebddd', '#26202a', .65]} />
+    {VIRGO_STARS.map(star => <pointLight key={star.name} position={star.position} intensity={8000} distance={240} color={star.color} />)}
     <VirgoTransit flight={flight} glow={glow} />
     {VIRGO_STARS.map((star, index) => <FocusedSystem key={star.name} index={index} flight={flight}>
-      {index !== 3 && <VirgoNode index={index} flight={flight} glow={glow} />}
+      {index !== 3 && <VirgoNode index={index} flight={flight} glow={glow} solarMap={solarMap} />}
       {index === 0 && <OriginForge flight={flight} glow={glow} selected={selectedOrigin ?? null} />}
       {index === 1 && <SatelliteCluster kind="projects" flight={flight} glow={glow} selected={selectedProject} />}
       {index === 2 && <SatelliteCluster kind="skills" flight={flight} glow={glow} selected={selectedSkill} />}

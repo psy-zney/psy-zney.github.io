@@ -1,6 +1,12 @@
 # Virgo scrollytelling implementation
 
-This is the live React/Three.js portfolio at `/`. The component structure is:
+Historical implementation snapshot. For current behavior and required checks, see
+[the feature baseline](feature-preservation.vi.md) and
+[the flight contract](straight-flight-contract.vi.md). The structure below describes
+an earlier implementation; the unused `virgoSpaceRiftRenderer.ts` was removed
+during cleanup on 20/10/2026.
+
+The earlier component structure was:
 
 ```text
 App.tsx

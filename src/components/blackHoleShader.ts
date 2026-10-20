@@ -301,7 +301,8 @@ export const DISPLAY_FRAGMENT = /* glsl */ `
               + texture2D(uBloomWide, vUv).rgb * .022;
     float sourcePeak = max(source.r, max(source.g, source.b));
     float blackShadow = smoothstep(.75, .98, source.a) * (1.0 - smoothstep(.001, .035, sourcePeak));
-    glow *= 1.0 - blackShadow * .992;
+    // Captured rays without disk emission stay black, including after bloom.
+    glow *= 1.0 - blackShadow;
     vec3 hdr = source.rgb + glow;
     vec3 color = pow(filmic(hdr * .62), vec3(1.0 / 2.2));
     float light = max(glow.r, max(glow.g, glow.b));

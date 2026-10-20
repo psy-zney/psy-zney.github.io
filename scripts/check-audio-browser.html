@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="vi">
+<meta charset="utf-8">
+<title>Portfolio audio check</title>
+<style>
+  body{background:#080d18;color:#eaf0ff;font:16px/1.7 system-ui;max-width:840px;margin:48px auto;padding:24px}
+  button{font:inherit;padding:12px 24px;cursor:pointer}pre{white-space:pre-wrap}a{color:#a4d2ff}
+</style>
+<h1>Kiểm tra âm nền và SFX</h1>
+<p>Đo tín hiệu Web Audio thật sau một thao tác bấm. Bài kiểm tra phát nền và lần lượt 13 hiệu ứng, trong khoảng 20 giây.</p>
+<button disabled>Chạy kiểm tra âm thanh</button>
+<pre role="status">Đang chuẩn bị…</pre>
+<p><a href="/">Về portfolio</a></p>
+<script type="module">
+  // Test-only page served by Vite; not included in the production entry.
+  const NativeContext=window.AudioContext, contexts=[];
+  window.AudioContext=class extends NativeContext {
+    constructor(){super();contexts.push(this);}
+    createGain(){
+      const node=super.createGain();
+      // Retain ~170 ms at 48 kHz so a busy UI thread cannot miss an 18 ms cue.
+      if(!this.meter){this.meter=super.createAnalyser();this.meter.fftSize=8192;node.connect(this.meter);}
+      return node;
+    }
+  };
+  const {portfolioAudio:audio}=await import('/src/utils/portfolioAudio.ts');
+  const button=document.querySelector('button'), status=document.querySelector('pre');
+  const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const results=[];
+  const log=text=>{results.push(text);status.textContent=results.join('\n');};
+  const assert=(condition,message)=>{if(!condition)throw new Error(message);};
+  function rms(){
+    const context=contexts[0], samples=new Float32Array(context.meter.fftSize);
+    context.meter.getFloatTimeDomainData(samples);
+    return Math.sqrt(samples.reduce((total,sample)=>total+sample*sample,0)/samples.length);
+  }
+  async function peak(duration){
+    let value=0;const end=performance.now()+duration;
+    do{value=Math.max(value,rms());await wait(4);}while(performance.now()<end);
+    return value;
+  }
+  assert(contexts.length===0,'No context before a gesture');
+  button.disabled=false;status.textContent='Sẵn sàng. Chưa tạo AudioContext hoặc phát âm thanh.';
+  button.onclick=async()=>{
+    button.disabled=true;
+    try{
+      audio.setMuted(false);audio.setScene('intro');audio.unlockContext();
+      await wait(4800);
+      assert(contexts[0]?.state==='running','Context did not unlock');
+      const background=await peak(300);
+      assert(background>.006 && background<.15,`Background level outside budget: ${background}`);
+      log(`PASS nền intro: RMS peak ${background.toFixed(5)}`);
+      audio.stopCosmicAmbient();await wait(200);
+      for(const cue of ['hover','click','warp','drawerOpen','drawerClose','modalOpen','modalClose','singularityEnter','singularityExit','cardSlide','muteOn','muteOff','loaderComplete']){
+        audio.playSfx(cue);const level=await peak(700);
+        assert(level>.0003 && level<.3,`${cue} missing or clipping: ${level}`);
+        log(`PASS ${cue}: RMS peak ${level.toFixed(5)}`);
+      }
+      audio.playTypingTick();assert(await peak(150)>.0003,'Typing cue missing');log('PASS typing');
+      audio.playScroll(120);assert(await peak(200)>.001,'Scroll cue missing');log('PASS scroll');
+      // Use a short window to measure the current signal, without pre-mute history.
+      contexts[0].meter.fftSize=256;
+      audio.startCosmicAmbient();await wait(1000);audio.setMuted(true);await wait(90);
+      assert(await peak(100)<.0001,'Mute must silence all buses within 100 ms');log('PASS mute');
+      audio.setMuted(false);audio.unlockContext();await wait(300);
+      assert(await peak(100)>.001,'Unmute did not recover');log('PASS unmute');
+      audio.setActive(false);await wait(90);
+      audio.setMuted(false);audio.unlockContext();audio.playSfx('click');
+      assert(await peak(100)<.0001,'Workspace must not restart portfolio audio');log('PASS inactive workspace isolation');
+      audio.setActive(true);await wait(4800);
+      assert(await peak(100)>.006,'Returning to portfolio did not restore ambient');log('PASS return to portfolio');
+      audio.dispose();await wait(50);assert(contexts[0].state==='closed','Context not closed');
+      const count=contexts.length;window.dispatchEvent(new Event('pointerdown'));await wait(30);
+      assert(contexts.length===count,'Dispose recreated a context');
+      log('PASS dispose / no new context');log('PASS ALL — chất lượng nghe trên thiết bị thật vẫn cần kiểm tra.');
+      document.documentElement.dataset.result='pass';
+    }catch(error){log(`FAIL ${error.message}`);document.documentElement.dataset.result='fail';audio.dispose();}
+  };
+</script>
+</html>

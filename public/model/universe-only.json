@@ -1,0 +1,15 @@
+{
+  "source": "public/model/main.glb",
+  "sourceSha256": "e7477587b9d43c1852522c74c93a9d35325c318e459248a27193b09ff7382732",
+  "asset": "./model/universe-only.glb",
+  "bytes": 1683692,
+  "sha256": "abb8c273093e37eccb83f98e5ebbe5bae9156cf306cf1f2ecb0ea487744e8187",
+  "mesh": "MainUniverseSky",
+  "meshCount": 1,
+  "camera": [
+    0,
+    0,
+    0
+  ],
+  "radius": 1000
+}

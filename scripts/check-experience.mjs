@@ -183,15 +183,15 @@ try {
   journey.dispose();assert.equal(journeyStops,3);assert.equal(journeyCloses,1);
   document.dispatchEvent(new Event('pointerdown'));assert.equal(journeyContexts,1,'Unmount removes unlock listeners');
   // Exercise the actual portfolio mixer with dense wheel input, mute and hidden tabs.
-  const { portfolioAudio } = await server.ssrLoadModule('/src/utils/portfolioAudio.ts');
+  const { portfolioAudio, PortfolioAudioSystem } = await server.ssrLoadModule('/src/utils/portfolioAudio.ts');
   const automation = () => ({ value:0, setValueAtTime(v){this.value=v;}, setTargetAtTime(v){this.value=v;}, linearRampToValueAtTime(v){this.value=v;}, exponentialRampToValueAtTime(v){this.value=v;}, cancelAndHoldAtTime(){} });
-  let wheelVoices=0, wheelClosed=0; const wheelGains=[];
+  let wheelVoices=0, wheelClosed=0, bufferStarts=0; const wheelGains=[];
   window.AudioContext = class {
     state='running'; currentTime=1; sampleRate=256; destination={};
     createGain(){const gain={...connection,gain:automation()};wheelGains.push(gain);return gain;}
     createOscillator(){wheelVoices++;return {...connection,frequency:automation(),detune:automation(),start(){},stop(){}};}
     createBuffer(channels,length){return {getChannelData(){return new Float32Array(length);}};}
-    createBufferSource(){return {...connection,start(){},stop(){}};}
+    createBufferSource(){return {...connection,playbackRate:automation(),start(){bufferStarts++;},stop(){}};}
     createBiquadFilter(){return {...connection,frequency:automation(),Q:automation()};}
     async close(){wheelClosed++;}
   };
@@ -200,10 +200,66 @@ try {
   for(let i=0;i<1000;i++)portfolioAudio.playScroll(i%2 ? 1 : -1);
   assert.equal(wheelVoices,voiceCount,'Dense trackpad input reuses one scroll voice');
   assert.equal(voiceCount,6,'Five ambient oscillators and one wheel voice share the mixer');
+  assert.equal(bufferStarts,2,'One noise bed and one original melody loop share the BGM bus');
+  portfolioAudio.playTypingTick();assert.equal(bufferStarts,3,'Typing starts one short source after user unlock');
   portfolioAudio.setMuted(true);assert.equal(wheelGains[0].gain.value,0,'Mute silences music and scroll together');
+  portfolioAudio.playTypingTick();assert.equal(bufferStarts,3,'Mute drops typing ticks');
   portfolioAudio.playScroll(120);assert.equal(wheelVoices,voiceCount);
   portfolioAudio.setMuted(false);document.hidden=true;portfolioAudio.playScroll(120);assert.equal(wheelVoices,voiceCount,'Hidden wheel input is dropped');
-  document.hidden=false;portfolioAudio.dispose();assert.equal(wheelClosed,1,'The mixer closes its context');
+  portfolioAudio.playTypingTick();assert.equal(bufferStarts,3,'Hidden tabs drop typing ticks');
+  document.hidden=false;
+  const beforeInactive=bufferStarts;
+  portfolioAudio.setActive(false);assert.equal(wheelGains[0].gain.value,0,'Leaving for workspace silences the portfolio bus');
+  portfolioAudio.playScroll(120);portfolioAudio.playTypingTick();portfolioAudio.playSfx('click');
+  window.dispatchEvent(new Event('pointerdown'));assert.equal(bufferStarts,beforeInactive,'Workspace gestures cannot restart portfolio music');
+  portfolioAudio.setMuted(false);assert.equal(wheelGains[0].gain.value,0,'Unmuting an inactive view cannot make it audible');
+  portfolioAudio.setActive(true);assert.equal(bufferStarts,beforeInactive+2,'Returning to portfolio restores exactly its two ambient loops');
+  assert.equal(wheelGains[0].gain.value,.65,'Returning restores the audible bus');
+  let fallbackCancellations=0;
+  for(const node of wheelGains){
+    delete node.gain.cancelAndHoldAtTime;
+    node.gain.cancelScheduledValues=()=>{fallbackCancellations++;};
+  }
+  assert.doesNotThrow(()=>{
+    portfolioAudio.playSfx('warp');portfolioAudio.playTypingTick();portfolioAudio.playScroll(120);
+    portfolioAudio.setMuted(true);assert.equal(wheelGains[0].gain.value,0);
+    portfolioAudio.setMuted(false);portfolioAudio.setActive(false);portfolioAudio.setActive(true);
+  },'Start warp, typing, scrolling, mute and view changes support missing cancelAndHoldAtTime');
+  assert(fallbackCancellations>=7,'Unsupported AudioParams use scheduled-value cancellation');
+  portfolioAudio.setScene('contact');portfolioAudio.dispose();assert.equal(wheelClosed,1,'The mixer closes its context');
+  // Resume can reject (autoplay/device interruption); the next gesture must recover.
+  const RunningContext = window.AudioContext;
+  let allowResume=false, resumes=0, retryContexts=0;
+  window.AudioContext = class extends RunningContext {
+    state='suspended';
+    constructor(){super();retryContexts++;}
+    async resume(){resumes++;if(!allowResume)throw new Error('Autoplay blocked');this.state='running';}
+  };
+  const savedSound=new Map();
+  window.localStorage={getItem:key=>savedSound.get(key)??null,setItem:(key,value)=>savedSound.set(key,value)};
+  const retryGainIndex=wheelGains.length;
+  const retryAudio=new PortfolioAudioSystem(), beforeRetry=bufferStarts;
+  retryAudio.startCosmicAmbient();retryAudio.playSfx('click');
+  assert.equal(retryContexts,0,'Music and SFX never create a context before activation');
+  retryAudio.unlockContext();await Promise.resolve();await Promise.resolve();
+  assert.equal(bufferStarts,beforeRetry,'Rejected unlock schedules no music');
+  retryAudio.playScroll(100);await Promise.resolve();await Promise.resolve();
+  assert.equal(bufferStarts,beforeRetry,'Blocked wheel input queues no sounds');
+  allowResume=true;window.dispatchEvent(new Event('pointerdown'));await Promise.resolve();await Promise.resolve();
+  assert.equal(bufferStarts,beforeRetry+2,'A later gesture recovers both ambient loops');
+  assert.equal(retryContexts,1,'Recovery reuses the suspended context');
+  const beforeCues=wheelVoices;
+  for(const cue of ['hover','click','warp','drawerOpen','drawerClose','modalOpen','modalClose','singularityEnter','singularityExit','cardSlide','muteOn','muteOff','loaderComplete'])retryAudio.playSfx(cue);
+  assert(wheelVoices>beforeCues,'All procedural cues execute after recovery');
+  retryAudio.setScene('intro');assert.equal(wheelGains[retryGainIndex+2].gain.value,.28,'Intro uses the revised audible background level');
+  retryAudio.setMuted(true);assert.equal(savedSound.get('portfolio-sound'),'off','Mute preference is saved');
+  const beforeHidden=bufferStarts;document.hidden=true;document.dispatchEvent(new Event('visibilitychange'));
+  retryAudio.playTypingTick();retryAudio.playSfx('click');assert.equal(bufferStarts,beforeHidden,'Hidden/muted cues are discarded');
+  document.hidden=false;retryAudio.dispose();const beforeDisposed=resumes;
+  window.dispatchEvent(new Event('pointerdown'));assert.equal(resumes,beforeDisposed,'Disposed mixers remove gesture listeners');
+  const restoredAudio=new PortfolioAudioSystem();restoredAudio.unlockContext();
+  assert.equal(document.documentElement.dataset.journeySound,'off','Reload restores mute in the UI');
+  assert.equal(retryContexts,1,'Saved mute never starts a new context');restoredAudio.dispose();
   globalThis.window=priorWindow;
   delete globalThis.document; delete globalThis.AudioContext;
   console.log('PASS: public/workspace routes, state transitions, overlapping desktop/mobile/reduced timelines, 1000 orbit phases, collision envelopes, proxy occlusion, tap/drag cancellation, all asset hashes/anchors/budgets, 40 documents, invalid sensor samples/quaternion normalization, and workspace/journey gesture, motion, mute, hidden and audio cleanup lifecycle.');

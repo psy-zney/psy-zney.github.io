@@ -106,6 +106,7 @@ export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFin
       root.dataset.constellationStars = String(constellation.stars.filter(amount => amount > .1).length);
       root.dataset.constellationEdges = String(constellation.edges.filter(([a, b]) => a + b >= 1 - 1e-9).length);
       root.dataset.seconds = elapsed.toFixed(3); root.dataset.scrollTarget = target.current.toFixed(3);
+      root.style.setProperty('--intro-interface', String(1 - Math.min(1, Math.max(0, (elapsed - 1.8) / .9))));
       root.dataset.inputGain = (introScrollResponse(elapsed).gain * .0045).toFixed(7);
       root.dataset.velocity = playback.current.velocity.toFixed(3);
       const formation = introPortalFormation(elapsed);
@@ -183,6 +184,8 @@ export function VirgoIntroFlight({ lang, pageRef, reducedMotion, onArrive, onFin
 
   return <div ref={layer} className="virgo-intro-flight" data-surface="liquid-caustics-nebula" data-portal="quantum-violet-frontal" aria-label={lang === 'vie' ? 'Mở đầu hành trình vũ trụ' : 'Cosmic opening journey'} onClick={() => input.current(.35)}>
     <canvas ref={canvas} aria-hidden="true" />
+    <div className="virgo-intro-signature"><span>zney</span><span>{lang === 'vie' ? 'Một góc vũ trụ của Khánh' : 'A small universe by Khánh'}</span></div>
+    <div className="virgo-intro-identity"><h1>Lê Quang Khánh</h1><p>{lang === 'vie' ? 'Xây dựng website, kết nối hệ thống.' : 'Building websites. Connecting systems.'}</p></div>
     <div ref={captions} className="virgo-intro-captions" aria-live="off">
       {INTRO_CAPTIONS.map((caption, i) => <p key={i} data-z={caption.z} aria-hidden="true">{caption[lang]}</p>)}
     </div>

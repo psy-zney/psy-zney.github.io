@@ -64,6 +64,8 @@
   font: inherit;
   cursor: pointer;
 }
+.virgo-image-credit{display:inline-flex;align-items:center;min-height:44px;color:#94a8c0!important;font:400 10px/1.5 Outfit,sans-serif;letter-spacing:0}
+.virgo-image-credit:hover{color:#ede9e2!important;text-decoration:underline;text-underline-offset:4px}
 
 .virgo-sound-toggle {
   position: absolute;
@@ -134,15 +136,15 @@
   pointer-events: none;
   opacity: calc(1 - var(--black-hole-view, 0));
   background:
-    linear-gradient(90deg, rgba(0, 0, 0, .48) 0%, rgba(0, 0, 0, .18) 35%, transparent 72%),
-    radial-gradient(ellipse at 50% 50%, transparent 42%, rgba(0, 0, 0, .3) 100%);
+    linear-gradient(90deg, rgba(0, 0, 0, .16) 0%, rgba(0, 0, 0, .05) 35%, transparent 72%),
+    radial-gradient(ellipse at 50% 50%, transparent 48%, rgba(0, 0, 0, .12) 100%);
   transition: background .5s ease;
 }
 
 .virgo-vignette-right {
   background:
-    linear-gradient(270deg, rgba(0, 0, 0, .5) 0%, rgba(0, 0, 0, .2) 35%, transparent 72%),
-    radial-gradient(ellipse at 50% 50%, transparent 42%, rgba(0, 0, 0, .3) 100%);
+    linear-gradient(270deg, rgba(0, 0, 0, .16) 0%, rgba(0, 0, 0, .055) 35%, transparent 72%),
+    radial-gradient(ellipse at 50% 50%, transparent 48%, rgba(0, 0, 0, .12) 100%);
 }
 
 .virgo-language {
@@ -874,7 +876,8 @@
 
 .virgo-black-hole-orbit {
   position: absolute;
-  z-index: 3;
+  /* Contact links sit above the drag region, including on short windows. */
+  z-index: 2;
   transform: translate(-50%, -50%);
   visibility: hidden;
   pointer-events: none;
@@ -1170,7 +1173,7 @@
   }
 
   .virgo-vignette {
-    background: linear-gradient(#0004 0%, transparent 28%, #0009 57%, #000 100%);
+    background: linear-gradient(#0002 0%, transparent 28%, #0002 57%, #0005 100%);
   }
 
   .virgo-panel-right {
@@ -1912,6 +1915,24 @@
 @media(max-width:767px) and (orientation:portrait){.virgo-project-link{min-height:90px}.virgo-page:not(.virgo-is-opening) .virgo-chapters{display:block}}
 .virgo-origin-steps{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}.virgo-origin-steps button{min-height:44px;padding:8px 12px;border:1px solid #52657c;border-radius:8px;background:#05091399;color:#b5c1d2;font-size:14px}.virgo-origin-steps [aria-pressed=true]{background:#d0e5ff;color:#101a2a}.virgo-origin-description{min-height:26px;font-size:16px;line-height:1.65;color:#b5c1d2;margin-top:12px}
 @media(min-width:768px) and (max-width:1099px) and (min-height:600px){.virgo-narrative-left,.virgo-narrative-right{width:calc(46vw - 24px)}.virgo-narrative-left{left:24px}.virgo-narrative-right{left:54%}.virgo-overlay-panel:not(.virgo-cosmos):not(.virgo-prologue-hero){padding-inline:24px}.virgo-overlay-panel .virgo-bare{width:calc(46vw - 24px);max-width:none;margin-inline:0}}
+
+/* Quiet orientation after Start; the sky remains the main subject. */
+.virgo-home-guide{position:absolute;z-index:4;left:max(28px,env(safe-area-inset-left));bottom:max(38px,env(safe-area-inset-bottom));max-width:40ch;color:#c0cbdc;text-shadow:0 2px 18px #000;font:14px/1.6 Outfit,sans-serif}
+.virgo-home-guide[hidden]{display:none}
+.virgo-home-guide>p{font:400 clamp(25px,3vw,36px)/1.15 Newsreader,Georgia,serif;color:#f2f3f8;margin:0 0 12px;letter-spacing:-.025em}
+.virgo-home-guide>div{display:flex;gap:24px;margin-top:12px}
+.virgo-home-guide a{display:inline-flex;align-items:center;gap:8px;min-height:44px;color:#e4eaf5;border-bottom:1px solid #a7bfd84d}
+.virgo-home-guide a:hover{border-color:#e4eaf5}
+.virgo-chapters{display:block;right:max(24px,env(safe-area-inset-right));top:max(24px,env(safe-area-inset-top));font-family:Outfit,sans-serif}
+.virgo-chapters>button{display:flex;align-items:center;gap:24px;background:#0509139c;backdrop-filter:blur(14px);border-color:#b2c6df40;border-radius:999px;font-size:13px}
+.virgo-chapters>button>span{font-size:20px;line-height:1;color:#b9cbe2}
+.virgo-chapters nav{box-shadow:0 18px 60px #0007;background:#0b1422f2;backdrop-filter:blur(20px)}
+.virgo-chapters nav a,.virgo-chapters nav button{display:flex;align-items:center;gap:10px;min-height:44px;padding:10px 12px;font:14px/1.5 Outfit,sans-serif}
+.virgo-chapters nav button{border:0;border-top:1px solid #c6d8ed24;margin-top:6px;padding-top:14px;background:transparent;text-align:left;color:#e7edf7}
+.virgo-chapters nav :is(a,button):hover{background:#e0ecff0a;border-radius:6px}
+.virgo-page[data-worlds-open=true]>.virgo-sound-toggle{z-index:80;top:max(24px,env(safe-area-inset-top));right:24px;bottom:auto}
+@media(max-width:600px){.virgo-home-guide{left:20px;right:76px;bottom:max(24px,env(safe-area-inset-bottom));font-size:13px}.virgo-home-guide>div{gap:18px}.virgo-chapters{right:16px;top:max(16px,env(safe-area-inset-top))}.virgo-page[data-worlds-open=true]>.virgo-sound-toggle{top:16px;right:16px}}
+@media(max-height:500px){.virgo-home-guide{bottom:16px;max-width:45ch}.virgo-home-guide>p{font-size:25px;margin-bottom:6px}.virgo-home-guide>div{margin-top:4px}.virgo-chapters{top:12px}}
 
 /* Public projects use the same readable document typography as the workspace. */
 .virgo-dialog:has(.project-document){font:16px/1.65 Inter,system-ui,sans-serif;color-scheme:dark;scrollbar-color:#52657c transparent}
