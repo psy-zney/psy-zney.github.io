@@ -53,7 +53,6 @@ export function VirgoPortfolio({ lang, onEnterWorkspace }: {
   const contentRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const portalRef = useRef<HTMLButtonElement>(null);
   const chaptersRef = useRef<HTMLDivElement>(null);
   const blackHoleControlRef = useRef<HTMLDivElement>(null);
   const blackHoleOrbit = useRef(createBlackHoleOrbit());
@@ -518,7 +517,6 @@ export function VirgoPortfolio({ lang, onEnterWorkspace }: {
       selectedProject={selectedProject}
       selectedSkill={selectedSkill}
       selectedOrigin={selectedOrigin}
-      portalRef={portalRef}
       blackHoleControlRef={blackHoleControlRef}
       blackHoleOrbit={blackHoleOrbit}
       labelsRef={labelsRef}
@@ -541,7 +539,11 @@ export function VirgoPortfolio({ lang, onEnterWorkspace }: {
       <svg className="virgo-reading-accent" aria-hidden="true"><path fill="none" stroke="#b9cde6" strokeWidth="1" /></svg>
       <div className="virgo-narrative" aria-label={t("Dẫn truyện", "Story")}>
         {NARRATIVE_BEATS.map((beat, index) => index >= 3 && index < 8 ? <p data-narrative-index={index} data-reveal={narrativeRevealStyle(index)} key={index} className={`virgo-narrative-line virgo-narrative-${beat.side} virgo-placement-${beat.placement}${index === 0 ? " virgo-identity" : ""}${index === 8 ? " virgo-contact-narrative" : ""}`} aria-hidden="true">
-          <span>{beat[lang].split(' ').map((word, i, words) => <Fragment key={i}><span className="virgo-story-word" style={{ '--word-delay': i / words.length * .32 } as CSSProperties}>{word}</span>{i < words.length - 1 ? ' ' : null}</Fragment>)}</span>
+          <span>{('phrases' in beat ? beat.phrases[lang] : [beat[lang]]).map((phrase, phraseIndex, phrases) => {
+            const offset = phrases.slice(0, phraseIndex).reduce((count, text) => count + text.split(' ').length, 0);
+            const total = beat[lang].split(' ').length;
+            return <Fragment key={phraseIndex}><span className="virgo-story-phrase">{phrase.split(' ').map((word, i, words) => <Fragment key={i}><span className="virgo-story-word" style={{ '--word-delay': (offset + i) / total * .32 } as CSSProperties}>{word}</span>{i < words.length - 1 ? ' ' : null}</Fragment>)}</span>{phraseIndex < phrases.length - 1 ? ' ' : null}</Fragment>;
+          })}</span>
         </p> : null)}
       </div>
       <section className="virgo-overlay-panel virgo-cosmos" aria-label={t("Chòm sao Xử Nữ xuất hiện", "Virgo constellation appearing")} aria-hidden={active !== 0}>
@@ -661,11 +663,6 @@ export function VirgoPortfolio({ lang, onEnterWorkspace }: {
       enabled={active === 6 && !entering && !showDialog && !isShowcase}
       resetOnDisable={!entering && !passageVisible}
       label={t("Góc nhìn hố đen: kéo chuột để xoay, nhấp đúp hoặc Home để đặt lại; dùng phím mũi tên để đổi góc", "Black hole view: drag to orbit, double-click or press Home to reset; arrow keys change the angle")} />
-    <button ref={portalRef} className={`virgo-star-portal${active === 6 ? " is-active" : ""}`} type="button"
-      aria-label={t("Khám phá các thế giới qua hố đen", "Explore worlds through the black hole")}
-      aria-hidden={active !== 6} tabIndex={active === 6 ? 0 : -1} disabled={entering} onClick={enterWorlds}>
-      <span className="virgo-portal-label"><ArrowUpRight size={22} /></span>
-    </button>
     <div className="virgo-station" aria-hidden="true">{stationFromChapter(active) === null ? "VIRGO / OVERVIEW" : `${VIRGO_STARS[stationFromChapter(active)!].name.toUpperCase()} / ${String(stationFromChapter(active)! + 1).padStart(2, "0")}`}</div>
     <button className="virgo-sound-toggle" aria-label={soundMuted ? t("Bật âm thanh", "Enable sound") : t("Tắt âm thanh", "Mute sound")} aria-pressed={!soundMuted} onClick={() => {
       const muted = !soundMuted;

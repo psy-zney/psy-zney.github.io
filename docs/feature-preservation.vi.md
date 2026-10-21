@@ -1,8 +1,46 @@
 ## Intro, 21/10/2026
 
-Rừng Contact có cây đung đưa và cáo SVG tự vẽ đi ngang vùng đất, chân bước,
-thân nhún và đuôi ve vẩy. Decoration không nhận click; dùng cùng cơ chế
-dừng ngoài viewport/ẩn tab. Reduced motion giữ cáo đứng yên, không ẩn.
+Sắp lại nội dung mở đầu thành hai nhóm: lời chào/tên và Welcome/Start,
+giữ vị trí, cỡ tên, góc nền và chuyển cảnh đã chốt. Khoảng cách chia nhóm
+riêng, Welcome mobile dành sẵn hai dòng để nút không nhảy khi gõ chữ.
+Giới thiệu tại Spica nói rõ xây dựng ứng dụng web/công cụ hệ thống;
+năm câu dẫn chuyện chia theo cụm ý ở cả Việt/Anh. Mỗi góc vẫn chỉ một câu,
+không thêm bảng thông tin vào vùng đọc; delay từng từ liên tục qua ngắt dòng.
+Giữ thông tin chi tiết, CV và mọi liên kết hiện có. Kiểm tra bố cục intro
+và các câu ở desktop/mobile, bao gồm cuộn ngược và reduced motion.
+
+Bỏ nút mũi tên dưới hố đen theo yêu cầu. Vào showcase bằng cuộn dọc,
+PageDown hoặc Space như cũ; cuộn ngược ở 1/9 trở về hố đen. Orbit định vị
+trực tiếp theo projection, không phụ thuộc DOM của nút đã bỏ. Kiểm tra
+chuyển cảnh và orbit giữ nguyên, thay assertion nút bằng cuộn vào thực tế.
+
+Ở selector 1/9, gesture cuộn dọc ngược mới đủ 45px gọi cùng returnThroughHole
+với nút Back: trượt ngược về hố đen tại Contact 6. Đà vừa chọn 1/9 vẫn giữ
+trang đầu; cuộn ngang không thoát. Giữ reduced motion và đường chuyển cảnh cũ.
+
+Lượt chỉnh tiếp: nền giảm thêm 20% từ mức hiện tại (hệ số tổng 0,656),
+radiance sao tăng thêm ×3 (tổng ×9 so với trước hai lượt tăng). Viền plasma
+và vòng phun giữ cấu hình mới nhất; mức tăng nằm trước tone mapping nên
+vùng lõi sẽ trắng chói hơn, không tương đương RGB màn hình nhân tuyến tính.
+
+Nền GLB và điểm sao nền giảm năng lượng 18% cho cả intro/các trạm. Sao chính
+tăng radiance ×3 trước tone mapping (không phải RGB màn hình ×3); corona
+mở tới 1,55R, viền dày và rực hơn. Plasma có 4/6/9 vòng theo tier/mobile,
+tube 0,032R và đầu lửa sáng hơn. Giữ chu kỳ phun/tắt, reduced motion,
+quỹ đạo/camera và asset gốc; không đổi shader hố đen.
+
+Nền 3D intro phản hồi chuột không nhấn: yaw tối đa 0,045 rad, pitch 0,025
+rad, nội suy theo thời gian. Offset tách khỏi góc ghim/kéo 360°; rời màn hình
+hoặc mất focus thì trở về góc gốc nhẹ nhàng. Đóng băng offset khi Start;
+không áp dụng cho touch/reduced motion, giữ nguyên chữ và hitbox nút.
+
+Rừng Contact có cây đung đưa và mèo SVG tự vẽ bước tại chỗ, căn chính giữa
+theo chiều ngang (left 50% và dịch lại nửa chiều rộng), giữ độ cao mặt đất,
+đầu tròn, mõm ngắn, ria, vằn lông và đuôi mảnh cong. Nhịp bước/thân/bóng
+nhanh ×1,5 (0,7s → khoảng 0,4667s), đuôi 2,1s → 1,4s; giữ pha chân chéo.
+chân bước, thân nhún và đuôi ve vẩy. Hàng cây trôi chậm sang trái, lặp liền
+mạch bằng hai bản hình học giống nhau, chu kỳ 90s. Decoration không nhận click; dùng cùng cơ chế
+dừng ngoài viewport/ẩn tab. Reduced motion giữ mèo đứng yên, không ẩn.
 
 Contact có nhịp xuất hiện khi 18% section vào viewport: nền mở dần, chữ
 trượt lên và nét dần, tiếp đến email/nav/footer với delay 0,1–0,6s.

@@ -27,12 +27,12 @@ const PLASMA_FRAGMENT = `
   void main(){
     if(eruption*appearance<.002)discard;
     float gas=stellarFbm(vec2(plasmaUv.x*11.0-age*.8,plasmaUv.y*4.0+age*.25));
-    float limb=pow(abs(dot(normalize(plasmaNormal),normalize(plasmaView))),.65);
+    float limb=pow(abs(dot(normalize(plasmaNormal),normalize(plasmaView))),.4);
     float footDistance=min(plasmaUv.x,1.0-plasmaUv.x)*2.0;
     float front=1.0-smoothstep(life*2.8,life*2.8+.22,footDistance);
-    float density=smoothstep(.27,.72,gas)*limb*front;
-    vec3 color=tint*(.65+gas*.7);
-    gl_FragColor=vec4(color,appearance*eruption*density*.8); }
+    float density=smoothstep(.20,.65,gas)*limb*front;
+    vec3 color=tint*(.9+gas*1.4);
+    gl_FragColor=vec4(color,appearance*eruption*density*1.15); }
 `;
 
 /** Cached coronal loops and hot tips; all motion stays on the star. */
@@ -40,11 +40,11 @@ export function StellarPlasma({ index, radius, color, flight, glow }: { index: n
   const { gl } = useThree();
   const page = useMemo(() => gl.domElement.closest<HTMLElement>('.virgo-page'), [gl]);
   const tips = useRef<THREE.Group>(null), mesh = useRef<THREE.Mesh>(null);
-  const count = flight.tier === 'low' ? 2 : flight.mobile ? 3 : 5;
+  const count = flight.tier === 'low' ? 4 : flight.mobile ? 6 : 9;
   const curves = useMemo(() => Array.from({ length: count }, (_, i) => stellarProminence(i + index * 3, radius)), [count, index, radius]);
   const geometry = useMemo(() => {
     const tubes = curves.map((points, i) => {
-      const tube = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...p))), 32, radius * .018, 6, false);
+      const tube = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...p))), 32, radius * .032, 6, false);
       const { period, duration, offset } = prominenceTiming(i + index * 3);
       const timings = new Float32Array(tube.attributes.position.count * 3);
       for (let j = 0; j < timings.length; j += 3) { timings[j] = period; timings[j + 1] = duration; timings[j + 2] = offset; }
@@ -66,8 +66,8 @@ export function StellarPlasma({ index, radius, color, flight, glow }: { index: n
       const { strength, lift } = bursts[i], peak = curves[i][16];
       const distance = Math.hypot(...peak), base = radius * 1.002;
       sprite.position.set(...peak).multiplyScalar((base + (distance - base) * lift) / distance);
-      sprite.scale.setScalar(radius * (.14 + strength * .14));
-      (sprite.material as THREE.SpriteMaterial).opacity = presence * strength * .3;
+      sprite.scale.setScalar(radius * (.20 + strength * .20));
+      (sprite.material as THREE.SpriteMaterial).opacity = presence * strength * .65;
       sprite.visible = strength > .001 && presence > .001;
     });
     if (index === 1 && page) page.dataset.plasmaBursts = bursts.map(burst => burst.strength.toFixed(4)).join(',');

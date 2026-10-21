@@ -28,10 +28,18 @@ try {
     assert.equal(Number(await intro.getAttribute('data-progress')),0);
     await page.waitForFunction(()=>document.querySelector('.virgo-page')?.dataset.universeSky==='main.glb');
     await page.waitForFunction(()=>document.querySelector('.universe-identity h1')?.textContent==='Lê Quang Khánh');
+    await page.waitForFunction(()=>{
+      const tagline=document.querySelector('.universe-tagline');
+      return tagline?.textContent===tagline?.getAttribute('aria-label');
+    });
     const start=intro.getByRole('button',{name:'Start',exact:true});await start.waitFor();
     assert.equal(await intro.locator('video').count(),0,'An unavailable original never falls back to a screen recording');
     const heading=await intro.locator('h1').boundingBox();
     assert(heading.x>=0&&heading.x+heading.width<=width,'The identity fits every viewport');
+    assert.equal(await intro.locator('.universe-name h1').count(),1,'Greeting and identity share a group');
+    assert.equal(await intro.locator('.universe-invitation .universe-start').count(),1,'Start stays with its invitation');
+    const invitation=await intro.locator('.universe-invitation').boundingBox();
+    assert(invitation.y>=heading.y+heading.height&&invitation.y+invitation.height<=height-12,'The invitation follows the name and stays on screen');
     await page.mouse.wheel(0,240);await page.waitForTimeout(400);
     assert.equal(Number(await intro.getAttribute('data-progress')),0,'The page never advances without input');
     assert.equal(await intro.locator('canvas').count(),1,'One WebGL canvas draws the original sky');
@@ -41,6 +49,19 @@ try {
     const beforePitch=Number(await intro.getAttribute('data-pitch'));
     assert.equal(beforeYaw,0.53979,'Intro starts at the pinned dark-sky view');
     assert.equal(beforePitch,-.01338);
+    await page.mouse.move(width*.9,height*.25);
+    if(reducedMotion==='reduce'){
+      await page.waitForTimeout(250);
+      assert.equal(Number(await intro.getAttribute('data-hover-yaw')),0,'Reduced motion disables mouse parallax');
+    }else{
+      await page.waitForFunction(()=>Number(document.querySelector('.universe-intro').dataset.hoverYaw)<-.015);
+      const offset=Number(await intro.getAttribute('data-hover-yaw'));
+      assert(Math.abs(offset)<=.045,'Mouse movement stays within a subtle bounded angle');
+      assert.equal(Number(await intro.getAttribute('data-yaw')),beforeYaw,'Hover never overwrites the pinned orientation');
+      await page.screenshot({path:`${output}/${name}-mouse-parallax.png`});
+    }
+    await page.mouse.move(-10,-10);
+    await page.waitForFunction(()=>Math.abs(Number(document.querySelector('.universe-intro').dataset.hoverYaw))<.0002);
     for(let turn=0;turn<2;turn++) {
       await page.mouse.move(width*.75,height*.12);await page.mouse.down();
       await page.mouse.move(width*.25,height*.12,{steps:12});await page.mouse.up();
@@ -74,6 +95,20 @@ try {
     assert.equal(Number(await intro.getAttribute('data-progress')),0,'Reverse returns all the way to the universe');
     await page.evaluate(()=>{location.hash='#/skills';});await intro.waitFor({state:'detached'});
     await page.waitForTimeout(1500);assert.equal(await page.evaluate(()=>location.hash),'#/skills','Unmounted intro cannot steal a later route');
+    {
+      const sentence='I build web applications and system tools.';
+      await page.goto(base+'#/story');await page.reload();
+      await page.locator('[data-page-loader]').waitFor({state:'detached'});
+      const about=page.locator('[data-narrative-index="3"]');
+      await page.waitForFunction(sentence=>{
+        const line=document.querySelector('[data-narrative-index="3"]');
+        return line?.textContent===sentence&&getComputedStyle(line).visibility==='visible'&&Number(getComputedStyle(line.querySelector('span')).opacity)>.95;
+      },sentence);
+      assert.equal(await about.locator('.virgo-story-phrase').count(),2);
+      const box=await about.boundingBox();
+      assert(box.x>=0&&box.x+box.width<=width&&box.y>=0&&box.y+box.height<=height,'The complete introduction fits the viewport');
+      await page.screenshot({path:`${output}/${name}-about.png`});
+    }
     assert.deepEqual(errors,[]);results.push({name,status:'passed'});await context.close();
   }
 }finally{

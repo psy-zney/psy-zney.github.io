@@ -1987,6 +1987,8 @@
   filter: blur(calc((1 - var(--text-reveal, 0)) * 2px));
 }
 .virgo-story-word { display: inline-block; }
+.virgo-story-phrase { display: block; text-wrap: balance; }
+.virgo-story-phrase + .virgo-story-phrase { margin-top: .08em; }
 .virgo-narrative-line[data-reveal="stagger"] > span { opacity: 1; transform: none; }
 .virgo-narrative-line[data-reveal="stagger"] .virgo-story-word {
   --word-ink: clamp(0, (var(--text-reveal, 0) - var(--word-delay, 0)) * 1.5, 1);

@@ -32,8 +32,8 @@ export function WorldsShowcase({ index, lang, reducedMotion, onSelect, onClose, 
     return () => clearTimeout(timer);
   }, [diving, onInsideChange]);
   const selected = index ?? 0, product = showcaseProducts[selected];
-  const state = useRef({ selected, onSelect });
-  state.current = { selected, onSelect };
+  const state = useRef({ selected, onSelect, onClose });
+  state.current = { selected, onSelect, onClose };
   const vi = lang === 'vie';
   const select = (next: number) => {
     const target = clampWorldIndex(next);
@@ -64,6 +64,10 @@ export function WorldsShowcase({ index, lang, reducedMotion, onSelect, onClose, 
       amount += delta;
       if (!consumed && Math.abs(amount) >= 45) {
         consumed = true;
+        if (vertical && sign < 0 && state.current.selected === 0) {
+          state.current.onClose();
+          return;
+        }
         const next = clampWorldIndex(state.current.selected + sign);
         if (next === state.current.selected) return;
         playPortfolioSfx('cardSlide');

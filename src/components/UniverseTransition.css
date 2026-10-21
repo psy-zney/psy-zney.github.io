@@ -1,4 +1,4 @@
-.universe-intro{position:absolute;inset:0;z-index:6;overflow:hidden;background:transparent;touch-action:none;cursor:grab;user-select:none}
+.universe-intro{position:absolute;inset:0;z-index:6;overflow:hidden;background:transparent;touch-action:none;cursor:default;user-select:none}
 .universe-intro:not([data-phase]){background:#020308}.universe-intro[data-dragging=true]{cursor:grabbing}
 .universe-intro:focus{outline:none}
 .universe-intro canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
@@ -45,3 +45,21 @@
 @media(max-width:600px){.universe-intro .universe-identity{top:calc(37% - 5px);inset-inline:20px}.universe-intro .universe-identity h1{font-size:calc(clamp(34px,9.2vw,54px) - 7pt)}.universe-intro .universe-identity .universe-tagline{max-width:26ch}.universe-start{min-width:240px;margin-top:28px}}
 @media(max-height:500px){.universe-intro .universe-identity{top:calc(31% - 5px)}.universe-intro .universe-identity h1{font-size:calc(44px - 7pt);margin:5px 0}.universe-start{margin-top:12px;min-height:48px}}
 @media(prefers-reduced-motion:reduce){.universe-caret{animation:none;display:none}.universe-start{transition:none}}
+
+/* The greeting belongs to the name; the invitation and its action form a second group. */
+.universe-intro .universe-identity{display:grid;justify-items:center;row-gap:clamp(16px,2.4vh,28px)}
+.universe-name{width:100%;max-width:1180px;min-width:0}
+.universe-intro .universe-name h1{margin:8px 0 0;line-height:1.12;text-wrap:balance}
+.universe-invitation{max-width:38rem;width:100%;min-width:0}
+.universe-intro .universe-invitation .universe-tagline{margin-inline:auto;line-height:1.4;text-wrap:balance}
+.universe-invitation .universe-start{margin-top:26px}
+@media(max-width:600px){
+  .universe-intro .universe-identity{row-gap:18px}
+  .universe-intro .universe-invitation .universe-tagline{min-height:2.8em;max-width:26ch}
+  .universe-invitation .universe-start{margin-top:20px}
+}
+@media(max-height:500px){
+  .universe-intro .universe-identity{row-gap:10px}
+  .universe-intro .universe-name h1{margin-top:5px}
+  .universe-invitation .universe-start{margin-top:12px}
+}

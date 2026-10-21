@@ -3,15 +3,20 @@ import { smooth } from "./virgoFlight";
 // Narration is sampled from the same smoothed scroll position as the camera.
 // The identical position renders the identical tear in either direction.
 export type CosmicEffect = "rift" | "nebula" | "meteor" | "orbit" | "aurora";
+// Break at complete phrases while keeping one sentence per reading stop.
+const readingCopy = (vie: string, eng: string) => ({
+  vie: vie.split('\n').join(' '), eng: eng.split('\n').join(' '),
+  phrases: { vie: vie.split('\n'), eng: eng.split('\n') },
+});
 export const NARRATIVE_BEATS = [
   { from: .68, to: 1.12, side: "middle", placement: "middle", effect: "rift", vie: "Mình là zney.", eng: "I'm zney." },
   { from: 1.12, to: 1.40, side: "middle", placement: "upper-left", effect: "rift", vie: "Mình học bằng cách làm.", eng: "I learn by building." },
   { from: 1.40, to: 1.82, side: "middle", placement: "lower-right", effect: "aurora", vie: "Mình biến ý tưởng thành sản phẩm.", eng: "I turn ideas into useful tools." },
-  { from: 1.92, to: 2.32, side: "left", placement: "upper-left", effect: "orbit", vie: "Mình tìm hiểu người dùng cần gì.", eng: "I start with what people need." },
-  { from: 2.94, to: 3.52, side: "left", placement: "upper-left", effect: "nebula", vie: "Mỗi dự án cho mình thêm điều để học.", eng: "Each project gives me something new to learn." },
-  { from: 3.65, to: 4.25, side: "right", placement: "lower-right", effect: "meteor", vie: "Mời bạn ghé qua những sản phẩm mình góp phần xây dựng.", eng: "Step into the products I have helped build." },
-  { from: 4.80, to: 5.04, side: "left", placement: "upper-left", effect: "aurora", vie: "Những dự án ấy định hình cách mình xây dựng.", eng: "Those projects shape the way I build." },
-  { from: 5.04, to: 5.30, side: "right", placement: "lower-right", effect: "orbit", vie: "Giao diện, ứng dụng và hệ thống được kết nối cẩn thận.", eng: "Interfaces, apps and systems—connected with care." },
+  { from: 1.92, to: 2.32, side: "left", placement: "upper-left", effect: "orbit", ...readingCopy("Mình xây dựng ứng dụng web\nvà công cụ hệ thống.", "I build web applications\nand system tools.") },
+  { from: 2.94, to: 3.52, side: "left", placement: "upper-left", effect: "nebula", ...readingCopy("Mỗi dự án cho mình\nthêm điều để học.", "Each project gives me\nsomething new to learn.") },
+  { from: 3.65, to: 4.25, side: "right", placement: "lower-right", effect: "meteor", ...readingCopy("Mời bạn ghé qua những sản phẩm\nmình góp phần xây dựng.", "Step into the products\nI have helped build.") },
+  { from: 4.80, to: 5.04, side: "left", placement: "upper-left", effect: "aurora", ...readingCopy("Những dự án ấy định hình\ncách mình xây dựng.", "Those projects shape\nthe way I build.") },
+  { from: 5.04, to: 5.30, side: "right", placement: "lower-right", effect: "orbit", ...readingCopy("Giao diện, ứng dụng và hệ thống\nđược kết nối cẩn thận.", "Interfaces, apps and\nsystems—connected with care.") },
   { from: 5.82, to: 5.94, side: "right", placement: "upper-right", effect: "aurora", vie: "Bên kia hố đen, mỗi ý tưởng mở ra một thế giới.", eng: "Beyond the black hole, every idea becomes a world." },
 ] as const;
 

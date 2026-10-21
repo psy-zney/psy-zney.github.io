@@ -449,6 +449,17 @@ try {
         await writeFile(`${output}/${name}-story-failure.json`, JSON.stringify(state, null, 2));
       }
       assert.deepEqual(state.sentences, [sentence], `${name}: only the current sentence is visible`);
+      const phrases = await page.locator('.virgo-narrative-line').evaluateAll(lines => {
+        const line = lines.find(el => getComputedStyle(el).visibility === 'visible' && Number(getComputedStyle(el.querySelector('span')).opacity) > .1);
+        return [...line.querySelectorAll('.virgo-story-phrase')].map(el => {
+          const rect = el.getBoundingClientRect();
+          return { text: el.textContent, top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right };
+        });
+      });
+      assert.equal(phrases.length, 2, 'A reading sentence is divided into two meaningful phrases');
+      assert.equal(phrases.map(phrase => phrase.text).join(' '), sentence, 'Line breaks preserve the complete sentence');
+      assert(phrases[1].top >= phrases[0].bottom, 'Phrases occupy separate lines without overlap');
+      assert(phrases.every(phrase => phrase.left >= 0 && phrase.right <= options.viewport.width && phrase.top >= 0 && phrase.bottom <= options.viewport.height), 'Both phrases fit the viewport');
       assert.equal(state.densePanels, false, `${name}: dense lists do not replace the single-sentence presentation`);
       assert(state.pose?.length === 7 && state.pose.every(Number.isFinite), 'Record the actual rendered camera position/quaternion');
       return state;
@@ -594,8 +605,9 @@ try {
       assert(approachFrames.every(frame => frame.pose[0] === 0 && frame.pose[1] === 0 && frame.pose.slice(3).every((value, i) => value === [0, 0, 0, 1][i])), 'The approach keeps its axis and forward heading');
     }
     await scroller.evaluate(el => { el.scrollTop = el.scrollHeight; });
-    const portal = page.getByRole('button', { name: 'Explore worlds through the black hole', exact: true });
-    await portal.waitFor({ state: 'visible' });
+    assert.equal(await page.locator('.virgo-star-portal').count(),0,'The redundant arrow entry button stays removed');
+    const orbitAnchor = page.locator('.virgo-black-hole-orbit');
+    await orbitAnchor.waitFor({ state: 'visible' });
     await page.waitForFunction(() => Number(document.querySelector('.virgo-page').style.getPropertyValue('--flight-progress')) * 6 > 5.99999);
     await page.mouse.move(12, options.viewport.height / 2);
     await page.waitForTimeout(500);
@@ -604,12 +616,12 @@ try {
     const captureBlackHole = async suffix => {
       const mask=await page.addStyleTag({content:':root #root .virgo-page > :is(.virgo-overlay,.virgo-chapters,.virgo-sound-toggle,.virgo-star-portal,.virgo-orbit-labels){transition:none!important;animation:none!important;opacity:0!important}'});
       try {
-        assert(await page.locator('.virgo-star-portal').evaluate(el=>getComputedStyle(el).opacity==='0'),'The shader measurement actually excludes the UI, without a fading transition');
+        assert(await page.locator('.virgo-overlay').evaluate(el=>getComputedStyle(el).opacity==='0'),'The shader measurement actually excludes the UI, without a fading transition');
         return await page.screenshot({path:`${output}/${name}-black-hole${suffix}.png`});
       } finally { await mask.evaluate(el=>el.remove()); }
     };
     const holeImage = await captureBlackHole('');
-    const portalBounds = await portal.boundingBox();
+    const portalBounds = await orbitAnchor.boundingBox();
     const centerX = portalBounds.x + portalBounds.width / 2, centerY = portalBounds.y + portalBounds.height / 2;
     if (name !== 'phone') {
       assert(Math.abs(centerX - options.viewport.width / 2) < 2, 'The desktop black-hole gate is centered horizontally');
@@ -688,8 +700,6 @@ try {
     }
     assert(innerPixels > halfCore ** 2 * .1 && darkInnerPixels / innerPixels > .985, `${name}: the unoccluded polar shadow stays dark with no stray gas patches`);
     assert(foregroundPixels > halfCore ** 2 * .10, `${name}: the bright foreground disk crosses the shadow instead of being hidden behind a painted black circle`);
-    const labelBounds = await portal.locator('.virgo-portal-label').boundingBox();
-    assert(labelBounds.height >= 44 && labelBounds.y + labelBounds.height <= imageInfo.height, `${name}: the visible workspace entry is reachable and fits the viewport`);
     const effects = { warm: 0, outside: 0, midtones: 0, highlights: 0, left: 0, right: 0, arch: 0, moved: 0 };
     const renderStats = () => page.locator('.virgo-page').evaluate(el => ({
       traces: Number(el.dataset.blackHoleTraceCount),
@@ -721,7 +731,6 @@ try {
       // The full-width chapter progress line is UI, not orbiting gas.
       if (y >= imageInfo.height - 4) continue;
       for (let x = 0; x < imageInfo.width; x++) {
-        if (x >= labelBounds.x - 32 && x <= labelBounds.x + labelBounds.width + 32 && y >= labelBounds.y - 32) continue;
         const pixel = (y * imageInfo.width + x) * imageInfo.channels;
         if (!isWarm(pixels, pixel) && !isWarm(laterPixels, pixel)) continue;
         effects.warm++;
@@ -747,7 +756,6 @@ try {
     // Warm stars in the authentic sky are separate from the connected disk.
     const disk = luminousDiskBounds(pixels,imageInfo,isWarm);
     assert(disk.pixels > halfCore ** 2, `${name}: identify a substantial connected accretion disk`);
-    assert(labelBounds.y >= disk.bottom + 8, `${name}: the workspace label does not cover the lensed lower disk`);
     if (options.reducedMotion === 'reduce') assert(effects.moved / effects.warm < .02, `${name}: reduced motion freezes the disk and trails`);
     else assert(effects.moved / effects.warm > .06, `${name}: real gas and spiral trails animate around the belt`);
     if (name === 'desktop' || name === 'reduced') {
@@ -786,11 +794,11 @@ try {
       await page.waitForTimeout(450);
       const belowImage = await captureBlackHole('-orbit-below');
       const belowPixels = await sharp(belowImage).removeAlpha().raw().toBuffer();
-      const belowLabel = await portal.locator('.virgo-portal-label').boundingBox();
+      const belowControl = await orbitAnchor.boundingBox();
       const belowDisk = luminousDiskBounds(belowPixels,imageInfo,isWarm);
-      await writeFile(`${output}/${name}-below-metrics.json`,JSON.stringify({belowLabel,belowDisk,orbit:await angle(),offset:await portal.evaluate(el=>el.style.getPropertyValue('--portal-label-offset'))},null,2));
+      await writeFile(`${output}/${name}-below-metrics.json`,JSON.stringify({belowControl,belowDisk,orbit:await angle()},null,2));
       assert(belowDisk.pixels > halfCore ** 2, `${name}: identify the connected disk when viewed from underneath`);
-      assert(belowLabel.y >= belowDisk.bottom + 12 && belowLabel.y + belowLabel.height <= imageInfo.height, `${name}: the workspace entry fits below the disk even when viewed from underneath`);
+      assert(belowControl.x>=0&&belowControl.y>=0&&belowControl.x+belowControl.width<=imageInfo.width&&belowControl.y+belowControl.height<=imageInfo.height,`${name}: the orbit control remains within the viewport when viewed from underneath`);
       await page.mouse.dblclick(centerX, centerY);
       await orbitControl.press('ArrowRight');
       await orbitControl.press('ArrowUp');
@@ -816,7 +824,7 @@ try {
         const root = document.querySelector('.virgo-page');
         if (!root) return;
         const passage = document.querySelector('.page-passage');
-        if (passage) {
+        if (passage?.hasAttribute('data-progress') && Number.isFinite(parseFloat(root.style.getPropertyValue('--scene-page-offset')))) {
           window.__showcaseSlideFrames.push({
             pose: root.dataset.cameraPose.split(',').map(Number),
             orbit: document.querySelector('.virgo-black-hole-orbit')?.dataset.azimuth,
@@ -829,7 +837,7 @@ try {
       };
       requestAnimationFrame(record);
     });
-    await portal.locator('.virgo-portal-label').click();
+    await page.mouse.move(12,options.viewport.height/2);await page.mouse.wheel(0,120);
     await page.waitForURL('**/#/showcase/mpoly');
     await page.locator('.page-passage').waitFor({state:'detached'});
     if (name !== 'reduced') {
@@ -837,6 +845,7 @@ try {
       await writeFile(`${output}/${name}-page-slide.json`,JSON.stringify(entryFrames,null,2));
       const sliding = entryFrames.filter(frame => frame.progress !== null);
       assert(sliding.length > 3 && sliding.at(-1).offset < sliding[0].offset - 50, 'Contact slides upward into the showcase');
+      assert(sliding[0].progress < .1 && sliding.at(-1).progress > .9,'The recorded page slide covers its beginning and end');
       entryFrames.forEach(({ pose, orbit, renderedOrbit }) => {
         assert(pose.every(Number.isFinite), 'The parked journey camera keeps a valid pose');
         assert.deepEqual(pose, entryFrames[0].pose, 'The journey camera stays fixed during the DOM page transition');

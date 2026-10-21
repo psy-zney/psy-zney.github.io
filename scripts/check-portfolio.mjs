@@ -567,7 +567,8 @@ try {
       assert(!html.includes('virgo-quality-gauge') && !html.includes('virgo-quality-select'), 'Public quality is automatic without a visible selector');
       assert(!html.includes('class="virgo-space-rift"') && !html.includes('class="virgo-intro-fracture"'), "The obsolete black-screen fracture is removed from the mounted portfolio");
       assert(!html.includes('universe-tunnel-reference.mp4') && !html.includes('fracture-transition.webm'), "Screen recordings and the obsolete fracture film never enter the active portfolio");
-      assert(html.includes('Explore worlds through the black hole') || html.includes('Khám phá các thế giới qua hố đen'));
+      assert(!html.includes('virgo-star-portal'),'The owner removed the arrow entry button below the black hole');
+      assert(html.includes('virgo-black-hole-orbit'),'The black hole keeps its orbit control without the arrow button');
       assert(html.includes("SPICA") && html.includes("PORRIMA") && html.includes("VINDEMIATRIX") && html.includes("ZAVIJAVA"));
       assert.equal((html.match(/class="virgo-project-link"/g) || []).length, 3);
       assert.equal((html.match(/class="virgo-row-star"/g) || []).length >= projects.length, true);

@@ -155,8 +155,7 @@ try {
       const boxes = await contact.locator('a').evaluateAll(links => links.map(link => { const r = link.getBoundingClientRect(); return { x: r.x, y: r.y, right: r.right, bottom: r.bottom, href: link.getAttribute('href') }; }));
       assert.equal(boxes.length, 5);
       for (const box of boxes) assert(box.x >= 0 && box.right <= viewport.width + 1 && box.y >= 0 && box.bottom <= viewport.height + 1, `${name}: all Contact links fit: ${JSON.stringify(box)}`);
-      const entry = await page.locator('.virgo-portal-label').boundingBox();
-      for (const box of boxes) assert(!entry || box.right <= entry.x || box.x >= entry.x + entry.width || box.bottom <= entry.y || box.y >= entry.y + entry.height, `${name}: Contact links leave room for workspace entry: ${JSON.stringify({ box, entry })}`);
+      assert.equal(await page.locator('.virgo-star-portal').count(),0,'The redundant black-hole arrow stays removed');
       const mute = await page.locator('.virgo-sound-toggle').boundingBox();
       for (const box of boxes) assert(box.right <= mute.x || box.x >= mute.x + mute.width || box.bottom <= mute.y || box.y >= mute.y + mute.height, `${name}: Contact links never overlap mute: ${JSON.stringify({ box, mute })}`);
     }

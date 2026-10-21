@@ -99,6 +99,7 @@ const STAR_FRAGMENT = `
     vec3 radiance=thermal*(energy*1.65 + .32);
     // A hot, narrow limb keeps the silhouette luminous rather than a dark cutout.
     radiance += mix(thermal, vec3(1.), .42) * pow(1. - facing, 5.) * 5.0;
+    radiance *= 9.0;
     gl_FragColor = vec4(1.0-exp(-radiance), presence);
     #include <colorspace_fragment>
   }
@@ -112,16 +113,16 @@ const CORONA_FRAGMENT = `
   varying vec3 viewDirection;
   void main() {
     float facing = abs(dot(normalize(surfaceNormal), normalize(viewDirection)));
-    float radial = sqrt(max(0., 1. - facing * facing)) * 1.36;
+    float radial = sqrt(max(0., 1. - facing * facing)) * 1.55;
     if (radial < .997) discard;
     float outside = max(0., radial - 1.);
     float angle = atan(surfaceNormal.y, surfaceNormal.x);
     float flame = .78 + .14*sin(angle*13. + stellarTime*.7)
-      + .08*sin(angle*29. - stellarTime*.5);
-    float rim = exp(-outside * 65.);
-    float halo = exp(-outside * (10. / flame)) * (1. - smoothstep(1.20, 1.36, radial));
+      + .08*sin(angle*29. - stellarTime*.5) + .07*sin(angle*53. + stellarTime*.9);
+    float rim = exp(-outside * 42.);
+    float halo = exp(-outside * (7. / flame)) * (1. - smoothstep(1.32, 1.55, radial));
     vec3 fire = mix(coronaTint, vec3(1.), exp(-outside*55.)*.55);
-    gl_FragColor = vec4(fire*1.5, (rim * 1.15 + halo * 1.05) * presence);
+    gl_FragColor = vec4(fire*2.1, (rim * 1.4 + halo * 1.3) * presence);
     #include <colorspace_fragment>
   }
 `;
@@ -318,7 +319,7 @@ function VirgoNode({ index, flight, glow, solarMap = null, support = false }: Fl
     <mesh onClick={event => event.stopPropagation()} onPointerOver={event => event.stopPropagation()}><sphereGeometry args={[radius, support ? 16 : 48, support ? 12 : 32]} /><primitive object={photosphere} attach="material" /></mesh>
     {!support && [0, 1].map(i => <mesh key={i}><ringGeometry args={[radius * 1.06, radius * 1.06 + .025, 80]} /><meshBasicMaterial color={star.color} transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} /></mesh>)}
     {!support && <StellarPlasma index={index} radius={radius} color={coolStar ? '#8caeff' : star.color} flight={flight} glow={glow} />}
-    <mesh ref={corona} material={coronaMaterial}><sphereGeometry args={[radius * 1.36, support ? 24 : 64, support ? 16 : 48]} /></mesh>
+    <mesh ref={corona} material={coronaMaterial}><sphereGeometry args={[radius * 1.55, support ? 24 : 64, support ? 16 : 48]} /></mesh>
   </group>;
 }
 
@@ -595,7 +596,6 @@ interface SceneProps {
   selectedProject: number | null;
   selectedSkill: number | null;
   selectedOrigin?: number | null;
-  portalRef: RefObject<HTMLButtonElement>;
   blackHoleControlRef: RefObject<HTMLDivElement>;
   blackHoleOrbit: RefObject<BlackHoleOrbitState>;
   labelsRef: RefObject<HTMLDivElement>;
@@ -621,7 +621,7 @@ export function createFlightPaths(mobile = false) {
   });
 }
 
-function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, selectedProject, selectedSkill, selectedOrigin, portalRef, blackHoleControlRef, blackHoleOrbit, labelsRef, entering, paused, readingFocus, showcaseApproach, onPlanetSelect, onPlanetHover }: SceneProps) {
+function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, selectedProject, selectedSkill, selectedOrigin, blackHoleControlRef, blackHoleOrbit, labelsRef, entering, paused, readingFocus, showcaseApproach, onPlanetSelect, onPlanetHover }: SceneProps) {
   const { camera, size, invalidate } = useThree();
   const mobile = size.width < 700;
   const [solarMap, setSolarMap] = useState<THREE.Texture | null>(null);
@@ -958,33 +958,22 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
       path.setAttribute('d', d); accent.style.opacity = String(alpha);
     }
     projection.copy(gate).project(camera);
-    if (portalRef.current) {
-      portalRef.current.style.left = `${(projection.x * .5 + .5) * size.width}px`;
-      portalRef.current.style.top = `${(-projection.y * .5 + .5) * size.height}px`;
+    if (blackHoleControlRef.current) {
+      const control = blackHoleControlRef.current;
+      control.style.left = `${(projection.x * .5 + .5) * size.width}px`;
+      control.style.top = `${(-projection.y * .5 + .5) * size.height}px`;
       const gateY = projection.y;
-      // Fit the label below the lensed lower disk at its actual projected size.
+      // Keep the drag region sized to the projected disk independently of entry UI.
       const belowView = smooth(.18, .55, -(blackHoleOrbit.current?.elevation ?? .13));
       const diskZoom = (mobile ? BLACK_HOLE_SCALE.mobile : BLACK_HOLE_SCALE.desktop) / .62;
       projection.set(0, (23.6 + belowView * 5.8) * diskZoom * (mobile ? .78 : 1), 0).applyQuaternion(camera.quaternion).add(gate).project(camera);
-      const labelOffset = Math.min(Math.abs(projection.y - gateY) * size.height / 2 + 30,
-        // The centred 44px control keeps a 12px viewport inset.
+      const dragExtent = Math.min(Math.abs(projection.y - gateY) * size.height / 2 + 30,
         size.height - (-gateY * .5 + .5) * size.height - 34);
-      portalRef.current.style.setProperty('--portal-label-offset', `${labelOffset}px`);
-      if (blackHoleControlRef.current) {
-        const control = blackHoleControlRef.current;
-        control.style.left = portalRef.current.style.left;
-        control.style.top = portalRef.current.style.top;
-        control.style.width = `${Math.min(size.width * .92, (labelOffset - 30) * 3.9)}px`;
-        control.style.height = `${Math.min(size.height * .74, (labelOffset - 30) * 2)}px`;
+        control.style.width = `${Math.min(size.width * .92, (dragExtent - 30) * 3.9)}px`;
+        control.style.height = `${Math.min(size.height * .74, (dragExtent - 30) * 2)}px`;
         const enabled = position >= 5.98 && !paused && !entering;
         control.style.visibility = enabled ? 'visible' : 'hidden';
         control.style.pointerEvents = enabled && !mobile ? 'auto' : 'none';
-      }
-      const portalOpacity = flight.exit > 0 ? 0 : (flight.reduced ? (flight.position >= 5.95 ? 1 : 0) : smooth(5.94, 5.98, flight.position));
-      portalRef.current.style.opacity = String(portalOpacity);
-      // Only the visible label handles entry; the core belongs to orbit dragging.
-      portalRef.current.style.pointerEvents = 'none';
-      portalRef.current.style.visibility = portalOpacity > 0.01 ? 'visible' : 'hidden';
     }
     labels.forEach((label, i) => {
       if (mobile || i !== selectedProject || flight.projects < .9 || paused || entering) { label.style.opacity = "0"; return; }

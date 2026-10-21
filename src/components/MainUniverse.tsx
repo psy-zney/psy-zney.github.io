@@ -30,7 +30,7 @@ export function MainUniverseSky({ opacity = 1, animated = true, brightness, rota
   const [resource,setResource] = useState<SkyResource | null>(null);
   const mesh = useRef<THREE.Mesh>(null);
   const { invalidate, gl } = useThree();
-  const material = useMemo(() => new THREE.MeshBasicMaterial({side:THREE.DoubleSide,depthTest:false,depthWrite:false,toneMapped:false,color:new THREE.Color().setScalar(1.65)}),[]);
+  const material = useMemo(() => new THREE.MeshBasicMaterial({side:THREE.DoubleSide,depthTest:false,depthWrite:false,toneMapped:false,color:new THREE.Color().setScalar(1.65*.82*.8)}),[]);
   const foreground = useMemo(() => {
     const geometry=new THREE.BufferGeometry(),positions=[],sizes=[];
     const random=(n:number)=>{const v=Math.sin(n*127.1+31.7)*43758.5453;return v-Math.floor(v);};
@@ -63,7 +63,7 @@ export function MainUniverseSky({ opacity = 1, animated = true, brightness, rota
   useFrame(({camera},delta) => {
     if (!mesh.current) return;
     mesh.current.position.copy(camera.position);
-    const exposure = brightness?.() ?? 1.65;
+    const exposure = (brightness?.() ?? 1.65) * .82 * .8;
     material.color.setScalar(exposure);
     if(animated)foreground.material.uniforms.clock.value+=Math.min(delta,.05);
     foreground.material.uniforms.pixelRatio.value=gl.getPixelRatio();foreground.material.uniforms.opacity.value=opacity*Math.min(1,exposure/1.65);

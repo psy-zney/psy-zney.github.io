@@ -1,5 +1,9 @@
 # Chuyển cảnh đã chốt: luôn bay thẳng
 
+21/10: cuộn dọc lên tại selector 1/9 dùng returnThroughHole như nút Back,
+giữ passage DOM dọc ngược, camera thẳng và vị trí Contact 6. Không thoát
+bằng cuộn ngang hoặc đà gesture vừa tới sản phẩm đầu.
+
 21/10: tới 9/9, gesture cuộn dọc xuống kế tiếp cuộn native tới Contact
 bên dưới selector. Giữ đà của gesture vừa chọn 9/9; cuộn ngang dừng ở biên.
 

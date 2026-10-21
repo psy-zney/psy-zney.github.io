@@ -147,7 +147,7 @@ try{
     await page.mouse.wheel(0,-900);
     await page.waitForFunction(()=>document.querySelector('.worlds-showcase').scrollTop<2);
     await page.waitForFunction(()=>document.querySelector('.contact-landing').dataset.revealed==='false');
-    const hiddenForest=await page.locator('.contact-forest-walker').evaluate(el=>({state:getComputedStyle(el).animationPlayState,name:getComputedStyle(el).animationName}));
+    const hiddenForest=await page.locator('.horizon-tree-track').evaluate(el=>({state:getComputedStyle(el).animationPlayState,name:getComputedStyle(el).animationName}));
     if(name==='reduced')assert.equal(hiddenForest.name,'none','Reduced motion disables forest animation entirely');
     else assert.equal(hiddenForest.state,'paused','Forest pauses outside Contact');
     await worlds.getByRole('button',{name:'Let’s connect',exact:false}).click();
@@ -157,16 +157,48 @@ try{
     assert.equal(entrance,name==='reduced'?'none':'contact-content-arrive','Contact reveals on entry and respects reduced motion');
     await capture('contact-arriving');
     await page.waitForFunction(()=>Number(getComputedStyle(document.querySelector('.contact-landing footer')).opacity)>.99);
-    const fox=page.locator('.contact-forest-walker');
-    const foxBefore=await fox.boundingBox();await page.waitForTimeout(250);
-    const foxAfter=await fox.boundingBox();
-    if(name==='reduced')assert(Math.abs(foxAfter.x-foxBefore.x)<.1,'Reduced motion keeps the fox still');
-    else assert(foxAfter.x>foxBefore.x+.2,'The fox walks across the forest while Contact is visible');
-    assert.equal(await fox.evaluate(el=>getComputedStyle(el).pointerEvents),'none','Forest animation never blocks contact links');
+    const cat=page.locator('.contact-forest-walker');
+    assert.equal(await cat.locator('.contact-cat-art').count(),1,'The forest animal is the cat illustration');
+    const trees=page.locator('.horizon-tree-track'),leg=page.locator('.cat-leg').first();
+    const treesBefore=await trees.boundingBox(),legBefore=await leg.evaluate(el=>getComputedStyle(el).transform);
+    const catBefore=await cat.boundingBox();await page.waitForTimeout(250);
+    assert(Math.abs(catBefore.x+catBefore.width/2-options.viewport.width/2)<1,'The cat is horizontally centered on every viewport');
+    const catAfter=await cat.boundingBox();
+    const treesAfter=await trees.boundingBox(),legAfter=await leg.evaluate(el=>getComputedStyle(el).transform);
+    assert(Math.abs(catAfter.x-catBefore.x)<.1,'The animal stays in place');
+    if(name==='reduced'){
+      assert(Math.abs(treesAfter.x-treesBefore.x)<.1,'Reduced motion keeps the forest still');
+      assert.equal(legAfter,legBefore,'Reduced motion stops the walking cycle');
+    }else{
+      const duration=await leg.evaluate(el=>parseFloat(getComputedStyle(el).animationDuration));
+      assert(Math.abs(duration-.7/1.5)<.0001,'The cat walks at 1.5 times the previous speed');
+      assert(treesAfter.x<treesBefore.x-.2,'Trees drift slowly behind the stationary animal');
+      assert.notEqual(legAfter,legBefore,'The stationary animal keeps stepping');
+    }
+    assert.equal(await cat.evaluate(el=>getComputedStyle(el).pointerEvents),'none','Forest animation never blocks contact links');
     await capture('contact-landing');
     await page.getByRole('link',{name:'Read CV',exact:true}).click();
     const dialog=page.locator('.virgo-dialog[open]');await dialog.waitFor();
     await dialog.getByRole('button',{name:'Close',exact:true}).click();await worlds.waitFor({state:'visible'});
+    await load('#/showcase/beatsync');await worlds.waitFor();await worlds.focus();await worlds.press('Home');
+    await page.waitForURL('**/#/showcase/mpoly');
+    await page.mouse.move(8,options.viewport.height*.5);
+    await page.mouse.wheel(-160,0);await page.waitForTimeout(250);
+    assert(page.url().endsWith('#/showcase/mpoly'),'Horizontal input stays bounded at the first world');
+    await worlds.focus();await worlds.press('ArrowRight');await page.waitForURL('**/#/showcase/beatsync');
+    await page.mouse.wheel(0,-120);await page.waitForURL('**/#/showcase/mpoly');
+    await page.mouse.wheel(0,-80);
+    assert(page.url().endsWith('#/showcase/mpoly'),'Momentum reaching 1/9 cannot accidentally leave showcase');
+    await page.waitForTimeout(250);await page.mouse.wheel(0,-120);
+    await page.waitForURL('**/#/contact');await page.locator('.page-passage').waitFor({state:'detached'});
+    assert.equal(await worlds.count(),0,'A new upward gesture at 1/9 returns through the black hole');
+    await page.waitForFunction(()=>Number(document.querySelector('.virgo-page').style.getPropertyValue('--flight-progress'))>.999);
+    assert.equal(await page.locator('.virgo-star-portal').count(),0,'The redundant entry button stays removed');
+    assert(await page.locator('.virgo-black-hole-orbit').isVisible(),'The black-hole orbit remains available after returning');
+    await page.mouse.move(8,options.viewport.height*.5);await page.mouse.wheel(0,120);
+    await page.waitForURL('**/#/showcase/mpoly');await page.locator('.page-passage').waitFor({state:'detached'});
+    assert(await worlds.isVisible(),'Scrolling still enters showcase without an arrow button');
+    await capture('worlds-return-hole');
     if(name==='desktop'||name==='phone'){
       await load('#/workspace');await page.getByRole('button',{name:'Contents',exact:true}).click();
       await page.locator('.room-contents').waitFor({state:'visible'});await capture('workspace-contents');

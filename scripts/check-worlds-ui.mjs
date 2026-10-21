@@ -191,8 +191,8 @@ try {
       await rollback.waitFor({state:'detached'});
     }
     await page.waitForURL('**/#/contact');
-    const portal = page.getByRole('button',{name:'Explore worlds through the black hole',exact:true});
-    await portal.waitFor();
+    const orbit = page.locator('.virgo-black-hole-orbit');
+    await orbit.waitFor();
     await page.waitForFunction(() => Number(document.querySelector('.virgo-page')?.style.getPropertyValue('--flight-progress'))*6 > 5.8);
     const contactPose = await page.locator('.virgo-page').getAttribute('data-camera-pose');
     await page.waitForFunction(()=>Number(document.querySelector('.virgo-page')?.style.getPropertyValue('--flight-progress'))*6>5.995);
@@ -244,7 +244,7 @@ try {
     await page.locator('.page-passage').waitFor({state:'detached'});
     if (reducedMotion !== 'reduce') {
       // Cancel during the outward flight, preserving the current coordinate.
-      await portal.locator('.virgo-portal-label').click();
+      await page.mouse.move(8,height/2);await page.mouse.wheel(0,120);
       await page.waitForFunction(() => Number(document.querySelector('.page-passage')?.getAttribute('data-progress')) > .35);
       if (name === 'phone') {
         await page.locator('.page-passage').evaluate(target => {
@@ -260,7 +260,7 @@ try {
       assert(pose.split(',').map(Number).every(Number.isFinite), 'Rollback restores a valid camera pose');
     }
     if(name==='desktop'&&reducedMotion!=='reduce') {
-      await portal.locator('.virgo-portal-label').click();
+      await page.mouse.move(8,height/2);await page.mouse.wheel(0,120);
       await page.waitForFunction(()=>Number(document.querySelector('.page-passage')?.dataset.progress)>.1);
       await page.evaluate(()=>{location.hash='#/skills';});
       await page.locator('.page-passage').waitFor({state:'detached'});
