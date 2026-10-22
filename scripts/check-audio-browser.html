@@ -7,23 +7,30 @@
   button{font:inherit;padding:12px 24px;cursor:pointer}pre{white-space:pre-wrap}a{color:#a4d2ff}
 </style>
 <h1>Kiểm tra âm nền và SFX</h1>
-<p>Đo tín hiệu Web Audio thật sau một thao tác bấm. Bài kiểm tra phát nền và lần lượt 13 hiệu ứng, trong khoảng 20 giây.</p>
+<p>Đo bản nhạc 75 BPM, bốn cảnh và từng hiệu ứng bằng Web Audio thật sau một thao tác bấm.</p>
 <button disabled>Chạy kiểm tra âm thanh</button>
 <pre role="status">Đang chuẩn bị…</pre>
 <p><a href="/">Về portfolio</a></p>
 <script type="module">
   // Test-only page served by Vite; not included in the production entry.
-  const NativeContext=window.AudioContext, contexts=[];
+  const NativeContext=window.AudioContext, contexts=[], measurements={};
   window.AudioContext=class extends NativeContext {
-    constructor(){super();contexts.push(this);}
-    createGain(){
-      const node=super.createGain();
-      // Retain ~170 ms at 48 kHz so a busy UI thread cannot miss an 18 ms cue.
-      if(!this.meter){this.meter=super.createAnalyser();this.meter.fftSize=8192;node.connect(this.meter);}
+    constructor(){super();contexts.push(this);this.sources=new Set();this.starts=[];this.buffers=0;}
+    createBuffer(...args){this.buffers++;return super.createBuffer(...args);}
+    createBufferSource(){
+      const node=super.createBufferSource(),start=node.start.bind(node);
+      node.start=(...args)=>{this.sources.add(node);this.starts.push({loop:node.loop,offset:args[1]??0});return start(...args);};
+      node.addEventListener('ended',()=>this.sources.delete(node));return node;
+    }
+    createDynamicsCompressor(){
+      const node=super.createDynamicsCompressor();
+      // Measure the actual output after compression, with history for short cues.
+      this.meter=super.createAnalyser();this.meter.fftSize=8192;node.connect(this.meter);
       return node;
     }
   };
-  const {portfolioAudio:audio}=await import('/src/utils/portfolioAudio.ts');
+  const {portfolioAudio:audio,PortfolioAudioSystem}=await import('/src/utils/portfolioAudio.ts');
+  const {renderPortfolioScore,renderPortfolioCue}=await import('/src/utils/portfolioSoundDesign.ts');
   const button=document.querySelector('button'), status=document.querySelector('pre');
   const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   const results=[];
@@ -44,37 +51,89 @@
   button.onclick=async()=>{
     button.disabled=true;
     try{
+      const unlockAt=performance.now();
       audio.setMuted(false);audio.setScene('intro');audio.unlockContext();
-      await wait(4800);
+      measurements.firstUnlockMs=performance.now()-unlockAt;
+      const readyDeadline=performance.now()+15000;
+      while(!contexts[0]?.starts.some(start=>start.loop) && performance.now()<readyDeadline)await wait(20);
+      assert(contexts[0]?.starts.filter(start=>start.loop).length===2,'Worker did not prepare exactly two score stems');
+      measurements.scoreReadyMs=performance.now()-unlockAt;
+      await wait(1200);
       assert(contexts[0]?.state==='running','Context did not unlock');
+      const ctx=contexts[0], score=renderPortfolioScore(ctx);
+      for(const [name,buffer] of Object.entries(score)){
+        assert(buffer.numberOfChannels===2 && Math.abs(buffer.duration-51.2)<.001,`${name}: stereo score duration`);
+        let energy=0,maximum=0,seam=0;
+        for(let channel=0;channel<2;channel++){
+          const samples=buffer.getChannelData(channel);
+          for(const sample of samples){assert(Number.isFinite(sample),`${name}: nonfinite sample`);energy+=sample*sample;maximum=Math.max(maximum,Math.abs(sample));}
+          seam=Math.max(seam,Math.abs(samples[0]-samples.at(-1)));
+        }
+        assert(maximum<.8 && seam<.035,`${name}: clipping or discontinuous loop: ${maximum}, ${seam}`);
+        measurements[name]={rms:Math.sqrt(energy/(buffer.length*2)),peak:maximum,seam};
+      }
+      log('PASS hai stem stereo 51,2 giây: hữu hạn, có headroom, nối vòng liên tục');
       const background=await peak(300);
-      assert(background>.006 && background<.15,`Background level outside budget: ${background}`);
+      assert(background>.02 && background<.15,`Background level outside budget: ${background}`);
+      measurements.intro=background;
       log(`PASS nền intro: RMS peak ${background.toFixed(5)}`);
-      audio.stopCosmicAmbient();await wait(200);
+      const stemStarts=ctx.starts.length;
+      for(const scene of ['journey','showcase','contact']){
+        audio.setScene(scene);await wait(1600);const level=await peak(250);
+        assert(level>.012 && level<.15,`${scene}: scene music missing or clipping`);measurements[scene]=level;
+        assert(ctx.starts.length===stemStarts,`${scene}: scene changes must not restart music`);
+        log(`PASS ${scene}: RMS peak ${level.toFixed(5)}, giữ nhịp khi đổi cảnh`);
+      }
+      audio.stopCosmicAmbient();await wait(500);
       for(const cue of ['hover','click','warp','drawerOpen','drawerClose','modalOpen','modalClose','singularityEnter','singularityExit','cardSlide','muteOn','muteOff','loaderComplete']){
-        audio.playSfx(cue);const level=await peak(700);
-        assert(level>.0003 && level<.3,`${cue} missing or clipping: ${level}`);
+        const buffer=renderPortfolioCue(ctx,cue),samples=buffer.getChannelData(0);
+        assert(Math.abs(samples[0])<.00001 && Math.abs(samples.at(-1))<.00001,`${cue}: click at buffer boundary`);
+        audio.playSfx(cue);const level=await peak(Math.ceil(buffer.duration*1000)+220);
+        assert(level>.001 && level<.3,`${cue} missing or clipping: ${level}`);measurements[cue]=level;
         log(`PASS ${cue}: RMS peak ${level.toFixed(5)}`);
       }
       audio.playTypingTick();assert(await peak(150)>.0003,'Typing cue missing');log('PASS typing');
       audio.playScroll(120);assert(await peak(200)>.001,'Scroll cue missing');log('PASS scroll');
+      audio.stopCosmicAmbient();await wait(100);
+      const beforeRepeated=ctx.starts.length;
+      for(let i=0;i<1000;i++)audio.playSfx('click');
+      assert(ctx.starts.length===beforeRepeated+1,'Delegated/repeated clicks must be deduplicated');
+      await wait(250);assert(ctx.sources.size===0,'One-shot nodes must be released');
+      for(const cue of ['warp','singularityEnter','singularityExit','modalOpen','loaderComplete'])audio.playSfx(cue);
+      for(let i=0;i<24;i++){audio.playSfx('drawerOpen');audio.playSfx('cardSlide');await wait(50);assert(ctx.sources.size<=12,'SFX voice pool exceeded');}
+      log('PASS chặn click trùng / giới hạn số âm cùng lúc');
       // Use a short window to measure the current signal, without pre-mute history.
       contexts[0].meter.fftSize=256;
       audio.startCosmicAmbient();await wait(1000);audio.setMuted(true);await wait(90);
       assert(await peak(100)<.0001,'Mute must silence all buses within 100 ms');log('PASS mute');
+      assert(ctx.sources.size===0,'Mute must stop music and pending tails');
       audio.setMuted(false);audio.unlockContext();await wait(300);
       assert(await peak(100)>.001,'Unmute did not recover');log('PASS unmute');
       audio.setActive(false);await wait(90);
       audio.setMuted(false);audio.unlockContext();audio.playSfx('click');
       assert(await peak(100)<.0001,'Workspace must not restart portfolio audio');log('PASS inactive workspace isolation');
-      audio.setActive(true);await wait(4800);
+      const buffersBeforeResume=ctx.buffers;
+      audio.setActive(true);await wait(1200);
       assert(await peak(100)>.006,'Returning to portfolio did not restore ambient');log('PASS return to portfolio');
+      assert(ctx.buffers===buffersBeforeResume,'Returning must reuse cached score buffers');
+      assert(ctx.starts.at(-1).offset>0,'Returning must resume the score playhead');
+      Object.defineProperty(document,'hidden',{configurable:true,value:true});
+      document.dispatchEvent(new Event('visibilitychange'));await wait(100);
+      assert(ctx.sources.size===0 && await peak(100)<.0001,'Hidden tab must stop music and all one-shots');
+      audio.playSfx('warp');audio.playTypingTick();assert(ctx.sources.size===0,'Hidden cues must be discarded');
+      delete document.hidden;document.dispatchEvent(new Event('visibilitychange'));await wait(1200);
+      assert(ctx.sources.size===2 && await peak(100)>.006,'Visible tab must recover two cached stems without cue backlog');
+      log('PASS ẩn/hiện tab, bỏ âm trong thời gian ẩn');
       audio.dispose();await wait(50);assert(contexts[0].state==='closed','Context not closed');
+      const cancelled=new PortfolioAudioSystem();cancelled.unlockContext();cancelled.dispose();await wait(100);
+      assert(contexts[1].state==='closed' && contexts[1].starts.length===0,'Dispose must terminate pending score synthesis');
+      log('PASS hủy worker khi dispose trước khi nhạc sẵn sàng');
       const count=contexts.length;window.dispatchEvent(new Event('pointerdown'));await wait(30);
       assert(contexts.length===count,'Dispose recreated a context');
       log('PASS dispose / no new context');log('PASS ALL — chất lượng nghe trên thiết bị thật vẫn cần kiểm tra.');
       document.documentElement.dataset.result='pass';
     }catch(error){log(`FAIL ${error.message}`);document.documentElement.dataset.result='fail';audio.dispose();}
+    finally{window.audioMeasurements=measurements;}
   };
 </script>
 </html>

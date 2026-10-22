@@ -1,0 +1,7 @@
+{
+  ".worlds-header": { "x": 46.078125, "y": 28, "width": 1347.84375, "height": 46 },
+  ".worlds-gate.is-selected .worlds-window": { "x": 59.390625, "y": 226, "width": 774, "height": 430 },
+  ".worlds-slide[aria-hidden=\"false\"] .worlds-caption": { "x": 936, "y": 393.9609375, "width": 432, "height": 214.796875 },
+  ".worlds-footer": { "x": 565, "y": 809, "width": 310, "height": 56 },
+  ".worlds-heading": { "x": -10584, "y": 299.234375, "width": 432, "height": 72.71875 }
+}

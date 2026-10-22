@@ -1699,11 +1699,6 @@
   .virgo-skills-panel .virgo-skill-tools { margin-top: 8px; }
   .virgo-overlay-panel[aria-labelledby="virgo-contact-title"]:not(.virgo-cosmos):not(.virgo-prologue-hero) { padding-top: 39dvh; }
 }
-@media (max-height: 599px) and (orientation: landscape) {
-  .virgo-page .virgo-narrative .virgo-narrative-line.virgo-narrative-left[class*="virgo-placement-"]:not(.virgo-placement-middle) {
-    top: 72px; left: 24px; right: 52%; width: auto; text-align: left;
-  }
-}
 .virgo-bare-label { font-size: 9px; letter-spacing: .17em; margin-bottom: 18px !important; }
 .virgo-project-link { min-height: 54px; padding-block: 10px; grid-template-columns: 16px 1fr 18px; }
 .virgo-project-link > small { display: none; }

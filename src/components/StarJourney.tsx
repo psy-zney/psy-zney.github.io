@@ -285,10 +285,10 @@ export function DepartureRoutes({
       </div>
       <div className="departure-shortcuts">
         <a href="#/cv/web">
-          CV · Web <ArrowRight size={14} />
+          CV · Full Stack <ArrowRight size={14} />
         </a>
         <a href="#/cv/mobile">
-          CV · Mobile <ArrowRight size={14} />
+          CV · Software <ArrowRight size={14} />
         </a>
         <button onClick={onEnterWorkspace}>
           <OrbitIcon />

@@ -2,6 +2,7 @@
 import { projects, capabilities } from './portfolio';
 import { PROJECT_RADII, SKILL_RADII } from './celestialRegistry';
 export const BLACK_HOLE_SCALE = { desktop: .87, mobile: .67 } as const;
+export const LOCAL_SYSTEM_SCALE = { desktop: 1.06, mobile: .92 } as const;
 const orbitLength = Math.hypot(.55, .34);
 export const ORBIT_PLANE = { vertical: .55 / orbitLength, depth: .34 / orbitLength } as const;
 
@@ -16,7 +17,7 @@ export const SPACE_LAYOUT = {
   mobileCamera: { rise: 16, distance: 180, framingY: 25 },
 } as const;
 
-// Phone systems are rendered at .72 scale; keep the inner path outside the
+// Keep the inner phone path outside the
 // unscaled stellar disk instead of shrinking it into the star.
 export function orbitRadii(skills = false, mobile = false) {
   return mobile ? (skills ? [30, 50] : [30, 50, 78]) : [...(skills ? SPACE_LAYOUT.skillOrbits : SPACE_LAYOUT.projectOrbits)];

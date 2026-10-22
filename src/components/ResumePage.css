@@ -1,0 +1,69 @@
+.reader-body > .resume-page { max-width: none; }
+.resume-page > .document-layout > .resume-paper { max-width: 794px; padding: 0; border-radius: 0; background: white; color: black; }
+.resume-document { position: relative; width: 100%; overflow: hidden; background: white; }
+.resume-document iframe { display: block; border: 0; background: white; transform-origin: top left; }
+.resume-page .resume-toolbar, .resume-page .resume-toolbar > div { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.resume-page .resume-toolbar nav { display: flex; flex-wrap: wrap; }
+.resume-page .resume-toolbar a, .resume-page .resume-toolbar button { min-height: 44px; }
+
+/* The CV workspace stays light inside every public/workspace glass shell. */
+@media screen {
+  .resume-page[data-cv-document] {
+    display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'tracks tools' 'document document';align-items:center;gap:12px;
+    padding: 22px 24px 28px;
+    border: 1px solid #e6e9ee;
+    border-radius: 18px;
+    background: #fff;
+    color: #202633;
+    color-scheme: light;
+    font: 400 14px/1.6 Outfit, system-ui, sans-serif;
+  }
+  .resume-page[data-cv-document] .resume-toolbar { grid-area:tools;margin:0;gap:8px; }
+  .resume-page[data-cv-document] .resume-tracks{grid-area:tracks;justify-self:start;max-width:100%}
+  .resume-page[data-cv-document]>.document-layout{grid-area:document}
+  .resume-page[data-cv-document] .resume-toolbar>div{display:flex;justify-content:flex-end;align-items:center;gap:8px;width:100%}
+  .resume-page[data-cv-document] .resume-more{position:relative;flex:none;z-index:9}
+  .resume-page[data-cv-document] .resume-more summary{display:grid;place-items:center;list-style:none;width:44px;height:44px;border:1px solid #dce1e9;border-radius:10px;background:#f8f9fc;color:#26344a;cursor:pointer}
+  .resume-more summary::-webkit-details-marker{display:none}
+  .resume-page[data-cv-document] .resume-more>div{position:absolute;top:calc(100% + 8px);right:0;display:flex;flex-direction:column;gap:4px;min-width:190px;padding:8px;border:1px solid #dce1e9;border-radius:13px;background:#fff;box-shadow:0 12px 30px #17243a22}
+  .resume-page[data-cv-document] .resume-more a{justify-content:flex-start;background:transparent;border:0;white-space:nowrap}
+  .resume-page[data-cv-document] .resume-language-note{display:none}
+  .resume-page[data-cv-document] .resume-toolbar :is(a, button) {
+    min-height: 44px;
+    padding: 9px 12px;
+    border: 1px solid #dce1e9;
+    border-radius: 9px;
+    background: #f8f9fc;
+    box-shadow: none;
+    color: #26344a;
+    font: 400 14px/1.4 Outfit, system-ui, sans-serif;
+    text-decoration: none;
+  }
+  .resume-page[data-cv-document] .resume-toolbar > a { padding-left: 0; background: none; border-color: transparent; color: #566175; }
+  .resume-page[data-cv-document] .resume-toolbar .primary-link {
+    background: #223149;
+    border-color: #223149;
+    color: #fff;
+    font-weight: 500;
+  }
+  .resume-page[data-cv-document] .resume-toolbar :is(a, button):hover { border-color: #9aa8bb; }
+  .resume-page[data-cv-document] .resume-tracks { border-color: #dfe4eb; background: #f2f4f8; }
+  .resume-page[data-cv-document] .resume-tracks > a { color: #5b6475; font-size: 14px; }
+  .resume-page[data-cv-document] .resume-tracks > a[aria-current] { color: #1d293b; background: #fff; box-shadow: 0 1px 4px #26344a18; }
+  .resume-page[data-cv-document] .resume-language-note { margin: 12px 0 0; color: #626b7a; font: 400 13px/1.6 Outfit, sans-serif; }
+  .resume-page[data-cv-document] .document-layout { margin-top: 12px; }
+  .resume-page[data-cv-document] .document-contents { margin-bottom: 12px; }
+  .resume-page[data-cv-document] .document-tabs button { color: #566175; }
+  .resume-page[data-cv-document] .document-tabs button:hover { color: #17273e; background: #eef2f7; }
+  .resume-page[data-cv-document] .contents-trigger { border-color: #dce1e9; background: #f6f8fb; color: #334158; }
+  .resume-page[data-cv-document] .document-contents.is-open .contents-navigation { border-color: #dce1e9; background: #fff; color: #26344a; box-shadow: 0 12px 40px #0d172d26; }
+  .resume-page[data-cv-document] > .document-layout > .resume-paper { background: #fff; color: #000; box-shadow: none; border-top: 1px solid #e5e8ed; border-radius: 0; }
+  .resume-page[data-cv-document] :is(a, button):focus-visible { outline: 2px solid #516b94; outline-offset: 3px; }
+  .resume-page[data-cv-document] [disabled] { opacity: .5; cursor: default; }
+}
+@media screen and (max-width: 700px), screen and (max-height: 600px) {
+  .resume-page[data-cv-document] { padding: 12px 10px 16px; border-radius: 13px;grid-template-columns:minmax(0,1fr);grid-template-areas:'tools' 'tracks' 'document';gap:10px; }
+  .resume-page[data-cv-document] .resume-toolbar :is(a, button) { padding: 9px 8px; font-size: 12px; }
+  .resume-page[data-cv-document] .resume-toolbar > a { padding-left: 0; }
+  .resume-page[data-cv-document] .resume-tracks > a { padding: 8px 5px; font-size: 12px; }
+}

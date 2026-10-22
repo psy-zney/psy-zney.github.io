@@ -1,7 +1,7 @@
 /** These page transitions never supply coordinates to the interstation camera. */
 const clamp = (value: number) => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
 const ease = (value: number) => { const p = clamp(value); return p * p * (3 - 2 * p); };
-export const SHOWCASE_PASSAGE_DURATION = 1.1;
+export const SHOWCASE_PASSAGE_DURATION = 1.65;
 export const SHOWCASE_HANDOFF = .04;
 
 export function universeFrame(progress: number) {
@@ -19,6 +19,12 @@ export function introTunnelFrame(progress: number) {
 export function showcaseSlideFrame(progress: number) {
   const p = clamp(progress);
   return { progress: p, slide: ease((p - SHOWCASE_HANDOFF) / (1 - SHOWCASE_HANDOFF)), showcase: p >= SHOWCASE_HANDOFF };
+}
+
+/** A brief opening of actual preview windows, sampled on the reversible slide. */
+export function showcaseArrivalFrame(progress: number) {
+  const p = clamp(progress);
+  return { opacity: ease(p / .12) * (1 - ease((p - .68) / .32)), open: ease((p - .04) / .42) };
 }
 
 export function rotateUniversePoint(x: number, y: number, z: number, yaw: number, pitch: number) {

@@ -75,8 +75,9 @@ export function flightSample(position: number, reduced = false, elapsed = 0) {
 export type FlightSample = ReturnType<typeof flightSample>;
 
 /** The journey keeps one lens, including the classroom approach. */
-export function flightFieldOfView(_position: number, mobile = false, _reduced = false, _exit = 0) {
-  return mobile ? 49 : 46;
+export function flightFieldOfView(position: number, mobile = false, _reduced = false, _exit = 0) {
+  const reading=smooth(1.82,1.94,position)*(1-smooth(5.17,5.30,position));
+  return mobile ? 49-7*reading : 46;
 }
 
 export function panelVisibility(index: number, position: number, reduced = false) {

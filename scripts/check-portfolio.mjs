@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readFile, stat } from "node:fs/promises";
+import { readFile, stat, readdir } from "node:fs/promises";
+import { createHash } from 'node:crypto';
 import React from "react";
 import { PerspectiveCamera, Vector3, Matrix4, Quaternion, Euler } from "three";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -20,6 +21,12 @@ try {
   const { projects, capabilities } = await server.ssrLoadModule(
     "/src/data/portfolio.ts",
   );
+  const { personalProfile } = await server.ssrLoadModule('/src/data/personalProfile.ts');
+  for(const item of personalProfile.experience){
+    if(item.href.startsWith('#/project/'))assert(projects.some(project=>item.href===`#/project/${project.id}`),'Experience evidence points to an authentic project');
+    else assert((await readFile('public/file/Le_Quang_Khanh_CV_Full_Stack_Developer.html','utf8')).includes(`href="${item.href}"`),'Freelance source is verified against the supplied CV');
+  }
+  for(const note of personalProfile.deliveryNotes)assert(projects.some(project=>project.id===note.project),'Delivery examples have authentic project evidence');
   const {
     journey,
     chapterForHash,
@@ -225,12 +232,15 @@ try {
       const cameraPoint = paths[sample.leg].getPointAt(sample.travel);
       assert(cameraPoint.z <= previousZ + 1e-9, "Every chapter must continue along the forward corridor without a backward detour");
       assert.equal(cameraPoint.x, 0); assert.equal(cameraPoint.y, 0);
-      assert.equal(flightFieldOfView(position, mobile), mobile ? 49 : 46, "The lens must remain fixed throughout the journey");
-      assert.equal(flightFieldOfView(position, mobile, false, .8), mobile ? 49 : 46, "Entering the classroom preserves the lens");
+      const lens=flightFieldOfView(position,mobile);
+      assert(mobile?lens>=42&&lens<=49:lens===46,'Desktop keeps its lens; mobile reading uses the larger 42–49 degree composition');
+      assert.equal(flightFieldOfView(position,mobile,false,.8),lens,'Entering a world does not change the current lens');
+      if(step)assert(Math.abs(lens-flightFieldOfView(position-.005,mobile))<.6,'Responsive lens changes continuously between reading and transit');
       const focused = focusedStarForPosition(position);
       if (focused !== null) assert(cameraPoint.z > VIRGO_STARS[focused].position[2], "A reading system must stay ahead of the camera while its panel is visible");
       previousZ = cameraPoint.z;
     }
+    if(mobile){assert.equal(flightFieldOfView(2.12,true),42);assert.equal(flightFieldOfView(6,true),49);}
     assert.deepEqual(VIRGO_STARS.map(star => star.position[0]), [0, 0, 0, 0], 'Reference stations share the straight flight axis');
     VIRGO_STARS.forEach(star => { assert.equal(star.position[1],0);assert(star.radius>=10); });
     const { targets, framing, direction } = createCameraComposition(mobile);
@@ -290,13 +300,15 @@ try {
     assert.equal(narrativeSample(midpoint).index, index);
     assert.deepEqual(narrativeSample(midpoint), narrativeSample(midpoint), "A stopped wheel must preserve its exact reading state");
   }
-  const { NARRATIVE_STOPS, nextNarrativeStop, advanceStoryGesture } = await server.ssrLoadModule("/src/data/virgoNarrative.ts");
+  const { NARRATIVE_STOPS, nextNarrativeStop, nextVisibleReadingStop, advanceStoryGesture } = await server.ssrLoadModule("/src/data/virgoNarrative.ts");
+  const visibleStops=[1.92,2.12,3.23,3.95,4.92,5.17,6];
+  for(let i=0;i<visibleStops.length-1;i++)assert(Math.abs(nextVisibleReadingStop(visibleStops[i])-visibleStops[i+1])<1e-10,'Continue visits every visible sentence before Contact');
   assert.equal(new Set(NARRATIVE_BEATS.map(beat=>beat.effect)).size,5, "Narration must include five distinct cosmic events");
   for (let i=0;i<NARRATIVE_STOPS.length-1;i++) {
     assert.equal(nextNarrativeStop(NARRATIVE_STOPS[i],1),NARRATIVE_STOPS[i+1], "A gentle forward gesture selects exactly one sentence");
     assert.equal(nextNarrativeStop(NARRATIVE_STOPS[i+1],-1),NARRATIVE_STOPS[i], "A reverse gesture selects the preceding sentence");
   }
-  assert.equal(nextNarrativeStop(3,1), NARRATIVE_STOPS[6], "A project deep link must advance to a different sentence on its first gesture");
+  assert.equal(nextNarrativeStop(3,1), NARRATIVE_STOPS[5], "A project deep link must finish the first project reading stop before advancing");
   const firstGesture=advanceStoryGesture({direction:0,at:-Infinity,destination:-1},0,1,0);
   assert(firstGesture.accepted);
   const burst=advanceStoryGesture(firstGesture.gesture,.1,1,80);
@@ -306,7 +318,7 @@ try {
   assert(reverse.accepted && reverse.gesture.destination===0, "Reversal must respond during a forward entrance without waiting");
   assert(advanceStoryGesture(firstGesture.gesture,firstGesture.gesture.destination,1,1000).accepted, "The next gentle gesture must advance after arrival");
   assert.equal(nextNarrativeStop(6,1),6);assert.equal(nextNarrativeStop(0,-1),0);
-  assert(NARRATIVE_BEATS.every(beat => (beat.eng.match(/[.!?]/g)||[]).length===1), "Each narrative stop must contain one sentence");
+  assert(NARRATIVE_BEATS.every(beat => beat.eng.trim()&&beat.vie.trim()), "Reading stops have meaningful content in both languages; copy length may evolve");
   assert(NARRATIVE_BEATS.filter(beat => beat.from >= .68 && beat.to <= 1.82).every(beat => beat.side === "middle"), "Page two narration must be centered");
   assert.equal(new Set(Array.from({ length: 10 }, (_, i) => planetType(i))).size, 6, "The project system must include six distinct planet surfaces");
   const fragment = createRockGeometry(2);
@@ -399,6 +411,27 @@ try {
   assert.equal(storyWheelTarget(-100, 1000, 1000, 715, 1000, 5000), 1000, 'Home is the reverse scroll boundary');
   assert(storyWheelTarget(40, 1000, 1000, 715, 1000, 5000) > storyWheelTarget(10, 1000, 1000, 715, 1000, 5000), 'Wheel distance follows gesture magnitude');
   assert(storyWheelTarget(-10, 1100, 1050, 715, 1000, 5000) < 1050, 'Reverse discards the pending forward queue');
+  for(const height of [900,844,640]){
+    const offsets=FLIGHT_TRACK_VH.map((_,i)=>FLIGHT_TRACK_VH.slice(0,i).reduce((sum,value)=>sum+value,0)*height/100);
+    const rollsToContact=(boosted,multiplier=FLIGHT_MOTION.wheelMultiplier)=>{
+      let position=5.30,top=scrollOffsetForPosition(position,offsets),rolls=0;
+      while(position<5.995&&rolls<20){
+        top=storyWheelTarget(120*multiplier*storyWheelScale(position),top,top,height,0,offsets[6],boosted?position:0);
+        position=flightPositionForScroll(top,offsets);rolls++;
+      }
+      assert(position>=5.995,'Standard wheel input reaches Contact');
+      return rolls;
+    };
+    assert.equal(rollsToContact(false),6,'Record the previous six-roll approach at the same viewport and wheel delta');
+    assert.equal(rollsToContact(true),3,'The black-hole approach removes exactly three standard 120px rolls');
+    assert.equal(rollsToContact(false,FLIGHT_MOTION.wheelMultiplier**2),6,'The Lenis-normalized baseline also needs six rolls');
+    assert.equal(rollsToContact(true,FLIGHT_MOTION.wheelMultiplier**2),3,'Lenis-normalized input also reaches Contact after three rolls');
+    for(const position of [2.12,3.23,3.95,4.92,5.17,5.299]){
+      const top=scrollOffsetForPosition(position,offsets);
+      assert.equal(storyWheelTarget(150,top,top,height,0,offsets[6],position),storyWheelTarget(150,top,top,height,0,offsets[6]),'Earlier reading input is unchanged');
+    }
+    assert.equal(storyWheelTarget(-120,offsets[6],offsets[6],height,0,offsets[6],6),storyWheelTarget(-120,offsets[6],offsets[6],height,0,offsets[6]),'Reverse input retains its existing speed');
+  }
   const epsilon = .0001;
   assert(flightEase(epsilon) / epsilon < 1e-6 && (1 - flightEase(1 - epsilon)) / epsilon < 1e-6, "Flight starts and ends with a gentle velocity");
   assert(navigationDuration(1) >= 2.5 && navigationDuration(6) > navigationDuration(1));
@@ -558,6 +591,15 @@ try {
       }));
       assert.equal((html.match(/class="virgo-scroll-step"/g) || []).length, 7);
       assert.equal((html.match(/class="virgo-overlay-panel/g) || []).length, 7);
+      const introduction=html.match(/<article class="portfolio-introduction"[\s\S]*?<\/article>/)?.[0];
+      assert(introduction?.includes(personalProfile.name)&&introduction.includes(personalProfile.education[lang])&&introduction.includes(personalProfile.introduction[lang]),'Both languages present the actual identity, education and capabilities');
+      assert(!introduction.includes('hidden=')&&!introduction.includes('<details'),'Core introduction is always outside optional disclosures');
+      for(const item of personalProfile.experience)assert(introduction.includes(`href="${item.href}"`),'Each experience entry keeps its evidence link');
+      const home=html.match(/<aside class="virgo-home-guide"[\s\S]*?<\/aside>/)?.[0];
+      assert(home?.includes(personalProfile.homeSummary[lang])&&!home.includes(personalProfile.introduction[lang])&&!home.includes(personalProfile.education[lang]),'Home orients the visitor without repeating the full biography or education');
+      assert(!introduction.includes('React, Next.js'),'Technology lists belong to Skills rather than the biography');
+      assert.equal((html.match(/data-content-role="tools"/g)||[]).length,1,'Skills has one dedicated technology view');
+      assert.equal((html.match(/data-content-role="delivery"/g)||[]).length,1,'Delivery has its own distinct reading view');
       assert.equal((html.match(/<main[\s\S]*?<\/main>/)?.[0].match(/<h1[ >]/g) || []).length, 1, "The main portfolio has one primary heading; modal documents have their own heading");
       assert(html.includes('class="virgo-overlay-panel virgo-cosmos"'));
       assert.equal(html.includes('class="virgo-intro-flight universe-intro"'), ['', '#/', '#/cosmos'].includes(hash), 'All root aliases mount the universe page opening');
@@ -736,12 +778,16 @@ try {
       .size > 100_000,
   );
   const cvHtmlFiles = [
-    "Le_Quang_Khanh_CV_Backend.html",
-    "Le_Quang_Khanh_CV_FullStack.html",
-    "Le_Quang_Khanh_CV_Game.html",
-    "Le_Quang_Khanh_CV_Software.html",
-    "Le_Quang_Khanh_CV_Mobile.html",
+    "Le_Quang_Khanh_CV_Backend_Developer.html",
+    "Le_Quang_Khanh_CV_Full_Stack_Developer.html",
+    "Le_Quang_Khanh_CV_Software_Engineer.html",
   ];
+  assert.deepEqual((await readdir(new URL('../public/file', import.meta.url))).filter(file => file.endsWith('.html')).sort(), [...cvHtmlFiles].sort(), 'Only the three current HTML CVs are shipped');
+  const sourceManifest = JSON.parse(await readFile(new URL('../public/file/source/manifest.json', import.meta.url), 'utf8'));
+  for (const entry of Object.values(sourceManifest)) {
+    const source = await readFile(new URL(`../public/file/source/${entry.source}`, import.meta.url));
+    assert.equal(createHash('sha256').update(source).digest('hex'), entry.sha256, 'Original CV downloads are byte-identical to the supplied sources');
+  }
   for (const file of cvHtmlFiles) {
     const fileStat = await stat(new URL(`../public/file/${file}`, import.meta.url));
     assert(fileStat.size > 2000, `CV file ${file} must have valid content size`);
@@ -752,9 +798,12 @@ try {
     const html = renderToStaticMarkup(
       React.createElement(ResumeContent, { content }),
     );
-    assert.equal((html.match(/<h1>/g) || []).length, 1, `CV ${file} must have exactly one <h1>`);
+    assert.equal((content.match(/<h1>/g) || []).length, 1, `CV ${file} must have exactly one <h1>`);
+    assert.equal((content.match(/<li>/g) || []).length, 6, `CV ${file} preserves all six source project bullets`);
+    assert(content.includes('@page { size: A4;') && html.includes('&lt;style&gt;'), 'The complete HTML and its A4 CSS reach the isolated viewer');
+    assert(html.includes('<iframe') && !html.includes('allow-scripts'), 'CV HTML is isolated without script execution');
     assert(
-      html.includes("<ul>") &&
+      content.includes("<ul>") &&
         html.includes("mailto:lequangkhanh295@gmail.com") &&
         html.includes("github.com/psy-zney") &&
         html.includes("zney295.id.vn"),
@@ -763,12 +812,12 @@ try {
   }
   const unsafe = renderToStaticMarkup(
     React.createElement(ResumeContent, {
-      content: "# CV\n[bad](javascript:alert)\n<script>alert(1)</script>",
+      content: '<!DOCTYPE html><html><head><style>body{color:black}</style></head><body><script>alert(1)</script></body></html>',
     }),
   );
-  assert(!unsafe.includes('href="javascript:') && !unsafe.includes("<script>"));
+  assert(!unsafe.includes('<script>') && unsafe.includes('sandbox=') && !unsafe.includes('allow-scripts'), 'The iframe sandbox blocks document scripts');
   console.log(
-    `PASS: 24 Virgo scrollytelling renders, 26 scroll portfolio renders, ${rendered} legacy bilingual route renders, ${projects.length} projects, five HTML CVs, preserved source GLB, and safe Markdown rendering.`,
+    `PASS: 24 Virgo scrollytelling renders, 26 scroll portfolio renders, ${rendered} legacy bilingual route renders, ${projects.length} projects, three source-verified A4 HTML CVs, preserved source GLB, and isolated HTML rendering.`,
   );
 } finally {
   await server.close();

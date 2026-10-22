@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LE QUANG KHANH — Software Engineer CV</title>
+<style>
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; }
+html { color-scheme: light; background: #fff; }
+body { margin: 0; color: #000; background: #fff; font: 13pt/1.24 "Times New Roman", Times, serif; }
+.cv-sheet { width: 210mm; min-height: 297mm; padding: 16mm 18mm; margin: 0 auto; }
+h1 { margin: 0; text-align: center; font-size: 19pt; line-height: 1.1; }
+.cv-role { margin: 0; text-align: center; font-weight: bold; font-size: 14pt; line-height: 1.35; letter-spacing: .6pt; }
+.cv-contact { margin: 1pt 0 0; text-align: center; font-size: 10.5pt; line-height: 1.4; }
+a { color: inherit; text-decoration: underline; }
+a:focus-visible { outline: 2px solid #145ca4; outline-offset: 2px; }
+h2 { font-size: 13.5pt; line-height: 1.15; margin: 11pt 0 4pt; padding: 0 0 1pt; border-bottom: 1pt solid #000; break-after: avoid; }
+p { margin: 0; }
+.cv-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12pt; }
+.cv-row time { flex-shrink: 0; font-style: italic; }
+.cv-project { margin-top: 7pt; break-inside: avoid; }
+h3 { font-size: 13pt; font-weight: normal; line-height: inherit; margin: 0; }
+.cv-repository { font-size: 10.5pt; line-height: 1.35; }
+.cv-repository strong { font-style: italic; }
+ul { list-style-type: disc; margin: 0; padding-left: 15pt; }
+li { padding-left: 0; margin: 0; }
+.cv-stack { font-size: 11.5pt; font-style: italic; margin-top: 2pt; }
+.cv-skills p { margin-top: 2pt; }
+@media screen and (max-width: 600px) {
+  .cv-sheet { width: 100%; min-height: 0; padding: 24px 20px; }
+  .cv-contact { line-height: 1.6; overflow-wrap: anywhere; }
+  .cv-row { flex-wrap: wrap; gap: 0 12pt; }
+  .cv-row time { margin-left: auto; }
+}
+@media print {
+  html, body { width: 210mm; }
+  .cv-sheet { margin: 0; }
+  a { text-decoration: underline; }
+}
+</style>
+</head>
+<body><main class="cv-sheet">
+<header><h1>LE QUANG KHANH</h1><p class="cv-role">Software Engineer</p><p class="cv-contact">Ho Chi Minh City, Vietnam &nbsp;|&nbsp; <a href="mailto:lequangkhanh295@gmail.com" target="_blank" rel="noopener noreferrer">lequangkhanh295@gmail.com</a> &nbsp;|&nbsp; <a href="https://github.com/psy-zney" target="_blank" rel="noopener noreferrer">github.com/psy-zney</a> &nbsp;|&nbsp; <a href="https://zney295.id.vn" target="_blank" rel="noopener noreferrer">zney295.id.vn</a></p></header>
+<section class="cv-summary"><h2 id="resume-summary" tabindex="-1">SUMMARY</h2>
+<p>Information Technology student with hands-on work across backend services, web interfaces, and Windows software. Built endpoint-management and selective PC migration workflows, and contributed checkout to a team POS system. Emphasizes clear state, failure handling, tests, and release tooling.</p>
+</section>
+<section class="cv-education"><h2 id="resume-education" tabindex="-1">EDUCATION</h2>
+<p class="cv-row"><strong>University of Economics Ho Chi Minh City (UEH)</strong><time>Expected Aug 2027</time></p>
+<p><em>B.S. in Information Technology - Ho Chi Minh City, Vietnam</em></p>
+</section>
+<section class="cv-technical-projects"><h2 id="resume-technical-projects" tabindex="-1">TECHNICAL PROJECTS</h2>
+<article class="cv-project"><div class="cv-row"><h3><strong>SentinelLAN</strong> - <em>Personal project</em></h3><time>2026</time></div>
+<p class="cv-repository"><strong>Repository:</strong> <a href="https://github.com/psy-zney/SentinelLAN" target="_blank" rel="noopener noreferrer">github.com/psy-zney/SentinelLAN</a></p>
+<ul>
+<li>Developed an endpoint-management flow across a Windows agent, API, dashboard, and employee mobile app.</li>
+<li>Separated application layers; added organization isolation, role permissions, audit history, and reconnect-safe retries.</li>
+</ul>
+<p class="cv-stack"><strong>Tech stack:</strong> C#, ASP.NET Core, Next.js, PostgreSQL, Expo</p>
+</article>
+<article class="cv-project"><div class="cv-row"><h3><strong>Zney Backup and Restore</strong> - <em>Personal project</em></h3><time>2026</time></div>
+<p class="cv-repository"><strong>Repository:</strong> <a href="https://github.com/psy-zney/BackupData" target="_blank" rel="noopener noreferrer">github.com/psy-zney/BackupData</a></p>
+<ul>
+<li>Built selective PC backup and restore: package IDs support winget reinstallation, while chosen data and settings enter a .zney archive.</li>
+<li>Added staged restore, SHA-256 verification, and archive-path checks; packaged versioned Windows MSI releases through CI.</li>
+</ul>
+<p class="cv-stack"><strong>Tech stack:</strong> C#, .NET 8, WPF, xUnit, WiX</p>
+</article>
+<article class="cv-project"><div class="cv-row"><h3><strong>Cloud POS</strong> - <em>Academic team project</em></h3><time>Jun 2026</time></div>
+<ul>
+<li>Contributed checkout, cart persistence, payment behavior, and cancellation flows to a shared team POS system.</li>
+<li>Diagnosed inventory query and MySQL migration failures; configured AWS resources and merged the checkout branch.</li>
+</ul>
+<p class="cv-stack"><strong>Tech stack:</strong> Node.js, Express, React, MySQL, AWS</p>
+</article>
+</section>
+<section class="cv-skills"><h2 id="resume-skills" tabindex="-1">SKILLS</h2>
+<p><strong>Languages &amp; design:</strong> C#, TypeScript, JavaScript, Go; object-oriented design, state machines.</p>
+<p><strong>Applications &amp; data:</strong> ASP.NET Core, React, WPF, PostgreSQL, MySQL, REST,<br>WebSocket.</p>
+<p><strong>Quality &amp; delivery:</strong> Git, Docker, xUnit, Playwright, CI, integrity checks, Windows MSI<br>packaging.</p>
+</section>
+</main></body>
+</html>

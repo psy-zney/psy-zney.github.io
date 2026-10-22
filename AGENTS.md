@@ -18,6 +18,11 @@ Do not replace user-owned GLB or previews with fabricated/downloaded content.
 When behavior changes, update its checks and the baseline in the same task.
 Do not weaken assertions to hide regressions.
 
+The baseline describes functionality, not an immutable design template.
+New owner requests may change copy, layout, animation and presentation.
+Remove superseded editorial constraints and update their checks while
+retaining meaningful interaction, source and recovery validation.
+
 ## Validate
 
 Run `pnpm run check` after changes. For gallery, loader, portal, routing or

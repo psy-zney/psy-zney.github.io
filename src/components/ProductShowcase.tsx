@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useId, useRef, useState, type CSSProperties, type PointerEvent, type KeyboardEvent } from 'react';
 import { ArrowRight, ArrowUpRight, Download, Monitor, RotateCcw, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
+import { motion as motionElement } from 'motion/react';
 import { ShowcaseSpace } from './ShowcaseSpace';
 import { ShowcaseLiveFrame } from './ShowcaseLiveFrame';
 import { ShowcaseWebPreview } from './ShowcaseWebPreview';
@@ -698,15 +699,18 @@ export function ProductShowcase({ index, lang, reducedMotion, onSelect, onClose,
   }
 
   return (
-    <dialog
+    <motionElement.dialog
       ref={node => { rootRef.current = node; }}
       className={`screening-room${coreStarted.current ? ' is-core-arrival' : ''}`}
+      initial={reducedMotion ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: reducedMotion ? 0 : .28 }}
       aria-labelledby={titleId}
       onKeyDown={onKeyDown}
       onCancel={event => { event.preventDefault(); onClose?.(); }}
       data-reduced-motion={reducedMotion || undefined}
     >
       {content}
-    </dialog>
+    </motionElement.dialog>
   );
 }

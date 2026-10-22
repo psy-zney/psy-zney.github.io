@@ -44,7 +44,7 @@ export function DocumentReader({ title, storageKey, onClose, onReturnStart, chil
   return <dialog ref={dialog} style={{ '--motion-panel-enter': `${timing.readerEnter}ms`, '--motion-panel-exit': `${timing.readerExit}ms` } as CSSProperties} className={`document-reader${storageKey === 'contents' ? ' is-contents' : ''}${closing ? ' is-closing' : ''}`} aria-label={title}
     onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); requestClose(); } }}
     onCancel={event => { event.preventDefault(); requestClose(); }}>
-    <header className="reader-header"><span>WORKSPACE / {title}</span><button onClick={requestClose} aria-label="Close reader" autoFocus><X size={22}/></button></header>
+    <header className="reader-header info-panel-bar"><span>{title}</span><button onClick={requestClose} aria-label="Close reader" autoFocus><X size={20}/></button></header>
     <div ref={body} className="reader-body" data-lenis-prevent onScroll={event => scrollPositions.set(storageKey, event.currentTarget.scrollTop)} onFocusCapture={event => { const link = (event.target as HTMLElement).closest('a[href]'); if (link) focusLinks.set(storageKey, link.getAttribute('href')!); }}>{children}</div>
   </dialog>;
 }

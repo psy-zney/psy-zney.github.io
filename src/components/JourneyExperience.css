@@ -1,0 +1,93 @@
+/* Station details and the next reading step share one clear glass frame. */
+.journey-station-card{position:absolute;top:var(--station-controls-top,44%);left:8%;width:36%;max-width:520px;pointer-events:auto;border:1px solid #ffffff35;border-radius:22px;background:linear-gradient(135deg,#ffffff0c,#ffffff02),#080c141c;backdrop-filter:blur(16px) saturate(135%);-webkit-backdrop-filter:blur(16px) saturate(135%);box-shadow:inset 0 1px 0 #ffffff55,0 14px 44px #0003;overflow:hidden;font:400 14px/1.6 Outfit,sans-serif;color:#e7edf6}
+.virgo-page[data-story=right] .journey-station-card{left:56%}
+.journey-station-actions{display:flex;align-items:center;gap:8px;padding:6px}
+.journey-station-actions button{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;border:0;border-radius:15px;background:transparent;color:inherit;padding:8px 12px;font:inherit;cursor:pointer}
+.journey-detail-toggle{flex:1;text-align:left}.journey-detail-toggle svg{flex:none;transition:rotate .2s}.journey-station-card.is-open .journey-detail-toggle svg{rotate:180deg}
+.journey-station-actions .journey-continue{background:#ffffff12;border:1px solid #ffffff26;flex:none}
+.journey-station-actions button:focus-visible,.journey-context-link:focus-visible{outline:2px solid #cde4ff;outline-offset:-3px}
+.journey-station-body{padding:8px 18px 18px;max-height:min(340px,calc(100dvh - var(--station-controls-top,44dvh) - 140px));overflow-y:auto;overscroll-behavior:contain}
+.journey-station-body[hidden]{display:none}
+.virgo-overlay-panel .journey-station-body .virgo-bare{display:block;width:100%;max-width:none;max-height:none;margin:0;padding:0;overflow:visible}
+.journey-station-body .virgo-bare-label,.journey-station-body .virgo-orbit-caption,.journey-station-body .virgo-image-credit{display:none}
+.journey-station-body .virgo-station-caption{margin:0 0 12px;font-size:14px}
+.journey-station-body .virgo-project-copy>span,.journey-station-body .virgo-skill-detail{font-size:14px;line-height:1.5}
+.journey-station-body .virgo-project-link{padding-block:12px;min-height:60px}
+.journey-station-body .virgo-project-copy strong{font-size:17px}
+.journey-station-body .virgo-bare-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0;padding:12px 0}
+.journey-station-body .virgo-bare-facts strong{font:500 14px/1.4 Outfit,sans-serif;letter-spacing:0}
+.journey-station-body .virgo-bare-facts small{font:400 11px/1.4 Outfit,sans-serif;letter-spacing:0}
+.journey-station-body .virgo-projects-more-list{grid-template-columns:minmax(0,1fr)}
+.journey-context-link{display:inline-flex;align-items:center;gap:8px;min-height:44px;color:#dce8fa}
+.virgo-home-guide button{display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:46px;padding:10px 18px;border:1px solid #ffffff40;border-radius:16px;background:#ffffff0a;color:#f2f5fc;font:inherit;cursor:pointer;backdrop-filter:blur(12px)}
+.virgo-home-guide>div{margin-top:14px}
+@media(min-width:900px) and (min-height:600px){
+ .virgo-page .virgo-narrative-line.virgo-placement-upper-left,.virgo-page .virgo-narrative-line.virgo-placement-upper-right{top:18%}
+ .virgo-page .virgo-narrative-line.virgo-placement-lower-left,.virgo-page .virgo-narrative-line.virgo-placement-lower-right{top:50%}
+ .virgo-page .virgo-narrative-line.virgo-placement-upper-right,.virgo-page .virgo-narrative-line.virgo-placement-lower-right{left:56%;right:7%;width:auto}
+ .virgo-page .virgo-narrative-line.virgo-placement-upper-left,.virgo-page .virgo-narrative-line.virgo-placement-lower-left{left:8%;right:auto;width:36%}
+}
+@media(max-width:899px) and (orientation:portrait){
+ .virgo-page .virgo-narrative .virgo-narrative-line[class*="virgo-placement-"]{top:var(--mobile-narrative-top,47%);left:20px;right:20px;width:auto;max-width:none;transform:none;text-align:center;font-size:clamp(25px,6vw,32px);line-height:1.16;letter-spacing:-.025em}
+ .virgo-story-phrase{display:inline;text-wrap:pretty}.virgo-story-phrase+.virgo-story-phrase{margin-top:0}
+ .virgo-page[data-story] .journey-station-card{top:var(--mobile-controls-top,62%);left:16px;right:16px;width:auto;max-width:none;border-radius:20px}
+ .journey-station-actions{gap:4px}.journey-station-actions button{padding:9px 10px;font-size:13px}
+ .journey-station-body{max-height:max(100px,calc(100dvh - var(--mobile-controls-top,62dvh) - 132px));padding:8px 14px 14px}
+ .virgo-page[data-story] .journey-station-card.is-open{top:var(--mobile-narrative-top,46dvh)}
+ .journey-station-card.is-open .journey-station-body{max-height:calc(100dvh - var(--mobile-narrative-top,46dvh) - 136px)}
+ .virgo-page:has(.virgo-overlay-panel:not([inert]) > .journey-station-card.is-open) .virgo-narrative,
+ .virgo-page[data-story=right]:has(.virgo-skills-panel:not([inert]) .journey-skills-technical .journey-station-card.is-open) .virgo-narrative,
+ .virgo-page[data-story=left]:has(.virgo-skills-panel:not([inert]) .journey-skills-delivery .journey-station-card.is-open) .virgo-narrative{opacity:0}
+ .journey-station-body .virgo-bare-facts{gap:8px;flex-wrap:wrap}
+ .journey-station-body .virgo-origin-steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+ .virgo-page .virgo-home-guide{top:48%;bottom:auto;left:24px;right:24px;max-width:none;text-align:center;font-size:14px}
+ .virgo-home-guide>p{font-size:28px;line-height:1.15;margin-bottom:10px}.virgo-home-guide>div{justify-content:center}
+ .virgo-home-guide>span{display:block;max-width:32ch;margin:auto}
+}
+@media(max-height:599px) and (orientation:landscape){
+ .virgo-page .virgo-narrative .virgo-narrative-line[class*="virgo-placement-"]{top:80px;left:51%;right:20px;width:auto;font-size:24px;line-height:1.16;text-align:left}
+ .virgo-page[data-story] .journey-station-card{left:51%;right:20px;width:auto;top:var(--station-controls-top,180px)}
+ .journey-station-body{max-height:110px}.journey-station-actions button{font-size:12px;padding:7px 8px}
+ .virgo-page .virgo-home-guide{top:90px;bottom:auto;left:51%;right:20px;max-width:none}
+}
+@media(prefers-reduced-motion:reduce){.journey-detail-toggle svg{transition:none}}
+
+/* Identity and project evidence are a visible reading surface, not a disclosure. */
+.virgo-page[data-story] .journey-station-card.has-overview{top:16%;display:flex;flex-direction:column;max-height:calc(84dvh - 80px)}
+.journey-station-content{min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#c4d2e44d transparent}
+.has-overview .journey-station-actions{flex:none;border-top:1px solid #ffffff26}
+.has-overview .journey-station-body{max-height:none;overflow:visible;padding-top:16px;border-top:1px solid #ffffff26}
+.portfolio-introduction{padding:22px 22px 12px}
+.portfolio-introduction-label{margin:0 0 12px;color:#b9cce1;font:500 11px/1.5 Outfit,sans-serif;letter-spacing:.09em}
+.portfolio-introduction h2{margin:0 0 6px;color:#f6f7fa;font:400 clamp(30px,3vw,40px)/1.05 Newsreader,Georgia,serif;letter-spacing:-.025em}
+.portfolio-introduction-role{margin:0 0 12px;color:#e7effb;font-size:15px;line-height:1.4}
+.portfolio-introduction-meta{margin:0 0 14px;font-size:12px;line-height:1.6;color:#bac8da}
+.portfolio-introduction-bio{margin:0 0 18px;font-size:14px;line-height:1.65;color:#e0e7f1}
+.portfolio-experience{margin:0;padding:0;list-style:none}
+.portfolio-experience>li{padding:12px 0;border-top:1px solid #ffffff24}
+.portfolio-experience h3{margin:0 0 4px;font:500 15px/1.4 Outfit,sans-serif;color:#f0f5fc}
+.portfolio-experience p{margin:0;font-size:13px;line-height:1.6;color:#bfccdc}
+.portfolio-experience a{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;padding:6px 0;color:#e0edff;font-size:12px;line-height:1.5;text-decoration:none}
+.portfolio-experience a svg{flex:none}.portfolio-experience a:hover{color:#fff}.portfolio-experience a:focus-visible{outline:2px solid #cde4ff;outline-offset:3px;border-radius:4px}
+.journey-skills-delivery{display:none}
+.virgo-page[data-story=left] .journey-skills-technical{display:none}
+.virgo-page[data-story=left] .journey-skills-delivery{display:block}
+.journey-delivery-notes{list-style:none;margin:0;padding:0}
+.journey-delivery-notes>li{padding:12px 0;border-top:1px solid #ffffff24}.journey-delivery-notes>li:first-child{border-top:0}
+.journey-delivery-notes h3{margin:0 0 5px;font:500 15px/1.4 Outfit,sans-serif;color:#f0f5fc}
+.journey-delivery-notes p{margin:0;font:400 14px/1.6 Outfit,sans-serif;color:#c8d5e5}
+.virgo-home-guide .portfolio-home-role{display:block;margin-bottom:10px;color:#d0dcee;font-size:12px;letter-spacing:.03em}
+.virgo-home-guide .portfolio-home-bio{display:block;font-size:14px;line-height:1.65}
+@media(max-width:899px) and (orientation:portrait){
+ .virgo-page[data-story] .journey-station-card.has-overview{top:var(--mobile-narrative-top,46dvh);max-height:calc(100dvh - var(--mobile-narrative-top,46dvh) - 76px)}
+ .portfolio-introduction{padding:16px 16px 8px}.portfolio-introduction-label{font-size:10px;margin-bottom:10px}
+ .portfolio-introduction h2{font-size:30px}.portfolio-introduction-role{font-size:14px;margin-bottom:10px}
+ .portfolio-introduction-meta{font-size:12px;margin-bottom:12px}.portfolio-introduction-bio{font-size:14px;line-height:1.55;margin-bottom:14px}
+ .portfolio-experience>li{padding:10px 0}.portfolio-experience a{font-size:12px}
+ .virgo-home-guide .portfolio-home-bio{max-width:36ch;font-size:14px;line-height:1.55}
+}
+@media(max-height:599px) and (orientation:landscape){
+ .virgo-page[data-story] .journey-station-card.has-overview{top:78px;max-height:calc(100dvh - 142px)}
+ .portfolio-introduction{padding:14px 16px 8px}.portfolio-introduction h2{font-size:28px}
+ .virgo-home-guide .portfolio-home-role{margin-bottom:6px}.virgo-home-guide .portfolio-home-bio{font-size:13px;line-height:1.45}
+}

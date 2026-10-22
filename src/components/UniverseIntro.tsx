@@ -4,6 +4,9 @@ import { INTRO_PINNED_VIEW, introTypingFrame, introVideoOpacity } from '../data/
 import { IntroUniverseBackdrop } from './MainUniverse';
 import { originalIntroMedia, type IntroMedia } from '../data/introMedia';
 import { portfolioAudio } from '../utils/portfolioAudio';
+import Galaxy from './reactbits/Galaxy';
+import { DragRotation } from '../utils/dragRotation';
+import { MagnetButton } from './reactbits/PointerEffects';
 import './UniverseTransition.css';
 
 export function UniverseIntro({ lang, pageRef, reducedMotion, initialDirection = 1, onArrive, onFinish, onReturn }: {
@@ -56,7 +59,8 @@ export function UniverseIntro({ lang, pageRef, reducedMotion, initialDirection =
     let raf = 0, last = performance.now(), ambient = 0;
     let active = true;
     let entryElapsed: number | null = null;
-    let yaw: number = INTRO_PINNED_VIEW.yaw, pitch: number = INTRO_PINNED_VIEW.pitch, dragging = false, previousX = 0, previousY = 0, touchX = 0;
+    const rotation = new DragRotation(INTRO_PINNED_VIEW.yaw, INTRO_PINNED_VIEW.pitch);
+    let dragging = false, pointerId: number | null = null, previousX = 0, previousY = 0, touchX = 0;
     let hoverYaw = 0, hoverPitch = 0, targetHoverYaw = 0, targetHoverPitch = 0;
     const clearHover = () => { targetHoverYaw = 0; targetHoverPitch = 0; };
     let touchIntent: 'orbit' | 'scroll' | null = null;
@@ -68,9 +72,9 @@ export function UniverseIntro({ lang, pageRef, reducedMotion, initialDirection =
     };
     start.current = () => {
       if (playingRef.current || entryElapsed !== null) return;
+      cancelDrag();
       portfolioAudio.unlockContext(); setPlaybackError(false); onArrive();
-      if (reducedMotion) { portfolioAudio.playSfx('warp'); onFinish(); return; }
-      if (!media.url) {
+      if (reducedMotion || !media.url) {
         portfolioAudio.playSfx('warp');
         entryElapsed = 0;
         hero.dataset.entering = 'true'; hero.setAttribute('aria-busy', 'true');
@@ -105,31 +109,33 @@ export function UniverseIntro({ lang, pageRef, reducedMotion, initialDirection =
       if (['ArrowLeft', 'ArrowRight', 'Home'].includes(event.key)) {
         event.preventDefault(); event.stopImmediatePropagation();
         clearHover();
-        if (event.key === 'Home') { yaw = INTRO_PINNED_VIEW.yaw; pitch = INTRO_PINNED_VIEW.pitch; hoverYaw = hoverPitch = 0; }
-        else yaw += (event.key === 'ArrowLeft' ? -1 : 1) * Math.PI / 8;
+        if (event.key === 'Home') { reset(); }
+        else { rotation.stop(); rotation.targetX += (event.key === 'ArrowLeft' ? -1 : 1) * Math.PI / 8; }
         dirty = true; return;
       }
       if (event.key === 'Escape' && playingRef.current) { event.preventDefault(); cancelVideo(); return; }
       if (['ArrowDown','PageDown','ArrowUp','PageUp',' '].includes(event.key)) { event.preventDefault(); event.stopImmediatePropagation(); }
     };
     const touchStart = (event: TouchEvent) => {
+      rotation.begin(performance.now());
       touchY = event.touches[0]?.clientY ?? 0; touchX = event.touches[0]?.clientX ?? 0; touchIntent = null;
     };
     const touchMove = (event: TouchEvent) => {
-      if (entryElapsed !== null) { event.preventDefault(); return; }
+      if (entryElapsed !== null || playingRef.current) { event.preventDefault(); return; }
       const next = event.touches[0]?.clientY ?? touchY, nx = event.touches[0]?.clientX ?? touchX;
       const dx = nx - touchX, dy = next - touchY;
       if (!touchIntent && Math.hypot(dx, dy) > 5) touchIntent = Math.abs(dx) > Math.abs(dy) ? 'orbit' : 'scroll';
       event.preventDefault(); event.stopImmediatePropagation();
-      if (touchIntent === 'orbit') { yaw -= dx / hero.clientWidth * Math.PI * 2; dirty = true; }
+      if (touchIntent === 'orbit') { rotation.drag(-dx / hero.clientWidth * Math.PI * 2, 0, performance.now(), reducedMotion); dirty = true; }
 
       touchY = next; touchX = nx;
     };
     const pointer = (event: PointerEvent) => {
       if (event.pointerType === 'touch' || playingRef.current || entryElapsed !== null) return;
       if (dragging) {
-        yaw -= (event.clientX - previousX) / hero.clientWidth * Math.PI * 2;
-        pitch = Math.max(-1.25, Math.min(1.25, pitch + (event.clientY - previousY) / hero.clientHeight * Math.PI));
+        if (event.pointerId !== pointerId) return;
+        rotation.drag(-(event.clientX - previousX) / hero.clientWidth * Math.PI * 2,
+          (event.clientY - previousY) / hero.clientHeight * Math.PI, performance.now(), reducedMotion);
         previousX = event.clientX; previousY = event.clientY;
       } else if (!reducedMotion && event.pointerType === 'mouse' && event.buttons === 0 && window.matchMedia('(hover:hover) and (pointer:fine)').matches) {
         const bounds = hero.getBoundingClientRect();
@@ -140,25 +146,39 @@ export function UniverseIntro({ lang, pageRef, reducedMotion, initialDirection =
       dirty = true;
     };
     const pointerDown = (event: PointerEvent) => {
-      if (playingRef.current || entryElapsed !== null || event.pointerType === 'touch' || event.button !== 0 || event.target instanceof Element && event.target.closest('button,a')) return;
+      if (playingRef.current || entryElapsed !== null || event.pointerType === 'touch' || !event.isPrimary || event.button !== 0 || event.target instanceof Element && event.target.closest('button,a')) return;
       dragging = true; previousX = event.clientX; previousY = event.clientY;
+      pointerId = event.pointerId; rotation.begin(performance.now());
       clearHover();
+      hero.focus({ preventScroll: true });
       hero.setPointerCapture(event.pointerId); hero.dataset.dragging = 'true'; event.preventDefault();
     };
-    const pointerUp = () => { dragging = false; delete hero.dataset.dragging; clearHover(); };
-    const reset = () => { yaw = INTRO_PINNED_VIEW.yaw; pitch = INTRO_PINNED_VIEW.pitch; clearHover(); hoverYaw = hoverPitch = 0; dirty = true; };
+    const finishPointer = (cancelled: boolean) => {
+      const id = pointerId;
+      pointerId = null; dragging = false;
+      if (cancelled) rotation.stop(); else rotation.release(performance.now(), reducedMotion);
+      delete hero.dataset.dragging; clearHover();
+      if (id !== null && hero.hasPointerCapture(id)) hero.releasePointerCapture(id);
+    };
+    const pointerUp = (event: PointerEvent) => { if (event.pointerId === pointerId) finishPointer(false); };
+    const cancelDrag = () => { finishPointer(true); touchIntent = null; };
+    const cancelPointer = (event: PointerEvent) => { if (event.pointerId === pointerId) cancelDrag(); };
+    const touchEnd = () => { if (touchIntent === 'orbit') rotation.release(performance.now(), reducedMotion); touchIntent = null; };
+    const visibility = () => { if (document.hidden) cancelDrag(); };
+    const reset = () => { cancelDrag(); rotation.snap(INTRO_PINNED_VIEW.yaw, INTRO_PINNED_VIEW.pitch); clearHover(); hoverYaw = hoverPitch = 0; dirty = true; };
     const resize = () => { dirty = true; };
     const draw = (now: number) => {
       const dt = Math.max(0, Math.min(.05, (now - last) / 1000)); last = now;
       if (document.hidden) { raf = requestAnimationFrame(draw); return; }
       if (entryElapsed !== null) {
         entryElapsed += dt;
-        const progress = Math.min(1, entryElapsed / .95);
+        const progress = Math.min(1, entryElapsed / (reducedMotion ? .24 : 1.6));
         hero.style.setProperty('--universe-entry', String(progress * progress * (3 - 2 * progress)));
         if (progress >= 1) { onFinish(); return; }
       }
       if (!reducedMotion) ambient += dt;
       if (entryElapsed === null && !playingRef.current) {
+        if (rotation.step(dt, reducedMotion)) dirty = true;
         const blend = 1 - Math.exp(-dt * 7);
         const nextYaw = hoverYaw + (targetHoverYaw - hoverYaw) * blend;
         const nextPitch = hoverPitch + (targetHoverPitch - hoverPitch) * blend;
@@ -170,10 +190,11 @@ export function UniverseIntro({ lang, pageRef, reducedMotion, initialDirection =
       const progress = playingRef.current && element && element.duration > 0 ? element.currentTime / element.duration : 0;
       hero.style.setProperty('--universe-video-opacity', String(element ? introVideoOpacity(element.currentTime, element.duration) : 1));
       hero.dataset.progress = progress.toFixed(4); hero.dataset.ambientTime = ambient.toFixed(3);
-      hero.dataset.phase = playingRef.current ? 'video' : 'universe';
-      hero.dataset.yaw = yaw.toFixed(5); hero.dataset.pitch = pitch.toFixed(5);
+      hero.dataset.phase = playingRef.current ? 'video' : entryElapsed !== null ? 'entry' : 'universe';
+      hero.dataset.yaw = rotation.x.toFixed(5); hero.dataset.pitch = rotation.y.toFixed(5);
+      hero.dataset.targetYaw = rotation.targetX.toFixed(5);
       hero.dataset.hoverYaw = hoverYaw.toFixed(5); hero.dataset.hoverPitch = hoverPitch.toFixed(5);
-      view.current.yaw = yaw + hoverYaw; view.current.pitch = Math.max(-1.25, Math.min(1.25, pitch + hoverPitch));
+      view.current.yaw = rotation.x + hoverYaw; view.current.pitch = Math.max(-1.25, Math.min(1.25, rotation.y + hoverPitch));
       if(dirty) { hero.dispatchEvent(new Event('universe-view-change')); dirty=false; }
       raf = requestAnimationFrame(draw);
     };
@@ -181,28 +202,38 @@ export function UniverseIntro({ lang, pageRef, reducedMotion, initialDirection =
     page.addEventListener('keydown', key, true);
     page.addEventListener('touchstart', touchStart, { passive: true });
     page.addEventListener('touchmove', touchMove, { capture: true, passive: false });
+    page.addEventListener('touchend', touchEnd); page.addEventListener('touchcancel', cancelDrag);
     hero.addEventListener('pointermove', pointer); hero.addEventListener('pointerdown', pointerDown);
-    hero.addEventListener('pointerup', pointerUp); hero.addEventListener('pointercancel', pointerUp);
-    hero.addEventListener('lostpointercapture', pointerUp); hero.addEventListener('dblclick', reset);
-    hero.addEventListener('pointerleave', clearHover); window.addEventListener('blur', clearHover);
+    hero.addEventListener('pointerup', pointerUp); hero.addEventListener('pointercancel', cancelPointer);
+    hero.addEventListener('lostpointercapture', cancelPointer); hero.addEventListener('dblclick', reset);
+    hero.addEventListener('pointerleave', clearHover); window.addEventListener('blur', cancelDrag);
+    document.addEventListener('visibilitychange', visibility);
     window.addEventListener('resize', resize);
     raf = requestAnimationFrame(draw);
     return () => {
       cancelAnimationFrame(raf);
+      cancelDrag();
       active = false; requestId.current++; playingRef.current = false; start.current = () => {};
       element?.pause();
       page.removeEventListener('wheel', wheel, true); page.removeEventListener('keydown', key, true);
       page.removeEventListener('touchstart', touchStart); page.removeEventListener('touchmove', touchMove, true);
+      page.removeEventListener('touchend', touchEnd); page.removeEventListener('touchcancel', cancelDrag);
       hero.removeEventListener('pointermove', pointer); hero.removeEventListener('pointerdown', pointerDown);
-      hero.removeEventListener('pointerup', pointerUp); hero.removeEventListener('pointercancel', pointerUp);
-      hero.removeEventListener('lostpointercapture', pointerUp); hero.removeEventListener('dblclick', reset);
-      hero.removeEventListener('pointerleave', clearHover); window.removeEventListener('blur', clearHover);
+      hero.removeEventListener('pointerup', pointerUp); hero.removeEventListener('pointercancel', cancelPointer);
+      hero.removeEventListener('lostpointercapture', cancelPointer); hero.removeEventListener('dblclick', reset);
+      hero.removeEventListener('pointerleave', clearHover); window.removeEventListener('blur', cancelDrag);
+      document.removeEventListener('visibilitychange', visibility);
       window.removeEventListener('resize', resize);
     };
   }, [initialDirection, reducedMotion, pageRef, onArrive, onFinish, onReturn, media.url]);
-  return <section ref={root} tabIndex={-1} className={`virgo-intro-flight universe-intro${playing ? ' is-playing' : ''}`} aria-label={lang === 'vie' ? 'Vũ trụ sáng tạo của Lê Quang Khánh' : 'The creative universe of Lê Quang Khánh'}
+  return <section ref={root} tabIndex={-1} data-reduced-motion={reducedMotion} className={`virgo-intro-flight universe-intro${playing ? ' is-playing' : ''}`} aria-label={lang === 'vie' ? 'Vũ trụ sáng tạo của Lê Quang Khánh' : 'The creative universe of Lê Quang Khánh'}
     aria-description={lang === 'vie' ? 'Di chuột để nhìn nhẹ quanh nền. Kéo hoặc vuốt ngang để nhìn 360 độ. Chọn Start để bắt đầu.' : 'Move your mouse to gently look around. Drag or swipe horizontally for a full turn. Choose Start to begin.'}>
     <IntroUniverseBackdrop view={view} reduced={reducedMotion} hidden={hidden || playing}/>
+    {!hidden && !playing && <div className="universe-galaxy-backdrop" aria-hidden="true">
+      <Galaxy key={String(reducedMotion)} density={1} glowIntensity={0.3} flareIntensity={1} starSpeed={0.5}
+        mouseRepulsion clickWarp disableAnimation={reducedMotion} mouseInteraction={!reducedMotion}/>
+    </div>}
+    <div className="universe-entry-light" aria-hidden="true"/>
     {media.url&&<video ref={video} className="universe-tunnel-video" src={media.url??undefined} poster={media.poster??undefined} preload="metadata" playsInline muted
       aria-hidden="true" onEnded={() => { onArrive(); onFinish(); }}
       onError={() => { requestId.current++; playingRef.current=false; setPlaying(false); setPlaybackError(true); }}/>}
@@ -213,7 +244,7 @@ export function UniverseIntro({ lang, pageRef, reducedMotion, initialDirection =
       </header>
       <div className="universe-invitation">
       <p className="universe-tagline" aria-label={lines[2]}><span aria-hidden="true">{Array.from(lines[2]).slice(0,typing.counts[2]).join('')}{typing.active===2&&<i className="universe-caret"/>}</span></p>
-      <button className="universe-start" onPointerEnter={() => portfolioAudio.playSfx('hover')} onFocus={() => portfolioAudio.playSfx('hover')} onClick={() => start.current()}>{playbackError ? (lang==='vie'?'Thử phát lại video':'Retry video') : 'Start'}</button>
+      <MagnetButton className="universe-start" onPointerEnter={() => portfolioAudio.playSfx('hover')} onFocus={() => portfolioAudio.playSfx('hover')} onClick={() => start.current()}>{playbackError ? (lang==='vie'?'Thử phát lại video':'Retry video') : 'Start'}</MagnetButton>
       {playbackError&&<p className="universe-video-error" role="status">{lang==='vie'?'Không phát được video.':'The video could not play.'} <button onClick={() => {onArrive();onFinish();}}>{lang==='vie'?'Đi tới Home':'Continue to Home'}</button></p>}
       </div>
     </div>

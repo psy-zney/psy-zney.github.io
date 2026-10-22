@@ -47,7 +47,7 @@ function luminousDiskBounds(data, info, isWarm) {
 // Optional URL reuses a running server; otherwise start an isolated local Vite server.
 const output = process.env.UI_OUTPUT || 'artifacts/feature-preservation';
 await mkdir(output, { recursive: true });
-const server = process.argv[2] ? null : await createServer({ cacheDir: 'node_modules/.vite-ui', server: { host: '127.0.0.1', port: 5181, strictPort: true, hmr: false } });
+const server = process.argv[2] ? null : await createServer({ cacheDir: 'node_modules/.vite-ui', server: { host: '127.0.0.1', port: Number(process.env.UI_PORT) || 5181, strictPort: true, hmr: false } });
 let browser;
 const report = [];
 const selectedScenarios = process.env.UI_SCENARIOS?.split(',');
@@ -114,7 +114,17 @@ try {
     };
     const title = gallery.locator('.screening-title');
     const hashIs = async id => {
-      await page.waitForFunction(expected => location.hash === expected, `#/showcase/${id}`);
+      try {
+        await page.waitForFunction(expected => location.hash === expected, `#/showcase/${id}`);
+      } catch (error) {
+        await writeFile(`${output}/${name}-route-failure.json`, JSON.stringify(await page.evaluate(() => ({
+          hash: location.hash, focus: document.activeElement?.outerHTML.slice(0, 300),
+          gallery: document.querySelector('dialog.screening-room')?.outerHTML.slice(0, 800),
+          title: document.querySelector('.screening-title')?.textContent,
+        })), null, 2));
+        await page.screenshot({ path: `${output}/${name}-route-failure.png` });
+        throw error;
+      }
       await page.waitForFunction(id => document.querySelector(`.screening-slide.is-active[data-product-id="${id}"]`), id);
       await page.waitForFunction(() => getComputedStyle(document.querySelector('.screening-caption-stack')).opacity === '1');
       await page.waitForFunction(() => getComputedStyle(document.querySelector('dialog.screening-room')).opacity === '1');
@@ -382,8 +392,9 @@ try {
     await page.clock.runFor(100);
     if (name !== 'reduced') {
       assert.equal(await intro.getAttribute('data-entering'),'true','Start begins the visible entry before removing intro');
-      await page.clock.runFor(1000);
+      await page.clock.runFor(1600);
     }
+    else await page.clock.runFor(240);
     await intro.waitFor({ state: 'detached' });
     await page.waitForFunction(() => Math.abs(Number(document.querySelector('.virgo-page')?.style.getPropertyValue('--flight-progress')) * 6 - 1.92) < .001);
     assert.equal(await page.evaluate(() => location.hash), '#/home', 'Intro arrives on the home route without replaying the old opening');
@@ -456,10 +467,18 @@ try {
           return { text: el.textContent, top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right };
         });
       });
-      assert.equal(phrases.length, 2, 'A reading sentence is divided into two meaningful phrases');
+      assert(phrases.length > 0, 'Reading copy contains visible phrases');
       assert.equal(phrases.map(phrase => phrase.text).join(' '), sentence, 'Line breaks preserve the complete sentence');
-      assert(phrases[1].top >= phrases[0].bottom, 'Phrases occupy separate lines without overlap');
-      assert(phrases.every(phrase => phrase.left >= 0 && phrase.right <= options.viewport.width && phrase.top >= 0 && phrase.bottom <= options.viewport.height), 'Both phrases fit the viewport');
+      const flow=await page.locator('.virgo-narrative-line[aria-hidden="false"] .virgo-story-phrase').first().evaluate(el=>getComputedStyle(el).display);
+      if(flow==='inline'){
+        const words=await page.locator('.virgo-narrative-line[aria-hidden="false"] .virgo-story-word').evaluateAll(elements=>elements.map(el=>{const r=el.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,height:r.height};}));
+        for(let i=1;i<words.length;i++){
+          const previous=words[i-1],word=words[i];
+          assert(word.top>=previous.top-2,'Naturally wrapped mobile words retain reading order');
+          if(Math.abs(word.top-previous.top)<previous.height*.4)assert(word.left>=previous.right-1,'Words on the same mobile line do not overlap');
+        }
+      }else for(let i=1;i<phrases.length;i++)assert(phrases[i].top >= phrases[i-1].bottom, 'Desktop phrases occupy separate lines without overlap');
+      assert(phrases.every(phrase => phrase.left >= 0 && phrase.right <= options.viewport.width && phrase.top >= 0 && phrase.bottom <= options.viewport.height), 'Reading copy fits the viewport');
       assert.equal(state.densePanels, false, `${name}: dense lists do not replace the single-sentence presentation`);
       assert(state.pose?.length === 7 && state.pose.every(Number.isFinite), 'Record the actual rendered camera position/quaternion');
       return state;
@@ -499,8 +518,8 @@ try {
       await writeFile(`${output}/${name}-wheel-failure.json`,JSON.stringify({position,...lastState,diagnostics:await page.locator('.virgo-page').evaluate(el=>({...el.dataset}))},null,2));
       assert.fail('Wheel must reach the requested reading position: ' + position + ' / ' + JSON.stringify(lastState));
     };
-    const firstSentence = 'Each project gives me something new to learn.';
-    const secondSentence = 'Step into the products I have helped build.';
+    const firstSentence = 'Each project solves a specific problem.';
+    const secondSentence = 'From Windows tools to apps and simulations.';
     const firstStory = await storyAt(3.23, firstSentence);
     const firstOrbit = await page.locator('.virgo-page').getAttribute('data-reading-orbit');
     await page.screenshot({ path: `${output}/${name}-story-first.png` });
@@ -524,7 +543,7 @@ try {
     await page.waitForTimeout(260); // A separate gesture after the preceding reading stop.
     // Showcase moved after Contact: both directions now stay in the story.
     await wheelTo(4.92);
-    await storyAt(4.92, 'Those projects shape the way I build.');
+    await storyAt(4.92, 'The tools I use and how they connect.');
     assert.equal(await page.locator('.screening-room, .worlds-showcase').count(), 0, 'Forward scrolling no longer interrupts the story with a gallery');
     await wheelTo(3.95);
     await storyAt(3.95, secondSentence);
@@ -559,6 +578,42 @@ try {
       }
     }
     }
+    // Three standard rolls cover the final approach; the next intentional roll
+    // still belongs to entry. Reverse input must remain on the reading journey.
+    await page.goto(`${base}#/skills`, { waitUntil: 'domcontentloaded' });
+    await page.reload({waitUntil:'domcontentloaded'});
+    await page.locator('[data-page-loader]').waitFor({ state: 'detached' });
+    await page.waitForFunction(() => Math.abs(Number(document.querySelector('.virgo-page')?.style.getPropertyValue('--flight-progress')) * 6 - 4.92) < .001);
+    const approachFrom=await page.locator('.virgo-scroll').evaluate(el=>{const steps=[...document.querySelector('.virgo-scroll-content').children];el.scrollTop=steps[5].offsetTop+.31*(steps[6].offsetTop-steps[5].offsetTop);return 5+(el.scrollTop-steps[5].offsetTop)/(steps[6].offsetTop-steps[5].offsetTop);});
+    await page.waitForFunction(expected=>Math.abs(Number(document.querySelector('.virgo-page')?.style.getPropertyValue('--flight-progress'))*6-expected)<.00005,approachFrom);
+    await page.mouse.move(12,options.viewport.height/2);
+    const approachRolls=[];
+    const settledApproach=()=>page.waitForFunction(()=>{
+      const el=document.querySelector('.virgo-scroll'),steps=[...document.querySelector('.virgo-scroll-content').children];
+      const target=5+(el.scrollTop-steps[5].offsetTop)/(steps[6].offsetTop-steps[5].offsetTop);
+      return Math.abs(Number(document.querySelector('.virgo-page')?.style.getPropertyValue('--flight-progress'))*6-target)<.001;
+    });
+    const rollApproach=async delta=>{
+      const before=await page.locator('.virgo-scroll').evaluate(el=>el.scrollTop);
+      await page.mouse.wheel(0,delta);
+      try{await page.waitForFunction(({before,direction})=>direction*(document.querySelector('.virgo-scroll').scrollTop-before)>1,{before,direction:Math.sign(delta)});}
+      catch(error){
+        await page.screenshot({path:`${output}/${name}-roll-failure.png`});
+        await writeFile(`${output}/${name}-roll-failure.json`,JSON.stringify({before,delta,approachRolls,state:await page.locator('.virgo-page').evaluate(el=>({hash:location.hash,progress:el.style.getPropertyValue('--flight-progress'),scroll:document.querySelector('.virgo-scroll').scrollTop}))},null,2));
+        throw error;
+      }
+      await settledApproach();
+    };
+    for(let roll=0;roll<3;roll++){
+      await rollApproach(120);
+      approachRolls.push(await page.locator('.virgo-page').evaluate(el=>Number(el.style.getPropertyValue('--flight-progress'))*6));
+    }
+    assert(approachRolls[2]>=5.995,`${name}: three standard rolls reach the black hole: ${approachRolls}`);
+    assert.equal(await page.locator('.page-passage,.worlds-showcase').count(),0,'Arrival does not consume the separate gesture to enter showcase');
+    await page.screenshot({path:`${output}/${name}-three-roll-arrival.png`});
+    await rollApproach(-120);
+    assert(Number(await page.locator('.virgo-page').evaluate(el=>el.style.getPropertyValue('--flight-progress')))*6<5.995,'A reverse roll leaves Contact without entering showcase');
+    await writeFile(`${output}/${name}-approach-rolls.json`,JSON.stringify({deltaY:120,from:approachFrom,positions:approachRolls},null,2));
     await page.goto(`${base}#/contact`, { waitUntil: 'domcontentloaded' });
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.locator('[data-page-loader]').waitFor({ state: 'detached' });

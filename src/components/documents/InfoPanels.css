@@ -1,0 +1,208 @@
+/* Liquid glass reading surfaces. The isolated CV document owns its paper. */
+@media screen {
+  :is(.virgo-dialog, .sp-dialog, .document-reader, .signal-dialog, .zney-os) {
+    --info-bg: rgb(12 16 25 / .18);
+    --info-surface: rgb(255 255 255 / .06);
+    --info-line: rgb(255 255 255 / .17);
+    --info-text: #f5f7fc;
+    --info-muted: #bdc6d8;
+    --info-accent: #e0eaff;
+  }
+  dialog:is(.virgo-dialog, .sp-dialog, .document-reader, .signal-dialog) {
+    animation: info-panel-open 280ms cubic-bezier(.16, 1, .3, 1) both;
+    background: radial-gradient(ellipse at 0 0, #ffffff18, transparent 48%),
+      linear-gradient(145deg, #ffffff0c, transparent 48%, #c0d5ff09), var(--info-bg);
+    color: var(--info-text);
+    border: 1px solid var(--info-line); border-radius: 28px;
+    backdrop-filter: blur(14px) saturate(135%);
+    -webkit-backdrop-filter: blur(14px) saturate(135%);
+    box-shadow: 0 28px 90px #0006, 0 2px 8px #0003,
+      0 1px 0 #ffffff4d inset, 0 -1px 0 #c6d7ff14 inset;
+    font: 400 16px/1.7 Outfit, system-ui, sans-serif;
+    color-scheme: dark; scrollbar-color: #ffffff40 transparent; scrollbar-width: thin;
+  }
+  @keyframes info-panel-open {
+    from { opacity: 0; translate: 0 10px; scale: .985; }
+    to { opacity: 1; translate: 0 0; scale: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    dialog:is(.virgo-dialog, .sp-dialog, .document-reader, .signal-dialog) { animation: none; }
+  }
+  dialog:is(.virgo-dialog, .sp-dialog, .document-reader)::backdrop { background: #0307132e; backdrop-filter: blur(2px); }
+  dialog:is(.virgo-dialog, .sp-dialog, .document-reader, .signal-dialog)::before {
+    content: ''; position: absolute; inset: 0; z-index: 8; padding: 1px;
+    border-radius: inherit; pointer-events: none;
+    background: linear-gradient(130deg, #ffffff9c, #ffffff0a 28%, #ffffff06 68%, #d3e1ff66);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+  }
+  dialog.virgo-dialog, dialog.sp-dialog,
+  dialog.virgo-dialog:has(.resume-page), dialog.virgo-dialog:has(.project-document) {
+    width: min(1160px, calc(100vw - 56px)); max-width: none;
+    max-height: min(900px, calc(100dvh - 56px)); overflow: hidden; padding: 0;
+  }
+  dialog.virgo-dialog[open], dialog.sp-dialog[open] { display: flex; flex-direction: column; }
+  .virgo-dialog .virgo-dialog-inner, .sp-dialog .sp-dialog-inner {
+    flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 28px 36px 40px;
+  }
+  .info-panel-bar, .document-reader > .reader-header.info-panel-bar {
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; gap: 20px;
+    min-height: 72px; height: auto; padding: 14px 28px;
+    border-bottom: 1px solid #ffffff12;
+    background: linear-gradient(180deg, #ffffff08, transparent);
+  }
+  .info-panel-heading { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .info-panel-heading > svg { flex-shrink: 0; color: var(--info-accent); }
+  .info-panel-bar strong, .info-panel-bar > span {
+    font: 500 16px/1.4 Outfit, system-ui, sans-serif; letter-spacing: 0; color: var(--info-text); text-transform: none;
+  }
+  .info-panel-bar > button, .virgo-dialog .info-panel-bar > .virgo-close, .sp-dialog .info-panel-bar > .sp-close {
+    position: static; float: none; display: grid; place-items: center; flex-shrink: 0;
+    width: 44px; height: 44px; min-height: 44px; margin: 0; padding: 0;
+    border: 1px solid #ffffff26; border-radius: 14px;
+    background: linear-gradient(160deg, #ffffff25, #ffffff0b); color: var(--info-text);
+    box-shadow: 0 1px 0 #ffffff26 inset, 0 3px 10px #0002;
+    transition: background 160ms, border-color 160ms;
+  }
+  .info-panel-bar > button:hover { background: #ffffff25; border-color: #ffffff55; }
+  :is(.virgo-dialog, .sp-dialog, .document-reader, .signal-dialog) :is(a, button, input, select, textarea, [tabindex="0"]):focus-visible { outline: 2px solid var(--info-accent); outline-offset: 4px; }
+  .document-reader :is(h1, h2)[tabindex="-1"]:focus { outline: none; }
+  dialog.document-reader:has(.contact-document) { width: min(680px, calc(100vw - 40px)); height: auto; max-height: min(860px, calc(100dvh - 56px)); }
+
+  /* Case studies: editorial opening, then section navigation beside the text. */
+  :is(.document-reader, .virgo-dialog, .zney-os) .project-document > header {
+    position: relative; padding: 4px 0 28px; margin-bottom: 26px; border-bottom: 1px solid var(--info-line);
+  }
+  :is(.document-reader, .virgo-dialog, .zney-os) .project-document .reader-kicker {
+    margin: 0 0 12px; font: 400 13px/1.5 Outfit, sans-serif;
+    letter-spacing: 0; text-transform: none; color: var(--info-muted);
+  }
+  :is(.document-reader, .virgo-dialog, .zney-os) .project-document h1 {
+    margin: 0 0 16px; font: 400 clamp(32px, 4vw, 46px)/1.08 Newsreader, Georgia, serif;
+    letter-spacing: -.025em; color: var(--info-text); overflow-wrap: anywhere;
+  }
+  :is(.document-reader, .virgo-dialog, .zney-os) .project-document .document-headline {
+    max-width: 56ch; margin: 0 0 18px; color: #e1e5ef; font: 400 19px/1.6 Outfit, sans-serif;
+  }
+  :is(.document-reader, .virgo-dialog, .zney-os) .document-role {
+    display: inline-block; padding: 5px 10px; margin: 0 0 12px; border-radius: 5px;
+    background: #ffffff0c; color: var(--info-accent); font-size: 13px;
+  }
+  :is(.document-reader, .virgo-dialog, .zney-os) .reader-note { color: var(--info-muted); font: 400 13px/1.65 Outfit, sans-serif; }
+  .project-document .document-meta-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+  .project-document .document-meta-row .reader-note { margin: 0; }
+  .project-document .document-meta-row .reader-primary { margin: 0; }
+  .project-document .document-meta-row [role="status"]:empty { display: none; }
+  :is(.document-reader, .virgo-dialog, .zney-os) .reader-primary {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 9px 15px;
+    margin-top: 10px; border: 1px solid #ffffff24; border-radius: 8px; background: #ffffff0c;
+    color: var(--info-accent); font: 500 13px/1.4 Outfit, sans-serif;
+    box-shadow: 0 1px 0 #ffffff1a inset;
+  }
+  :is(.document-reader, .virgo-dialog, .zney-os) .document-section { max-width: 68ch; color: #dce1ee; font: 400 16px/1.8 Outfit, sans-serif; }
+  :is(.document-reader, .virgo-dialog, .zney-os) .document-section h2 {
+    margin: 28px 0 12px; color: var(--info-text); font: 500 21px/1.3 Outfit, sans-serif; letter-spacing: -.02em;
+  }
+  :is(.document-reader, .virgo-dialog, .zney-os) .document-section > h2:first-child { margin-top: 0; }
+  :is(.document-reader, .virgo-dialog, .zney-os) .document-section p { margin: 0 0 20px; }
+  :is(.document-reader, .virgo-dialog, .zney-os) .document-tabs { gap: 5px; border: 0; }
+  :is(.document-reader, .virgo-dialog, .zney-os) .document-tabs button {
+    min-height: 44px; padding: 10px 14px; border: 1px solid transparent; border-radius: 8px;
+    background: transparent; color: var(--info-muted); font: 400 14px/1.5 Outfit, sans-serif;
+  }
+  :is(.document-reader, .virgo-dialog, .zney-os) .document-tabs button:hover { color: var(--info-text); background: #ffffff0c; }
+  :is(.document-reader, .virgo-dialog, .zney-os) .document-tabs button[aria-current] { border-color: #ffffff32; background: linear-gradient(155deg, #ffffff23, #ffffff0c); color: var(--info-accent); box-shadow: 0 1px 0 #ffffff20 inset; }
+  :is(.document-reader, .virgo-dialog, .zney-os) .document-stack { gap: 7px; }
+  :is(.document-reader, .virgo-dialog, .zney-os) .document-stack span {
+    border: 1px solid var(--info-line); background: var(--info-surface); color: #e0e7f5;
+    border-radius: 5px; padding: 4px 10px; font-size: 13px;
+  }
+  :is(.document-reader, .virgo-dialog, .zney-os) .architecture-path { padding: 0; list-style: none; }
+  :is(.document-reader, .virgo-dialog, .zney-os) .architecture-path li {
+    display: flex; gap: 18px; margin: 0 0 0 12px; padding: 12px 20px;
+    border: 0; border-left: 1px solid #ffffff26; border-radius: 0;
+  }
+  :is(.document-reader, .virgo-dialog, .zney-os) .architecture-path span { color: var(--document-accent, var(--info-accent)); }
+  :is(.document-reader, .virgo-dialog, .zney-os) .document-attribution {
+    padding: 15px 18px; border: 0; border-left: 2px solid var(--document-accent, var(--info-accent));
+    border-radius: 0 8px 8px 0; background: #ffffff08; color: #c6cfe0; font-size: 14px;
+  }
+  :is(.document-reader, .virgo-dialog, .zney-os) .document-links { padding-top: 24px; margin-top: 28px; border-top: 1px solid var(--info-line); gap: 10px; }
+  :is(.document-reader, .virgo-dialog, .zney-os) .document-links :is(a, button) {
+    min-height: 44px; padding: 10px 14px; border-color: var(--info-line); border-radius: 8px; color: #e4ecfc; font-size: 13px;
+  }
+  :is(.document-reader, .virgo-dialog, .zney-os) .document-links button { margin-left: auto; color: var(--info-muted); }
+
+  /* CV controls stay outside the A4 document and have their own hierarchy. */
+  :is(.document-reader, .virgo-dialog, .zney-os, .sp-dialog) .resume-toolbar { display: flex; justify-content: space-between; gap: 12px; margin: 0 0 18px; }
+  :is(.document-reader, .virgo-dialog, .zney-os, .sp-dialog) .resume-toolbar > div { gap: 8px; margin: 0; }
+  :is(.document-reader, .virgo-dialog, .zney-os, .sp-dialog) .resume-toolbar :is(a, button) {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 9px 13px;
+    border: 1px solid var(--info-line); border-radius: 12px; color: #e0e7f6; font: 400 13px/1.5 Outfit, sans-serif; text-decoration: none;
+    background: linear-gradient(160deg, #ffffff13, #ffffff04); box-shadow: 0 1px 0 #ffffff13 inset;
+  }
+  :is(.document-reader, .virgo-dialog, .zney-os, .sp-dialog) .resume-toolbar > a { border-color: transparent; padding-left: 0; color: var(--info-muted); background: none; box-shadow: none; }
+  :is(.document-reader, .virgo-dialog, .zney-os, .sp-dialog) .resume-toolbar .primary-link { background: linear-gradient(155deg, #f3f7ffed, #dce7ffc9); color: #182034; border-color: #ffffffa6; font-weight: 500; box-shadow: 0 1px 0 #fff inset, 0 3px 14px #0002; }
+  :is(.document-reader, .virgo-dialog, .zney-os, .sp-dialog) .resume-tracks { display: inline-flex; gap: 4px; padding: 5px; border: 1px solid var(--info-line); border-radius: 12px; background: #00000012; }
+  :is(.document-reader, .virgo-dialog, .zney-os, .sp-dialog) .resume-tracks > a {
+    display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 17px;
+    border-radius: 7px; color: var(--info-muted); font: 500 14px/1.4 Outfit, sans-serif; text-decoration: none;
+  }
+  :is(.document-reader, .virgo-dialog, .zney-os, .sp-dialog) .resume-tracks > a[aria-current] { background: linear-gradient(160deg, #ffffff30, #ffffff13); color: #f7f9ff; box-shadow: 0 1px 0 #ffffff30 inset, 0 2px 6px #0002; }
+  :is(.document-reader, .virgo-dialog, .zney-os, .sp-dialog) .resume-language-note { max-width: none; margin: 16px 0 0; color: var(--info-muted); font: 400 13px/1.65 Outfit, sans-serif; }
+  .resume-page .document-layout { display: block; margin-top: 20px; }
+  .resume-page .document-contents { position: static; margin-bottom: 18px; }
+  .resume-page > .document-layout > .resume-paper { width: 100%; max-width: 794px; margin: 0 auto; padding: 0; border-radius: 2px; box-shadow: 0 12px 38px #0004; }
+  :is(.document-reader, .virgo-dialog, .zney-os) .contents-trigger { border-color: #ffffff26; background: #ffffff0b; color: #e4ecff; border-radius: 8px; font-size: 14px; }
+  :is(.document-reader, .virgo-dialog, .zney-os) .is-open .contents-navigation { background: #1c2233e6; border-color: #ffffff26; }
+
+  :is(.document-reader, .zney-os) .contact-document h1 { font: 400 38px/1.1 Newsreader, Georgia, serif; letter-spacing: -.02em; }
+  :is(.document-reader, .zney-os) .contact-avatar { width: 64px; height: 64px; background: #ffffff13; color: #f0f4ff; border-color: #ffffff30; border-radius: 18px; }
+  :is(.document-reader, .zney-os) .contact-rows a { padding: 12px 0; color: #e1e8f8; border-color: var(--info-line); }
+  .virgo-dialog .virgo-archive a { padding: 18px 12px; border-color: var(--info-line); border-radius: 8px; color: var(--info-text); }
+  .virgo-dialog .virgo-archive a:hover { background: #ffffff0b; }
+  .virgo-dialog .virgo-archive small { color: var(--info-muted); }
+  dialog.signal-dialog { width: min(500px, calc(100vw - 32px)); padding: 0; }
+  .signal-dialog .signal-window { padding: 36px; }
+  .signal-dialog .signal-window h2 { font: 400 36px/1.15 Newsreader, Georgia, serif; color: var(--info-text); }
+  .signal-dialog .signal-window p { color: var(--info-muted); }
+  .signal-dialog .signal-close { width: 44px; height: 44px; border: 1px solid var(--info-line); border-radius: 12px; background: var(--info-surface); }
+  .sp-dialog .sp-detail h2 { font: 400 clamp(32px, 4vw, 46px)/1.15 Newsreader, Georgia, serif; letter-spacing: -.025em; }
+  .sp-dialog .sp-detail h3 { font: 500 21px/1.4 Outfit, sans-serif; margin: 28px 0 12px; color: var(--info-text); }
+  .sp-dialog .sp-detail p, .sp-dialog .sp-detail li { font: 400 16px/1.8 Outfit, sans-serif; color: #dce1ee; }
+}
+@media screen and (min-width: 1100px) and (min-height: 601px) {
+  .project-document .document-layout { grid-template-columns: 176px minmax(0, 1fr); gap: 32px; }
+  .resume-page .document-contents .document-tabs { flex-direction: row; gap: 20px; padding: 0; margin: 0; }
+  .resume-page .document-contents .document-tabs button { padding: 4px 0; min-height: 36px; border-radius: 0; font-size: 12px; letter-spacing: .02em; }
+  .resume-page .document-contents .document-tabs button:hover { background: none; color: #e4ecff; }
+}
+@media screen and (max-width: 700px), screen and (max-height: 600px) {
+  dialog.virgo-dialog, dialog.sp-dialog, dialog.document-reader:not(.is-contents),
+  dialog.virgo-dialog:has(.resume-page), dialog.virgo-dialog:has(.project-document) {
+    width: calc(100% - 16px); height: calc(100dvh - 16px); max-height: calc(100dvh - 16px);
+    border: 1px solid var(--info-line); border-radius: 24px;
+  }
+  .info-panel-bar, .document-reader > .reader-header.info-panel-bar {
+    min-height: calc(64px + env(safe-area-inset-top)); padding: calc(10px + env(safe-area-inset-top)) 18px 10px; gap: 12px;
+  }
+  .virgo-dialog .virgo-dialog-inner, .sp-dialog .sp-dialog-inner,
+  .virgo-dialog:has(.project-document) .virgo-dialog-inner { padding: 22px 18px calc(28px + env(safe-area-inset-bottom)); }
+  :is(.virgo-dialog, .sp-dialog, .document-reader, .zney-os) .resume-tracks { display: flex; }
+  :is(.virgo-dialog, .sp-dialog, .document-reader, .zney-os) .resume-tracks > a { flex: 1; padding: 8px; font-size: 13px; }
+  :is(.virgo-dialog, .sp-dialog, .document-reader, .zney-os) .resume-toolbar { display: flex; justify-content:flex-end; gap: 8px; }
+  :is(.virgo-dialog, .sp-dialog, .document-reader, .zney-os) .resume-toolbar > div { display:flex;align-items:center;justify-content:flex-end;gap:8px;width:100%; }
+  :is(.document-reader, .virgo-dialog, .zney-os) .project-document h1 { font-size: 34px; }
+  :is(.document-reader, .virgo-dialog, .zney-os) .project-document .document-headline { font-size: 17px; }
+  :is(.document-reader, .virgo-dialog, .zney-os) .document-links button { margin-left: 0; }
+  .signal-dialog .signal-window { padding: 32px 24px; }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  @media screen {
+    dialog:is(.virgo-dialog, .sp-dialog, .document-reader, .signal-dialog) { background-color: #182031f5; }
+  }
+}
+@media screen and (prefers-reduced-transparency: reduce) {
+  dialog:is(.virgo-dialog, .sp-dialog, .document-reader, .signal-dialog) { background-color: #182031f5; backdrop-filter: none; -webkit-backdrop-filter: none; }
+}

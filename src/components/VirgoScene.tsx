@@ -9,7 +9,7 @@ import { clamp, flightFieldOfView, flightPositionForScroll, flightSample, focuse
 import { straightFlightPose, systemPresence, transitSample, TRANSIT_LEGS } from "../data/virgoTransit";
 import { VirgoTransit } from "./VirgoTransit";
 import { advancePacedFlightPosition } from "../data/virgoPacing";
-import { asteroidLayout, BLACK_HOLE_SCALE, ORBIT_PLANE, orbitRadii, planetRadius, SPACE_LAYOUT } from "../data/virgoSpace";
+import { LOCAL_SYSTEM_SCALE, asteroidLayout, BLACK_HOLE_SCALE, ORBIT_PLANE, orbitRadii, planetRadius, SPACE_LAYOUT } from "../data/virgoSpace";
 import { contactPresence, mobileNarrativeTop, narrativeSample, narrativeTextReveal, NARRATIVE_BEATS } from "../data/virgoNarrative";
 import { openingPresentation, openingStarAppearance, openingTransition, protectOpeningHandoff } from "../data/virgoOpening";
 import { VirgoOpening } from "./VirgoOpening";
@@ -353,7 +353,7 @@ function OriginForge({ flight, glow, selected }: FlightProps & { selected: numbe
   useFrame(() => {
     if (!group.current) return;
     group.current.visible = systemAppearance(flight, "origin") > .005;
-    group.current.scale.setScalar(flight.mobile ? .72 : 1.06);
+    group.current.scale.setScalar(flight.mobile ? LOCAL_SYSTEM_SCALE.mobile : LOCAL_SYSTEM_SCALE.desktop);
   });
   return <group ref={group} position={VIRGO_STARS[0].position}>
     {orbitRadii(false, flight.mobile).map((radius, index) => <OrbitRing key={radius} radius={radius} index={index} flight={flight} skills={false} origin />)}
@@ -497,7 +497,7 @@ function SatelliteCluster({ kind, flight, glow, selected }: FlightProps & { kind
     if (!group.current || !core.current) return;
     const appearance = systemAppearance(flight, kind);
     group.current.visible = appearance > .005;
-    group.current.scale.setScalar(flight.mobile ? .72 : 1.06);
+    group.current.scale.setScalar(flight.mobile ? LOCAL_SYSTEM_SCALE.mobile : LOCAL_SYSTEM_SCALE.desktop);
     group.current.rotation.y = 0;
     const pulse = flight.reduced ? 1 : 1 + Math.sin(flight.time * 1.5) * .055;
     core.current.scale.setScalar(22 * pulse);
@@ -583,7 +583,7 @@ export function createCameraComposition(mobile = false) {
   const targets = [new THREE.Vector3(), new THREE.Vector3(), ...VIRGO_STARS.slice(0, 2).map(star => new THREE.Vector3(...star.position)), new THREE.Vector3(...VIRGO_STARS[1].position), ...VIRGO_STARS.slice(2).map(star => new THREE.Vector3(...star.position))];
   const direction = new THREE.Vector3(0, 0, -200);
   // A single heading and projection shift keep every stellar disk circular.
-  const framing = [new THREE.Vector2(), new THREE.Vector2(), ...[.38, -.38, -.38, .38, .38].map(x => new THREE.Vector2(mobile ? 0 : x, mobile ? .40 : 0))];
+  const framing = [new THREE.Vector2(), new THREE.Vector2(), ...[.38, -.38, -.38, -.38, .38].map(x => new THREE.Vector2(mobile ? 0 : x, mobile ? .36 : 0))];
   return { targets, framing, direction };
 }
 
@@ -623,7 +623,7 @@ export function createFlightPaths(mobile = false) {
 
 function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, selectedProject, selectedSkill, selectedOrigin, blackHoleControlRef, blackHoleOrbit, labelsRef, entering, paused, readingFocus, showcaseApproach, onPlanetSelect, onPlanetHover }: SceneProps) {
   const { camera, size, invalidate } = useThree();
-  const mobile = size.width < 700;
+  const mobile = size.width < 700 || size.width < 900 && size.height > size.width;
   const [solarMap, setSolarMap] = useState<THREE.Texture | null>(null);
   useEffect(() => {
     let active = true, owned: THREE.Texture | null = null;
@@ -806,17 +806,17 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     if (leg) {
       const fromChapter = leg.origin < 0 ? 0 : stationChapters[leg.origin];
       frameOffset.copy(framing[fromChapter]);
-      const destinationX = !mobile && (leg.destination === 1 || leg.destination === 2) ? .38 : leg.destination === 3 ? 0 : framing[compositionChapter].x;
-      if (!mobile && (leg.origin === 1 || leg.origin === 2)) frameOffset.x = -.38;
+      const destinationX = !mobile && leg.destination === 1 ? .38 : !mobile && leg.destination === 2 ? -.38 : leg.destination === 3 ? 0 : framing[compositionChapter].x;
+      if (!mobile && (leg.origin === 1 || leg.origin === 2)) frameOffset.x = leg.origin === 2 ? .38 : -.38;
       frameOffset.x += (destinationX - frameOffset.x) * smooth(0, 1, passage.progress);
       frameOffset.y += (framing[compositionChapter].y - frameOffset.y) * smooth(0, 1, passage.progress);
     } else frameOffset.copy(framing[compositionChapter]);
     if (!mobile && position >= 2.94 && position <= 4.25) frameOffset.x = .38 - .76 * smooth(3.52, 3.65, position);
-    if (!mobile && position >= 4.80 && position <= 5.30) frameOffset.x = .38 - .76 * smooth(5.015, 5.065, position);
-    if (size.height < 600 && size.width > size.height && compositionChapter >= 2) frameOffset.set(frameOffset.x * .52 / .38, 0);
+    if (!mobile && position >= 4.80 && position <= 5.30) frameOffset.x = -.38 + .76 * smooth(5.015, 5.065, position);
+    if (size.height < 600 && size.width > size.height && compositionChapter >= 2) frameOffset.set(-.5, 0);
     // Fit the stellar disk above the compact reader without changing the
     // camera path, lens or the composition during a transit.
-    if (mobile && size.height < 640 && size.height > size.width && compositionChapter >= 2) frameOffset.y = .72;
+    if (mobile && size.height < 640 && size.height > size.width && compositionChapter >= 2) frameOffset.y = .32;
     if (!mobile) frameOffset.multiplyScalar(1 - smooth(5.94, 5.98, position));
     if (position >= 5.82) frameOffset.set(0, 0);
     frameOffset.multiplyScalar(1 - approach);
@@ -837,7 +837,8 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
       const transition = openingTransition(position, reducedMotion);
       panels.forEach((panel, i) => {
         const reading = narrativeSample(position, reducedMotion);
-        const visibility = i === 6 ? contactPresence(position, reducedMotion) : panelVisibility(i, position, reducedMotion) * (i < 2 ? 1 : reading.controls);
+        const visibility = (i === 6 ? contactPresence(position, reducedMotion) : panelVisibility(i, position, reducedMotion) * (i < 2 ? 1 : reading.controls))
+          * (i === 2 ? smooth(1.96, 2.02, position) : 1);
         const opacity = visibility * (1 - transition.cover) * (1 - smooth(0, .5, flight.exit));
         panel.style.opacity = String(opacity);
         panel.style.visibility = opacity > .001 ? "visible" : "hidden";
@@ -864,7 +865,9 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
     if (narrativeRendered.current.shown !== story.shown || narrativeRendered.current.amount !== amount) {
       narration.forEach((line, i) => {
         if (!line) return;
-        const visible = i === story.shown && amount > .001;
+        // Spica presents the full profile instead of repeating its short teaser.
+        // Keep that teaser's measured geometry for the existing framing contract.
+        const visible = i !== 3 && i === story.shown && amount > .001;
         line.classList.toggle("is-visible", visible);
         line.style.opacity = visible ? "1" : "0";
         line.style.visibility = visible ? "visible" : "hidden";
@@ -899,8 +902,7 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
         narrativeEdge.set(...star.position).addScaledVector(narrativeUp, star.radius * 1.6).project(camera);
         starBottom = (-narrativeStar.y * .5 + .5) * size.height + Math.abs(narrativeStar.y - narrativeEdge.y) * size.height * .5;
       }
-      const lower = story.shown >= 0 && NARRATIVE_BEATS[story.shown].placement.startsWith('lower');
-      const preferredTop = size.height < 640 && size.height > size.width ? 150 / size.height : lower ? Math.min(.60, (size.height - bounds.lineHeight - 110) / size.height) : .44;
+      const preferredTop = .46;
       const placement = mobileNarrativeTop(size.height, starBottom, bounds.lineHeight, preferredTop);
       if (placement.top !== mobileReadingPlacement.current.top || placement.controls !== mobileReadingPlacement.current.controls) {
         overlay.parentElement!.style.setProperty("--mobile-narrative-top", `${placement.top}px`);
@@ -931,7 +933,7 @@ function CameraFlight({ scroller, content, overlay, onChapter, reducedMotion, se
       accent.setAttribute('viewBox', `0 0 ${size.width} ${size.height}`);
       const path = accent.querySelector('path')!;
       let d = '', alpha = 0;
-      if (story.shown >= 3 && !paused && !entering && bounds.lineWidth > 0) {
+      if (story.shown > 3 && !paused && !entering && bounds.lineWidth > 0) {
         const x = bounds.x - bounds.lineWidth / 2, y = bounds.y + bounds.inkHeight / 2 + 16;
         d = `M ${x} ${y} Q ${x + 72} ${y + 6} ${x + Math.min(180, bounds.lineWidth)} ${y}`;
         alpha = reducedMotion ? .08 : amount * (.08 + (1 - amount) * .2);

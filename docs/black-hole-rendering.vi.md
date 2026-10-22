@@ -85,6 +85,4 @@ phạm vi khí, đổi phối cảnh khi kéo, reduced motion, touch scroll và 
 Ảnh và JSON nằm trong `artifacts/feature-preservation/`. Các giới hạn cảm giác
 audio/touch trên thiết bị thật vẫn áp dụng như tài liệu preservation.
 
-Lượt audit cuối ngày 14/10 sau các sửa cache, shader compile và responsive:
-`artifacts/solar-showcase-final-pass/report.json` PASS đủ năm cấu hình trên
-cùng fingerprint. Chi tiết và giới hạn tại `docs/qa/visual-audit-2026-10-14.vi.md`.
+Báo cáo kiểm tra hiện hành và giới hạn nằm trong `docs/final-audit.vi.md`.

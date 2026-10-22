@@ -1394,7 +1394,7 @@ export function IntroPage({
                       </p>
                       <a className="cv-download" href="#/cv/web">
                         <span>
-                          Full-stack Web
+                          Full Stack Developer
                           <small>
                             {t(
                               "Đọc CV · In / Lưu PDF",
@@ -1406,7 +1406,7 @@ export function IntroPage({
                       </a>
                       <a className="cv-download" href="#/cv/mobile">
                         <span>
-                          Mobile Developer
+                          Software Engineer
                           <small>
                             {t(
                               "Đọc CV · In / Lưu PDF",

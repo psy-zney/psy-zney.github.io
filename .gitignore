@@ -7,6 +7,7 @@ skills-lock.json
 *.log
 scripts/.cache/
 artifacts/
+output/playwright/
 
 # Environment variables
 .env

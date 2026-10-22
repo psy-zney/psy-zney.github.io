@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ArrowUpRight, BookOpen, Search, List, Grid2X2 } from 'lucide-react';
 import { projects, type Language, type Project } from '../../data/portfolio';
 import { navigateHash } from '../../utils/appRoutes';
+import { SpotlightCard } from '../reactbits/PointerEffects';
 
 let savedLibrary = { query: '', category: 'all', sort: 'featured', list: false };
 export function ProjectLibrary({ lang, basePath = '#/workspace/library' }: { lang: Language; basePath?: string }) {
@@ -23,7 +24,7 @@ export function ProjectLibrary({ lang, basePath = '#/workspace/library' }: { lan
       <button key={item} aria-pressed={category === item} onClick={() => setCategory(item)}>{item === 'all' ? 'All' : item} <small>{projects.filter(project => item === 'all' || project.category === item).length}</small></button>)}</nav>
     {filtered.length === 0 && <div className="library-empty"><BookOpen/><p>No projects match “{query}”.</p><button onClick={() => { setQuery(''); setSearch(''); setCategory('all'); }}>Clear filters</button></div>}
     <div className={`library-books${list ? ' is-list' : ''}`}>{filtered.map((project: Project, index) => <a key={project.id} className="library-book" href={`${basePath}/${project.id}/overview`} onClick={event => { event.preventDefault(); navigateHash(`${basePath}/${project.id}/overview`); }} style={{ '--book-color': project.color, '--book-index': Math.min(index, 2) } as React.CSSProperties}>
-      <div className="book-cover" aria-hidden="true"><span>{project.category} / {project.year}</span><div className="book-orbit"><i/><b/></div><strong>{project.name}</strong><small>PROJECT NOTES</small></div>
+      <SpotlightCard className="book-cover" aria-hidden="true"><span>{project.category} / {project.year}</span><div className="book-orbit"><i/><b/></div><strong>{project.name}</strong><small>PROJECT NOTES</small></SpotlightCard>
       <div className="book-description"><h2>{project.name}<ArrowUpRight size={16}/></h2><p>{project.headline[lang]}</p><small>{project.role[lang]}</small></div></a>)}</div>
   </div></section>;
 }

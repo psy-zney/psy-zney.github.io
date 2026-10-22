@@ -1,0 +1,17 @@
+{
+  "backend": {
+    "source": "Le_Quang_Khanh_CV_Backend_Developer.docx",
+    "sha256": "f2bbae12873914b3a5dc57f4813b47fddbf8a4a7a84e40091d0e7811c134e675",
+    "html": "Le_Quang_Khanh_CV_Backend_Developer.html"
+  },
+  "fullstack": {
+    "source": "Le_Quang_Khanh_CV_Full_Stack_Developer.docx",
+    "sha256": "04dc82d7466963110eeaf080235f32ca1138ac1287d6a1901c34b5a7470324c5",
+    "html": "Le_Quang_Khanh_CV_Full_Stack_Developer.html"
+  },
+  "software": {
+    "source": "Le_Quang_Khanh_CV_Software_Engineer.pdf",
+    "sha256": "903cd5a08cfa749ea19607e2f2f936e896e4507b3c1fe3ac9910cb274a1f7983",
+    "html": "Le_Quang_Khanh_CV_Software_Engineer.html"
+  }
+}

@@ -8,12 +8,16 @@ import { MeshoptDecoder } from 'meshoptimizer';
 import { Vector3, Ray } from 'three';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+// Initialize Motion for SSR before installing the partial window fixture.
+import 'motion/react';
 import { checkCurrentFeatures } from './check-current-features.mjs';
+import { checkPointerMotion } from './check-pointer-motion.mjs';
 
 const server = await createServer({ cacheDir: 'node_modules/.vite-check-experience', server: { middlewareMode: true, hmr: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' });
-globalThis.window = { location: { hash: '#/workspace' }, matchMedia: () => ({ matches: false }) };
+globalThis.window = Object.assign(new EventTarget(), { location: { hash: '#/workspace' }, matchMedia: () => ({ matches: false }) });
 try {
   await checkCurrentFeatures(server);
+  await checkPointerMotion(server);
   {
     const { ScreenGifFrames } = await server.ssrLoadModule('/src/components/workspace/screenGif.ts');
     const { GifReader } = await import('omggif');
@@ -52,11 +56,11 @@ try {
   const { projectDocuments } = await server.ssrLoadModule('/src/data/projectDocuments.ts');
   for (const p of CELESTIAL_PROJECTS) if (p.satellite) assert(projectDocuments.some(doc => doc.id === `${p.id}/${p.satellite}`));
   const { orbitPosition } = await server.ssrLoadModule('/src/data/virgoFlight.ts');
-  const { orbitRadii, planetRadius, ORBIT_PLANE, SPACE_LAYOUT } = await server.ssrLoadModule('/src/data/virgoSpace.ts');
+  const { orbitRadii, planetRadius, ORBIT_PLANE, SPACE_LAYOUT, LOCAL_SYSTEM_SCALE } = await server.ssrLoadModule('/src/data/virgoSpace.ts');
   assert(Math.abs(Math.hypot(ORBIT_PLANE.vertical,ORBIT_PLANE.depth)-1)<1e-12);
   const extent = (entry, index) => planetRadius(index) * (entry.satellite ? 2.98 : entry.ring ? 2.10 : 1.04);
   for (const mobile of [false,true]) {
-    const radii = orbitRadii(false,mobile), scale = mobile ? .72 : 1.06;
+    const radii = orbitRadii(false,mobile), scale = mobile ? LOCAL_SYSTEM_SCALE.mobile : LOCAL_SYSTEM_SCALE.desktop;
     for (let phase = 0; phase < 1000; phase++) {
       const time = phase / 999 * 220;
       const points = projects.map((_, i) => new Vector3(...orbitPosition(i,10,3,false,1,time,mobile)));
@@ -184,13 +188,15 @@ try {
   document.dispatchEvent(new Event('pointerdown'));assert.equal(journeyContexts,1,'Unmount removes unlock listeners');
   // Exercise the actual portfolio mixer with dense wheel input, mute and hidden tabs.
   const { portfolioAudio, PortfolioAudioSystem } = await server.ssrLoadModule('/src/utils/portfolioAudio.ts');
+  const { dbGain, SCENE_MIX } = await server.ssrLoadModule('/src/utils/portfolioSoundDesign.ts');
   const automation = () => ({ value:0, setValueAtTime(v){this.value=v;}, setTargetAtTime(v){this.value=v;}, linearRampToValueAtTime(v){this.value=v;}, exponentialRampToValueAtTime(v){this.value=v;}, cancelAndHoldAtTime(){} });
   let wheelVoices=0, wheelClosed=0, bufferStarts=0; const wheelGains=[];
   window.AudioContext = class {
     state='running'; currentTime=1; sampleRate=256; destination={};
     createGain(){const gain={...connection,gain:automation()};wheelGains.push(gain);return gain;}
+    createDynamicsCompressor(){return {...connection,threshold:automation(),knee:automation(),ratio:automation(),attack:automation(),release:automation()};}
     createOscillator(){wheelVoices++;return {...connection,frequency:automation(),detune:automation(),start(){},stop(){}};}
-    createBuffer(channels,length){return {getChannelData(){return new Float32Array(length);}};}
+    createBuffer(channels,length,rate){const samples=Array.from({length:channels},()=>new Float32Array(length));return {duration:length/rate,getChannelData(i){return samples[i];}};}
     createBufferSource(){return {...connection,playbackRate:automation(),start(){bufferStarts++;},stop(){}};}
     createBiquadFilter(){return {...connection,frequency:automation(),Q:automation()};}
     async close(){wheelClosed++;}
@@ -199,14 +205,15 @@ try {
   portfolioAudio.playScroll(36);const voiceCount=wheelVoices;
   for(let i=0;i<1000;i++)portfolioAudio.playScroll(i%2 ? 1 : -1);
   assert.equal(wheelVoices,voiceCount,'Dense trackpad input reuses one scroll voice');
-  assert.equal(voiceCount,6,'Five ambient oscillators and one wheel voice share the mixer');
-  assert.equal(bufferStarts,2,'One noise bed and one original melody loop share the BGM bus');
+  assert.equal(voiceCount,1,'Two score stems and exactly one reusable wheel oscillator share the mixer');
+  assert.equal(bufferStarts,2,'Harmonic bed and adaptive pulse are exactly two synchronized loops');
   portfolioAudio.playTypingTick();assert.equal(bufferStarts,3,'Typing starts one short source after user unlock');
   portfolioAudio.setMuted(true);assert.equal(wheelGains[0].gain.value,0,'Mute silences music and scroll together');
   portfolioAudio.playTypingTick();assert.equal(bufferStarts,3,'Mute drops typing ticks');
   portfolioAudio.playScroll(120);assert.equal(wheelVoices,voiceCount);
   portfolioAudio.setMuted(false);document.hidden=true;portfolioAudio.playScroll(120);assert.equal(wheelVoices,voiceCount,'Hidden wheel input is dropped');
-  portfolioAudio.playTypingTick();assert.equal(bufferStarts,3,'Hidden tabs drop typing ticks');
+  const beforeHiddenTyping=bufferStarts;
+  portfolioAudio.playTypingTick();assert.equal(bufferStarts,beforeHiddenTyping,'Hidden tabs drop typing ticks');
   document.hidden=false;
   const beforeInactive=bufferStarts;
   portfolioAudio.setActive(false);assert.equal(wheelGains[0].gain.value,0,'Leaving for workspace silences the portfolio bus');
@@ -248,10 +255,10 @@ try {
   allowResume=true;window.dispatchEvent(new Event('pointerdown'));await Promise.resolve();await Promise.resolve();
   assert.equal(bufferStarts,beforeRetry+2,'A later gesture recovers both ambient loops');
   assert.equal(retryContexts,1,'Recovery reuses the suspended context');
-  const beforeCues=wheelVoices;
+  const beforeCues=bufferStarts;
   for(const cue of ['hover','click','warp','drawerOpen','drawerClose','modalOpen','modalClose','singularityEnter','singularityExit','cardSlide','muteOn','muteOff','loaderComplete'])retryAudio.playSfx(cue);
-  assert(wheelVoices>beforeCues,'All procedural cues execute after recovery');
-  retryAudio.setScene('intro');assert.equal(wheelGains[retryGainIndex+2].gain.value,.28,'Intro uses the revised audible background level');
+  assert.equal(bufferStarts-beforeCues,12,'Voice cap bounds simultaneous procedural cues after recovery');
+  retryAudio.setScene('intro');assert.equal(wheelGains[retryGainIndex+2].gain.value,dbGain(SCENE_MIX.intro.music),'Intro uses its directed scene mix');
   retryAudio.setMuted(true);assert.equal(savedSound.get('portfolio-sound'),'off','Mute preference is saved');
   const beforeHidden=bufferStarts;document.hidden=true;document.dispatchEvent(new Event('visibilitychange'));
   retryAudio.playTypingTick();retryAudio.playSfx('click');assert.equal(bufferStarts,beforeHidden,'Hidden/muted cues are discarded');

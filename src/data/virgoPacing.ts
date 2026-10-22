@@ -15,6 +15,7 @@ export const STORY_PACING = {
   approachSeconds: 1.9,
   wheelStepVh: .22,
   wheelLeadVh: .32,
+  blackHoleWheelGain: 2.4,
 } as const;
 
 export const HOME_PACING = {
@@ -98,9 +99,12 @@ export function storyWheelDelta(delta: number, target: number, rendered: number,
 }
 
 /** Wheel magnitude drives distance; reversing discards the pending forward lead. */
-export function storyWheelTarget(delta: number, target: number, rendered: number, height: number, minimum: number, maximum: number) {
+export function storyWheelTarget(delta: number, target: number, rendered: number, height: number, minimum: number, maximum: number, position = 0) {
   const origin = Math.sign(delta) !== Math.sign(target - rendered) ? rendered : target;
-  return clamp(origin + storyWheelDelta(delta, origin, rendered, height), minimum, maximum);
+  // The final, text-free approach needs three fewer standard wheel rolls.
+  // Earlier reading stops and reverse input keep their existing input budget.
+  const gain = delta > 0 && position >= TRANSIT_LEGS[3].from ? STORY_PACING.blackHoleWheelGain : 1;
+  return clamp(origin + storyWheelDelta(delta * gain, origin, rendered, height * gain), minimum, maximum);
 }
 
 /** Cross quiet gaps with fewer rolls, easing back to reading speed at each sentence. */

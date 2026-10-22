@@ -11,9 +11,19 @@ export function clampWorldIndex(index: number) {
 }
 
 /** Horizontal intent wins only after a deliberate drag; vertical touch is not navigation. */
-export function worldDragDirection(dx: number, dy: number) {
-  if (!Number.isFinite(dx) || !Number.isFinite(dy) || Math.abs(dx) < 54 || Math.abs(dx) <= Math.abs(dy) * 1.15) return 0;
+export function worldDragDirection(dx: number, dy: number, velocityX = 0) {
+  if (![dx, dy, velocityX].every(Number.isFinite) || Math.abs(dx) < 20 || Math.abs(dx) <= Math.abs(dy) * 1.15) return 0;
+  const projected = dx + (Math.sign(velocityX) === Math.sign(dx) ? velocityX * 100 : 0);
+  if (Math.abs(dx) < 54 && Math.abs(projected) < 90) return 0;
   return dx < 0 ? 1 : -1;
+}
+
+/** Follow the hand across the rail; resist gently when pulling beyond either end. */
+export function worldDragOffset(dx: number, width: number, selected: number) {
+  if (!Number.isFinite(dx) || !Number.isFinite(width) || width <= 0) return 0;
+  const edge = selected === 0 && dx > 0 || selected === 8 && dx < 0;
+  const limit = width * (edge ? .1 : .65);
+  return Math.sign(dx) * limit * (1 - Math.exp(-Math.abs(dx) * (edge ? .65 : .9) / limit));
 }
 
 export function worldPortalPose(index: number, selected: number) {

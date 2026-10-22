@@ -13,10 +13,10 @@ export const NARRATIVE_BEATS = [
   { from: 1.12, to: 1.40, side: "middle", placement: "upper-left", effect: "rift", vie: "Mình học bằng cách làm.", eng: "I learn by building." },
   { from: 1.40, to: 1.82, side: "middle", placement: "lower-right", effect: "aurora", vie: "Mình biến ý tưởng thành sản phẩm.", eng: "I turn ideas into useful tools." },
   { from: 1.92, to: 2.32, side: "left", placement: "upper-left", effect: "orbit", ...readingCopy("Mình xây dựng ứng dụng web\nvà công cụ hệ thống.", "I build web applications\nand system tools.") },
-  { from: 2.94, to: 3.52, side: "left", placement: "upper-left", effect: "nebula", ...readingCopy("Mỗi dự án cho mình\nthêm điều để học.", "Each project gives me\nsomething new to learn.") },
-  { from: 3.65, to: 4.25, side: "right", placement: "lower-right", effect: "meteor", ...readingCopy("Mời bạn ghé qua những sản phẩm\nmình góp phần xây dựng.", "Step into the products\nI have helped build.") },
-  { from: 4.80, to: 5.04, side: "left", placement: "upper-left", effect: "aurora", ...readingCopy("Những dự án ấy định hình\ncách mình xây dựng.", "Those projects shape\nthe way I build.") },
-  { from: 5.04, to: 5.30, side: "right", placement: "lower-right", effect: "orbit", ...readingCopy("Giao diện, ứng dụng và hệ thống\nđược kết nối cẩn thận.", "Interfaces, apps and\nsystems—connected with care.") },
+  { from: 2.94, to: 3.52, side: "left", placement: "lower-left", effect: "nebula", ...readingCopy("Mỗi dự án giải quyết\nmột nhu cầu cụ thể.", "Each project solves\na specific problem.") },
+  { from: 3.65, to: 4.25, side: "right", placement: "upper-right", effect: "meteor", ...readingCopy("Từ công cụ Windows\nđến ứng dụng và mô phỏng.", "From Windows tools\nto apps and simulations.") },
+  { from: 4.80, to: 5.04, side: "right", placement: "lower-right", effect: "aurora", ...readingCopy("Các công nghệ mình dùng\nvà cách chúng kết nối.", "The tools I use\nand how they connect.") },
+  { from: 5.04, to: 5.30, side: "left", placement: "upper-left", effect: "orbit", ...readingCopy("Kiểm tra khi có lỗi,\nchuẩn bị trước khi bàn giao.", "Test failure paths,\nthen prepare for delivery.") },
   { from: 5.82, to: 5.94, side: "right", placement: "upper-right", effect: "aurora", vie: "Bên kia hố đen, mỗi ý tưởng mở ra một thế giới.", eng: "Beyond the black hole, every idea becomes a world." },
 ] as const;
 
@@ -51,6 +51,10 @@ export function mobileNarrativeTop(height: number, starBottom: number, lineHeigh
 
 /** Reading anchors for wheel gestures; continuous touch scrolling uses the same timeline. */
 export const NARRATIVE_STOPS = [0, ...NARRATIVE_BEATS.map(beat => Math.min(6, (beat.from + beat.to) / 2)), 6];
+/** Continue visits each rendered reading beat, then the actionable Contact endpoint. */
+export function nextVisibleReadingStop(position: number) {
+  return [...NARRATIVE_BEATS.slice(3,8).map(beat=>(beat.from+beat.to)/2),6].find(stop=>stop>position+.045)??6;
+}
 /** Public chapter links land on a complete sentence and its matching view. */
 export function chapterReadingPosition(chapter: number) {
   // Contact is a destination with actionable links, beyond the preceding fade-in.
@@ -60,9 +64,6 @@ export function chapterReadingPosition(chapter: number) {
 export function nextNarrativeStop(position: number, direction: number) {
   if (direction > 0 && position >= 6) return 6;
   if (direction < 0 && position <= 0) return 0;
-
-  // A project deep link (at position 3) advances to a different sentence on its first gesture
-  if (direction > 0 && Math.abs(position - 3) < 0.05) return NARRATIVE_STOPS[6];
 
   // If at or very close to an established narrative reading stop
   const stopIndex = NARRATIVE_STOPS.findIndex(stop => Math.abs(position - stop) <= 0.045);

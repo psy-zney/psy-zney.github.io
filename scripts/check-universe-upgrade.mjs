@@ -46,26 +46,28 @@ try {
       state='running';currentTime=1;sampleRate=24000;destination={};
       constructor(){contexts++;}
       createGain(){const gain={...connection,gain:param()};gains.push(gain);return gain;}
+      createDynamicsCompressor(){return{...connection,threshold:param(),knee:param(),ratio:param(),attack:param(),release:param()};}
       createOscillator(){oscillators++;return{...connection,frequency:param(),detune:param(),start(){},stop(){}};}
       createBiquadFilter(){return{...connection,frequency:param(),Q:param()};}
-      createBuffer(channels,length){const samples=Array.from({length:channels},()=>new Float32Array(length));return{getChannelData(i){return samples[i];}};}
+      createBuffer(channels,length,rate){const samples=Array.from({length:channels},()=>new Float32Array(length));return{duration:length/rate,getChannelData(i){return samples[i];}};}
       createBufferSource(){return{...connection,playbackRate:param(),start(){bufferStarts++;},stop(){}};}
       async close(){closed++;}
     };
     globalThis.window=windowMock;globalThis.document=documentMock;
     const {PortfolioAudioSystem}=await server.ssrLoadModule('/src/utils/portfolioAudio.ts');
+    const {dbGain,SCENE_MIX}=await server.ssrLoadModule('/src/utils/portfolioSoundDesign.ts');
     const audio=new PortfolioAudioSystem();
     audio.playTypingTick();assert.equal(contexts,0,'Typing cannot autoplay');
-    audio.unlockContext();assert.equal(contexts,1);assert.equal(bufferStarts,2,'Noise and melody use exactly two persistent buffers');
+    audio.unlockContext();assert.equal(contexts,1);assert.equal(bufferStarts,2,'Bed and pulse use exactly two persistent score buffers');
     for(let i=0;i<1000;i++)audio.playScroll(i%2?1:-1);
-    assert.equal(oscillators,6,'Dense scrolling does not stack music or wheel voices');
+    assert.equal(oscillators,1,'Dense scrolling reuses exactly one wheel voice alongside the buffer score');
     audio.playTypingTick();assert.equal(bufferStarts,3);
     audio.setMuted(true);audio.playTypingTick();assert.equal(bufferStarts,3);assert.equal(gains[0].gain.value,0);
     documentMock.hidden=true;documentMock.dispatchEvent(new Event('visibilitychange'));audio.setMuted(false);
     assert.equal(gains[0].gain.value,0,'Unmuting a hidden tab cannot make it audible');
     audio.playTypingTick();assert.equal(bufferStarts,3,'Hidden typing is discarded');
     documentMock.hidden=false;documentMock.dispatchEvent(new Event('visibilitychange'));
-    assert.equal(gains[0].gain.value,.65);audio.setScene('contact');assert.equal(gains[2].gain.value,.22);
+    assert.equal(gains[0].gain.value,.65);audio.setScene('contact');assert.equal(gains[2].gain.value,dbGain(SCENE_MIX.contact.music));
     audio.dispose();assert.equal(closed,1);
   }finally{globalThis.window=previousWindow;globalThis.document=previousDocument;}
   console.log('PASS: original GLB hash, sky-only centred geometry, texture/size budget, media validation, bilingual Contact and mixer unlock/1000 wheel packets/mute/hidden/cleanup.');

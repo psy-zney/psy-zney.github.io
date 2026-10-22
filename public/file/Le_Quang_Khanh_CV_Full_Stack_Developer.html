@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LE QUANG KHANH — Full Stack Developer CV</title>
+<style>
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; }
+html { color-scheme: light; background: #fff; }
+body { margin: 0; color: #000; background: #fff; font: 13pt/1.24 "Times New Roman", Times, serif; }
+.cv-sheet { width: 210mm; min-height: 297mm; padding: 16mm 18mm; margin: 0 auto; }
+h1 { margin: 0; text-align: center; font-size: 19pt; line-height: 1.1; }
+.cv-role { margin: 0; text-align: center; font-weight: bold; font-size: 14pt; line-height: 1.35; letter-spacing: .6pt; }
+.cv-contact { margin: 1pt 0 0; text-align: center; font-size: 10.5pt; line-height: 1.4; }
+a { color: inherit; text-decoration: underline; }
+a:focus-visible { outline: 2px solid #145ca4; outline-offset: 2px; }
+h2 { font-size: 13.5pt; line-height: 1.15; margin: 11pt 0 4pt; padding: 0 0 1pt; border-bottom: 1pt solid #000; break-after: avoid; }
+p { margin: 0; }
+.cv-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12pt; }
+.cv-row time { flex-shrink: 0; font-style: italic; }
+.cv-project { margin-top: 7pt; break-inside: avoid; }
+h3 { font-size: 13pt; font-weight: normal; line-height: inherit; margin: 0; }
+.cv-repository { font-size: 10.5pt; line-height: 1.35; }
+.cv-repository strong { font-style: italic; }
+ul { list-style-type: disc; margin: 0; padding-left: 15pt; }
+li { padding-left: 0; margin: 0; }
+.cv-stack { font-size: 11.5pt; font-style: italic; margin-top: 2pt; }
+.cv-skills p { margin-top: 2pt; }
+@media screen and (max-width: 600px) {
+  .cv-sheet { width: 100%; min-height: 0; padding: 24px 20px; }
+  .cv-contact { line-height: 1.6; overflow-wrap: anywhere; }
+  .cv-row { flex-wrap: wrap; gap: 0 12pt; }
+  .cv-row time { margin-left: auto; }
+}
+@media print {
+  html, body { width: 210mm; }
+  .cv-sheet { margin: 0; }
+  a { text-decoration: underline; }
+}
+</style>
+</head>
+<body><main class="cv-sheet">
+<header><h1>LE QUANG KHANH</h1><p class="cv-role">Full Stack Developer</p><p class="cv-contact">Ho Chi Minh City, Vietnam &nbsp;|&nbsp; <a href="mailto:lequangkhanh295@gmail.com" target="_blank" rel="noopener noreferrer">lequangkhanh295@gmail.com</a> &nbsp;|&nbsp; <a href="https://github.com/psy-zney" target="_blank" rel="noopener noreferrer">github.com/psy-zney</a> &nbsp;|&nbsp; <a href="https://zney295.id.vn" target="_blank" rel="noopener noreferrer">zney295.id.vn</a></p></header>
+<section class="cv-summary"><h2 id="resume-summary" tabindex="-1">SUMMARY</h2>
+<p>Information Technology student building web interfaces, APIs, and data workflows. Delivered a freelance browser game, developed an endpoint-management dashboard, and contributed checkout to a team POS application. Focused on usable flows, access control, and reliable integration.</p>
+</section>
+<section class="cv-education"><h2 id="resume-education" tabindex="-1">EDUCATION</h2>
+<p class="cv-row"><strong>University of Economics Ho Chi Minh City (UEH)</strong><time>Expected Aug 2027</time></p>
+<p><em>B.S. in Information Technology - Ho Chi Minh City, Vietnam</em></p>
+</section>
+<section class="cv-technical-projects"><h2 id="resume-technical-projects" tabindex="-1">TECHNICAL PROJECTS</h2>
+<article class="cv-project"><div class="cv-row"><h3><strong>GameDressUp</strong> - <em>Freelance delivery</em></h3><time>15 Aug-15 Sep 2026</time></div>
+<p class="cv-repository"><strong>Repository:</strong> <a href="https://github.com/psy-zney/-Fashion-Dress-up-Game" target="_blank" rel="noopener noreferrer">github.com/psy-zney/-Fashion-Dress-up-Game</a></p>
+<ul>
+<li>Delivered a commissioned dress-up game with a 16-item wardrobe, outfit selection, character poses, and finished-look display.</li>
+<li>Integrated supplied artwork into layered rendering; added photo-based face customization, saved looks, export, and touch controls.</li>
+</ul>
+<p class="cv-stack"><strong>Tech stack:</strong> Next.js, React, TypeScript, Canvas, Playwright</p>
+</article>
+<article class="cv-project"><div class="cv-row"><h3><strong>SentinelLAN</strong> - <em>Personal project</em></h3><time>2026</time></div>
+<p class="cv-repository"><strong>Repository:</strong> <a href="https://github.com/psy-zney/SentinelLAN" target="_blank" rel="noopener noreferrer">github.com/psy-zney/SentinelLAN</a></p>
+<ul>
+<li>Built dashboard workflows for device enrollment, telemetry, assignment, policy management, and support incidents.</li>
+<li>Connected role-specific screens to organization-scoped APIs; added session refresh, validation, and auditable actions.</li>
+</ul>
+<p class="cv-stack"><strong>Tech stack:</strong> Next.js, TypeScript, ASP.NET Core, PostgreSQL</p>
+</article>
+<article class="cv-project"><div class="cv-row"><h3><strong>Cloud POS</strong> - <em>Academic team project</em></h3><time>Jun 2026</time></div>
+<ul>
+<li>Contributed checkout across the React interface and Express API, including cart persistence and payment-method screens.</li>
+<li>Fixed checkout UI, inventory queries, and MySQL migration issues; configured AWS resources for the team deployment.</li>
+</ul>
+<p class="cv-stack"><strong>Tech stack:</strong> React, Node.js, Express, MySQL, AWS</p>
+</article>
+</section>
+<section class="cv-skills"><h2 id="resume-skills" tabindex="-1">SKILLS</h2>
+<p><strong>Web &amp; UI:</strong> React, Next.js, TypeScript, JavaScript, responsive layouts, forms, reusable components.</p>
+<p><strong>APIs &amp; data:</strong> ASP.NET Core, Node.js, Express, PostgreSQL, MySQL, REST, role-based access.</p>
+<p><strong>Quality &amp; delivery:</strong> Git, Docker, Playwright, unit/integration tests, GitHub Actions, deployment.</p>
+</section>
+</main></body>
+</html>

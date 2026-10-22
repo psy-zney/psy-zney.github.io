@@ -1,5 +1,5 @@
 import { Fragment, lazy, Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import { ArrowDown, ArrowUpRight, Github, Linkedin, Monitor, Volume2, VolumeX, X } from "lucide-react";
+import { ArrowDown, ArrowUpRight, Github, Linkedin, Monitor, Volume2, VolumeX, FileText, BookOpen, X } from "lucide-react";
 import { WorldsShowcase } from "./WorldsShowcase";
 import { ShowcasePassage } from './PagePassage';
 import { VirgoSceneBoundary } from "./VirgoSceneFallback";
@@ -10,6 +10,10 @@ import Lenis from "lenis";
 import "lenis/dist/lenis.css";
 import { capabilities, projects, type Language } from "../data/portfolio";
 import { ProjectDocument } from "./documents/ProjectDocument";
+import { ProjectArchive } from './documents/ProjectArchive';
+import { JourneyStationCard } from './JourneyStationCard';
+import { PortfolioIntroduction } from './PortfolioIntroduction';
+import { personalProfile } from '../data/personalProfile';
 import { navigateHash, parsePublicDocumentRoute } from "../utils/appRoutes";
 import "./documents/Documents.css";
 import { ResumePage } from "./ResumePage";
@@ -18,9 +22,10 @@ import { FLIGHT_MOTION, flightPositionForScroll, navigationDuration, scrollOffse
 import { FLIGHT_TRACK_VH } from "../data/virgoSpace";
 import { storyWheelTarget, storyWheelScale } from "../data/virgoPacing";
 import { portfolioAudio } from "../utils/portfolioAudio";
-import { NARRATIVE_BEATS, chapterReadingPosition, narrativeRevealStyle } from "../data/virgoNarrative";
+import { NARRATIVE_BEATS, chapterReadingPosition, narrativeRevealStyle, nextVisibleReadingStop } from "../data/virgoNarrative";
 import { UniverseIntro } from './UniverseIntro';
 import "./VirgoPortfolio.css";
+import './JourneyExperience.css';
 import { motionStyle } from '../data/motionTokens';
 import { BlackHoleOrbitControls, createBlackHoleOrbit } from './BlackHoleOrbitControls';
 
@@ -79,10 +84,10 @@ export function VirgoPortfolio({ lang, onEnterWorkspace }: {
   const [selectedSkill, setSelectedSkill] = useState(0);
   const [selectedOrigin, setSelectedOrigin] = useState<number | null>(null);
   const originSteps = [
-    { title: 'Need', vie: 'Tìm hiểu vấn đề người dùng cần giải quyết.', eng: 'Understand the problem people need to solve.' },
-    { title: 'Build', vie: 'Biến nhu cầu thành công cụ có thể dùng.', eng: 'Turn that need into a useful tool.' },
-    { title: 'Connect', vie: 'Kết nối giao diện, dữ liệu và hệ thống.', eng: 'Connect the interface, data and systems.' },
-    { title: 'Learn', vie: 'Học từ những quyết định trong dự án.', eng: 'Learn from the decisions in each project.' },
+    { title: 'Need', vie: 'Theo dõi một luồng checkout hoặc quản lý thiết bị thực tế trước khi xây màn hình.', eng: 'Trace a checkout or device-management task before building the screens.' },
+    { title: 'Build', vie: 'Biến kiến thức đã học thành tính năng hoạt động để kiểm tra những điều mình giả định.', eng: 'Turn coursework into a working feature to test my assumptions.' },
+    { title: 'Connect', vie: 'Đọc xuyên suốt giao diện, API và Windows Agent để hiểu dữ liệu di chuyển ra sao.', eng: 'Read across the UI, API and Windows agent to understand how data moves.' },
+    { title: 'Learn', vie: 'Dùng lỗi và tình huống khôi phục thất bại để cải thiện kiểm tra dữ liệu và phục hồi.', eng: 'Use bugs and failed restores to improve validation and recovery.' },
   ];
   const [entering, setEntering] = useState(false);
   const [passageVisible, setPassageVisible] = useState(false);
@@ -103,6 +108,7 @@ export function VirgoPortfolio({ lang, onEnterWorkspace }: {
     };
     const click=(event:Event)=>{
       const node=target(event);if(!node)return;
+      if(node.getAttribute('aria-controls')==='virgo-destinations')return;
       portfolioAudio.playSfx(node.matches('.virgo-close')?'modalClose':node.matches('a[href^="#/project/"],a[href^="#/cv/"]')?'modalOpen':'click');
     };
     page.addEventListener('pointerover',hover);page.addEventListener('focusin',hover);page.addEventListener('click',click);
@@ -120,6 +126,11 @@ export function VirgoPortfolio({ lang, onEnterWorkspace }: {
     return () => page.removeEventListener('wheel', wheelSound, true);
   }, [showcaseInside, openingVisible]);
   const [chaptersOpen, setChaptersOpen] = useState(false);
+  const previousChaptersOpen = useRef(false);
+  useEffect(() => {
+    if (previousChaptersOpen.current !== chaptersOpen) portfolioAudio.playSfx(chaptersOpen ? 'drawerOpen' : 'drawerClose');
+    previousChaptersOpen.current = chaptersOpen;
+  }, [chaptersOpen]);
   useEffect(() => {
     if (!chaptersOpen) return;
     const dismiss = (event: PointerEvent) => {
@@ -361,7 +372,7 @@ export function VirgoPortfolio({ lang, onEnterWorkspace }: {
           const offsets = Array.from(content.children, child => (child as HTMLElement).offsetTop);
           const rendered = scrollOffsetForPosition(position, offsets);
           const minimum = scrollOffsetForPosition(1.92, offsets);
-          const nextTarget = storyWheelTarget(data.deltaY * FLIGHT_MOTION.wheelMultiplier * storyWheelScale(position), lenis.targetScroll, rendered, scroller.clientHeight, minimum, lenis.limit);
+          const nextTarget = storyWheelTarget(data.deltaY * FLIGHT_MOTION.wheelMultiplier * storyWheelScale(position), lenis.targetScroll, rendered, scroller.clientHeight, minimum, lenis.limit, position);
           navigationTarget.current = null;
           // The invisible scroll track changes immediately; camera, words and
           // effects all follow the same paced, reversible render coordinate.
@@ -391,7 +402,7 @@ export function VirgoPortfolio({ lang, onEnterWorkspace }: {
       const offsets = Array.from(content.children, child => (child as HTMLElement).offsetTop);
       const position = Number(page.style.getPropertyValue("--flight-progress") || 0) * 6;
       const direction = Math.sign(event.deltaY);
-      scroller.scrollTo({ top: storyWheelTarget(event.deltaY * unit * FLIGHT_MOTION.wheelMultiplier * storyWheelScale(position), scroller.scrollTop, scrollOffsetForPosition(position, offsets), scroller.clientHeight, scrollOffsetForPosition(1.92, offsets), scroller.scrollHeight - scroller.clientHeight), behavior: "instant" });
+      scroller.scrollTo({ top: storyWheelTarget(event.deltaY * unit * FLIGHT_MOTION.wheelMultiplier * storyWheelScale(position), scroller.scrollTop, scrollOffsetForPosition(position, offsets), scroller.clientHeight, scrollOffsetForPosition(1.92, offsets), scroller.scrollHeight - scroller.clientHeight, position), behavior: "instant" });
     };
     page.addEventListener("wheel", wheel, { passive: false });
     setReady(true);
@@ -494,6 +505,11 @@ export function VirgoPortfolio({ lang, onEnterWorkspace }: {
   }, [showDialog]);
 
   const closeDialog = () => { window.location.hash = returnHash.current; };
+  const continueStory = () => {
+    const position=Number(pageRef.current?.style.getPropertyValue('--flight-progress')||0)*6;
+    const next=nextVisibleReadingStop(position);
+    scrollToChapter(Math.round(next),reducedMotion,next);
+  };
   const navigate = (index: number) => {
     const target = contentRef.current?.children[index] as HTMLElement | undefined;
     if (target && window.location.hash === `#/${CHAPTERS[index]}`) {
@@ -553,25 +569,23 @@ export function VirgoPortfolio({ lang, onEnterWorkspace }: {
       </section>
 
       {/* Keep the reading area on the side opposite the focused star. */}
-      <section className="virgo-overlay-panel virgo-panel-right virgo-bare-chapter" aria-labelledby="virgo-about-title" aria-hidden={active !== 2}>
+      <section className="virgo-overlay-panel virgo-panel-right virgo-bare-chapter" aria-labelledby="portfolio-introduction-name" aria-hidden={active !== 2}>
+        <JourneyStationCard overview={<PortfolioIntroduction lang={lang}/>} title={t('Cách mình học & CV','How I learn & CV')} detailLabel={t('Tìm hiểu cách mình học','About how I learn')} nextLabel={t('Tiếp tục','Continue')} onContinue={continueStory}>
         <div className="virgo-bare">
           <p className="virgo-bare-label">01 / SPICA · {t("GIỚI THIỆU", "ABOUT ME")}</p>
           <h2 className="virgo-sr-only" id="virgo-about-title">{t("Giới thiệu", "About me")}</h2>
-          <p className="virgo-station-caption">{t("Mỗi dự án bắt đầu từ một vấn đề thực tế.", "Every project starts with a practical problem.")}</p>
-          <div className="virgo-bare-facts">
-            <span><small>{t("Đang học", "Studying")}</small><strong>UEH · IT</strong></span>
-            <span><small>{t("Tập trung", "Focus")}</small><strong>{t("Web và hệ thống", "Web & systems")}</strong></span>
-            <span><small>{t("Dự kiến", "Expected")}</small><strong>08 / 2027</strong></span>
-          </div>
-          <div className="virgo-origin-steps" aria-label={t('Các bước làm dự án', 'How I build')}>{originSteps.map((step, index) => <button key={step.title} aria-pressed={selectedOrigin === index} onMouseEnter={() => setSelectedOrigin(index)} onFocus={() => setSelectedOrigin(index)} onClick={() => setSelectedOrigin(index)} onMouseLeave={() => setSelectedOrigin(null)}>{step.title}</button>)}</div>
+          <p className="virgo-station-caption">{t("Mình dùng dự án để nối kiến thức đã học với các tình huống thực tế.", "I use projects to connect coursework with practical situations.")}</p>
+          <div className="virgo-origin-steps" aria-label={t('Cách mình học', 'How I learn')}>{originSteps.map((step, index) => <button key={step.title} aria-pressed={selectedOrigin === index} onMouseEnter={() => setSelectedOrigin(index)} onFocus={() => setSelectedOrigin(index)} onClick={() => setSelectedOrigin(index)} onMouseLeave={() => setSelectedOrigin(null)}>{step.title}</button>)}</div>
           <p className="virgo-origin-description" aria-live="polite">{selectedOrigin === null ? '' : originSteps[selectedOrigin][lang]}</p>
           <a className="virgo-image-credit" href="https://cloud.solarsystemscope.com/textures/" target="_blank" rel="noreferrer">{t('Texture thiên thể', 'Celestial textures')}: Solar System Scope · CC BY 4.0</a>
         </div>
-        <div className="virgo-single-link"><a href="#/cv/web">{t('Đọc CV', 'Read my CV')}<ArrowUpRight size={16} /></a></div>
+        <a className="journey-context-link" href="#/cv/web">{t('Đọc CV','Read my CV')}<ArrowUpRight size={16}/></a>
+        </JourneyStationCard>
       </section>
 
       {/* CHAPTER 3 — PROJECTS (Porrima) */}
       <section className="virgo-overlay-panel virgo-panel-left virgo-bare-chapter" aria-labelledby="virgo-projects-title" aria-hidden={active !== 3}>
+        <JourneyStationCard title={t('Dự án tiêu biểu','Selected projects')} detailLabel={t('Khám phá dự án tiêu biểu','Explore selected projects')} nextLabel={t('Tiếp tục','Continue')} onContinue={continueStory}>
         <div className="virgo-bare">
           <p className="virgo-bare-label">02 / PORRIMA · {t("DỰ ÁN", "PROJECTS")}</p>
           <h2 className="virgo-sr-only" id="virgo-projects-title">{t("Dự án", "Projects")}</h2>
@@ -583,21 +597,14 @@ export function VirgoPortfolio({ lang, onEnterWorkspace }: {
               <small>{item.year} · {item.category}</small><ArrowUpRight size={17} />
             </a>)}
           </div>
-          <div className="virgo-showcase-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '14px', flexWrap: 'wrap' }}>
-            <a className="virgo-more virgo-more-scroll" href="#/projects-more" onClick={() => navigate(4)}>{t(`Cuộn tiếp · ${projects.length - 3} dự án còn lại`, `Keep scrolling · ${projects.length - 3} more projects`)} <ArrowDown size={15} /></a>
-            {SHOWCASE_ENABLED && <a className="virgo-showcase-pill" href="#/showcase" onClick={e => { e.preventDefault(); navigate(3); window.location.hash = `#/showcase/${showcaseProducts[showcaseActive].id}`; }} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(255,255,255,0.08)', borderRadius: '999px', fontSize: '13px', color: '#e2e8f0', textDecoration: 'none', border: '1px solid rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)' }}>
-              <Monitor size={15} />
-              <span>{t("Các thế giới sản phẩm", "Product worlds")}</span>
-              <ArrowUpRight size={14} />
-            </a>}
-          </div>
           <p className="virgo-orbit-caption">{selectedProject === null ? t(`${projects.length} hành tinh dự án đang quay`, `${projects.length} projects in orbit`) : `${String(selectedProject + 1).padStart(2, "00")} / ${projects[selectedProject].name}`}</p>
         </div>
-        <div className="virgo-single-link"><a href={SHOWCASE_ENABLED ? `#/showcase/${showcaseProducts[showcaseActive].id}` : '#/projects/all'}>{SHOWCASE_ENABLED ? t('Khám phá sản phẩm', 'Explore the work') : t('Xem dự án', 'View projects')}<ArrowUpRight size={16} /></a></div>
+        </JourneyStationCard>
       </section>
 
       {/* CHAPTER 4 — PROJECTS MORE (Porrima outer) — top-left */}
       <section className="virgo-overlay-panel virgo-panel-left virgo-projects-more-panel virgo-bare-chapter" aria-labelledby="virgo-projects-more-title" aria-hidden={active !== 4}>
+        <JourneyStationCard title={t('Công cụ, ứng dụng & mô phỏng','Tools, apps & simulations')} detailLabel={t('Khám phá các dự án còn lại','Explore the remaining projects')} nextLabel={t('Tiếp tục','Continue')} onContinue={continueStory}>
         <div className="virgo-bare">
           <p className="virgo-bare-label">02B / PORRIMA · {t("DỰ ÁN KHÁC", "MORE PROJECTS")}</p>
           <h2 className="virgo-sr-only" id="virgo-projects-more-title">{t("Dự án khác", "More projects")}</h2>
@@ -612,17 +619,19 @@ export function VirgoPortfolio({ lang, onEnterWorkspace }: {
           </div>
           <div className="virgo-projects-more-footer">
             <span>{t(`${projects.length} dự án`, `${projects.length} projects`)}</span>
-            <a href="#/projects/all">{t("Xem tất cả", "View all")} <ArrowUpRight size={14} /></a>
+            <a href="#/projects/all">{t("Mở danh mục dự án", "Open project index")} <ArrowUpRight size={14} /></a>
           </div>
         </div>
-        <div className="virgo-single-link"><a href={SHOWCASE_ENABLED ? `#/showcase/${showcaseProducts[showcaseActive].id}` : '#/projects/all'}>{SHOWCASE_ENABLED ? t('Khám phá sản phẩm', 'Explore the work') : t('Xem dự án', 'View projects')}<ArrowUpRight size={16} /></a></div>
+        </JourneyStationCard>
       </section>
 
       {/* CHAPTER 5 — SKILLS (Vindemiatrix) — center-right */}
       <section className="virgo-overlay-panel virgo-panel-right virgo-skills-panel virgo-bare-chapter" aria-labelledby="virgo-skills-title" aria-hidden={active !== 5}>
+        <h2 className="virgo-sr-only" id="virgo-skills-title">{t("Kỹ năng và bàn giao", "Skills and delivery")}</h2>
+        <div className="journey-skills-technical" data-content-role="tools">
+        <JourneyStationCard title={t('Công nghệ theo công việc','Tools by task')} detailLabel={t('Giới thiệu kỹ năng và công dụng','About the skills and their use')} nextLabel={t('Tiếp tục','Continue')} onContinue={continueStory}>
         <div className="virgo-bare">
           <p className="virgo-bare-label">03 / VINDEMIATRIX · {t("KỸ NĂNG", "SKILLS")}</p>
-          <h2 className="virgo-sr-only" id="virgo-skills-title">{t("Kỹ năng", "Skills")}</h2>
           <div className="virgo-skill-list">{capabilities.map((item, index) => <button key={item.id} type="button" aria-pressed={selectedSkill === index}
             onMouseEnter={() => setSelectedSkill(index)} onFocus={() => setSelectedSkill(index)} onClick={() => selectSkill(index)}>
             <span className="virgo-row-star" aria-hidden="true">●</span>{item.title[lang]}
@@ -631,7 +640,13 @@ export function VirgoPortfolio({ lang, onEnterWorkspace }: {
           <div className="virgo-skill-tools">{capabilities[selectedSkill].tools.map(tool => <span key={tool}>{tool}</span>)}</div>
           <div className="virgo-skill-evidence" aria-label={t("Dự án chứng minh", "Project evidence")}>{capabilities[selectedSkill].projects.slice(0, 3).map(id => { const item = projects.find(project => project.id === id)!; return <a key={id} href={`#/project/${id}`}><span style={{ color: item.color }}>●</span>{item.name}<ArrowUpRight size={14} /></a>; })}</div>
         </div>
-        <div className="virgo-single-link"><a href="#/projects/all">{t('Xem cách mình xây dựng', 'See how I build')}<ArrowUpRight size={16} /></a></div>
+        </JourneyStationCard>
+        </div>
+        <div className="journey-skills-delivery" data-content-role="delivery">
+          <JourneyStationCard title={t('Kiểm thử & bàn giao','Testing & delivery')} detailLabel={t('Xem cách kiểm thử và bàn giao','About testing and delivery')} nextLabel={t('Tiếp tục','Continue')} onContinue={continueStory}>
+            <ul className="journey-delivery-notes">{personalProfile.deliveryNotes.map(note=><li key={note.project}><h3>{note.title[lang]}</h3><p>{note.description[lang]}</p></li>)}</ul>
+          </JourneyStationCard>
+        </div>
       </section>
 
       {/* CHAPTER 6 — CONTACT (Zavijava) */}
@@ -643,7 +658,7 @@ export function VirgoPortfolio({ lang, onEnterWorkspace }: {
           <div className="virgo-contact-links">
             <a href="https://github.com/psy-zney" target="_blank" rel="noreferrer"><Github size={16} /> GitHub</a>
             <a href="https://www.linkedin.com/in/psy-zney295" target="_blank" rel="noreferrer"><Linkedin size={16} /> LinkedIn</a>
-            <a href="#/cv/web">Web CV</a><a href="#/cv/mobile">Mobile CV</a>
+            <a href="#/cv/web">Full Stack CV</a><a href="#/cv/mobile">Software CV</a>
           </div>
         </div>
       </section>
@@ -651,9 +666,10 @@ export function VirgoPortfolio({ lang, onEnterWorkspace }: {
 
 
     <aside className="virgo-home-guide" hidden aria-label={t('Bắt đầu khám phá', 'Begin exploring')}>
-      <p>{t('Khám phá theo nhịp của bạn.', 'Explore at your own pace.')}</p>
-      <span>{t('Cuộn để đi qua các ngôi sao, hoặc chọn một điểm đến.', 'Scroll to travel between stars, or choose a destination.')}</span>
-      <div><a href="#/story" onClick={() => navigate(2)}>{t('Giới thiệu', 'About me')}<ArrowUpRight size={15}/></a><a href="#/projects" onClick={() => navigate(3)}>{t('Xem dự án', 'View projects')}<ArrowUpRight size={15}/></a></div>
+      <span className="portfolio-home-role">{personalProfile.role[lang]}</span>
+      <p>{personalProfile.name}</p>
+      <span className="portfolio-home-bio">{personalProfile.homeSummary[lang]}</span>
+      <div><button onClick={continueStory}>{t('Bắt đầu khám phá','Begin exploring')}<ArrowDown size={15}/></button></div>
     </aside>
     {!openingVisible && !isShowcase && !showDialog && <div ref={chaptersRef} className="virgo-chapters" onKeyDown={event => {
       if (event.key === 'Escape' && chaptersOpen) { event.preventDefault(); event.stopPropagation(); setChaptersOpen(false); chaptersRef.current?.querySelector('button')?.focus(); }
@@ -677,7 +693,7 @@ export function VirgoPortfolio({ lang, onEnterWorkspace }: {
       }
     }}>{soundMuted ? <VolumeX size={17} /> : <Volume2 size={17} />}</button>
 
-    {passageVisible && !reducedMotion && <ShowcasePassage direction={passageDirection} initialTime={passageStart} onComplete={finishPassage} onHandoff={passageHandoff} onReverse={reversePassage} />}
+    {passageVisible && !reducedMotion && <ShowcasePassage lang={lang} direction={passageDirection} initialTime={passageStart} onComplete={finishPassage} onHandoff={passageHandoff} onReverse={reversePassage} />}
     {isShowcase && (
       <WorldsShowcase
         inside={showcaseInside}
@@ -700,11 +716,12 @@ export function VirgoPortfolio({ lang, onEnterWorkspace }: {
     <dialog ref={dialogRef} className="virgo-dialog" aria-label={project?.name ?? (missingDocument ? 'Not found' : allProjects ? t("Tất cả dự án", "All projects") : "CV")}
       onCancel={event => { event.preventDefault(); closeDialog(); }}
       onClick={event => { if (event.target === event.currentTarget) closeDialog(); }}>
+      <header className="info-panel-bar">
+        <div className="info-panel-heading">{resumeTrack ? <FileText size={19}/> : <BookOpen size={19}/>}<strong>{project ? t('Chi tiết dự án', 'Project details') : resumeTrack ? t('Hồ sơ năng lực', 'Resume') : allProjects ? t('Thư viện dự án', 'Project library') : t('Thông tin', 'Information')}</strong></div>
+        <button className="virgo-close" onClick={closeDialog} aria-label={t("Đóng", "Close")} autoFocus><X size={20}/></button>
+      </header>
       <div className={`virgo-dialog-inner${project ? " reader-body" : ""}`} data-lenis-prevent>
-        <button className="virgo-close" onClick={closeDialog} aria-label={t("Đóng", "Close")} autoFocus><X size={22} /></button>
-        {allProjects && <article><p className="virgo-kicker">PORRIMA / ARCHIVE</p><h2>{t("Tất cả dự án", "All projects")}</h2><div className="virgo-archive">{projects.map((item, index) => <a key={item.id} href={`#/project/${item.id}`}
-          onMouseEnter={() => setSelectedProject(index)} onFocus={() => setSelectedProject(index)} onMouseLeave={() => setSelectedProject(null)}>
-          <span className="virgo-row-star" aria-hidden="true" style={{ "--star-color": item.color } as CSSProperties}>●</span><strong>{item.name}</strong><small>{item.category}</small><ArrowUpRight size={17} /></a>)}</div></article>}
+        {allProjects && <ProjectArchive lang={lang}/>}
         {project && <ProjectDocument projectId={project.id} lang={lang} section={documentRoute?.kind === 'project' ? documentRoute.section ?? 'overview' : 'overview'} onSection={section => navigateHash(`#/project/${project.id}/${section}`, true)} />}
         {resumeTrack && <ResumePage track={resumeTrack} lang={lang} />}
         {missingDocument && <article><h1>Not found</h1><p>This document isn't here.</p><button onClick={closeDialog}>Back to the portfolio</button></article>}

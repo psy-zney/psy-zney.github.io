@@ -29,7 +29,15 @@ try {
       const rect = selector => { const r = document.querySelector(selector).getBoundingClientRect(); return { top:r.top,bottom:r.bottom,left:r.left,right:r.right }; };
       return { caption:rect('.worlds-slide[aria-hidden="false"] .worlds-caption'),footer:rect('.worlds-footer'),heading:rect('.worlds-slide[aria-hidden="false"] .worlds-heading'),gate:rect('.worlds-gate.is-selected') };
     });
-    assert(layout.caption.bottom < layout.footer.top, `${name}: actions must not collide with footer`);
+    const scrollReader=await worlds.evaluate(root=>matchMedia('(max-width:999px)').matches&&root.querySelector('.worlds-stage').getBoundingClientRect().height>innerHeight+1);
+    let readerClearance=Infinity;
+    if(scrollReader){
+      await worlds.evaluate(root=>{root.scrollTop=root.querySelector('.worlds-stage').getBoundingClientRect().height-root.clientHeight;});
+      readerClearance=await worlds.evaluate(root=>root.querySelector('.worlds-footer').getBoundingClientRect().top-root.querySelector('.worlds-slide[aria-hidden="false"] .worlds-caption').getBoundingClientRect().bottom);
+      assert(readerClearance>8,`${name}: reading to the end clears the full panel above navigation`);
+      for(const action of await worlds.locator('.worlds-slide[aria-hidden="false"] .worlds-actions').locator('button,a').all())await action.click({trial:true});
+      await worlds.evaluate(root=>{root.scrollTop=0;});
+    }else assert(layout.caption.bottom < layout.footer.top, `${name}: actions must not collide with footer`);
     assert(layout.caption.left >= 0 && layout.caption.right <= width, `${name}: caption fits viewport`);
     if (height < 600) {
       assert(layout.gate.right + 16 < layout.caption.left, 'Landscape leaves clear space between the selected portal and its caption');
@@ -54,7 +62,7 @@ try {
     assert(panel.blur>0&&panel.blur<=10,`${name}: the glass surface keeps the background visible with a light blur`);
     assert(panel.opacity.length>=3&&Math.max(...panel.opacity)<=.08,`${name}: panel fills are transparent rather than opaque blue`);
     assert.equal(panel.animation,reducedMotion==='reduce'?'none':'worlds-glass-flow',`${name}: flowing rim respects reduced motion`);
-    assert(panel.rimBottom+8<layout.footer.top,`${name}: the full glass rim leaves space above navigation`);
+    assert(scrollReader?readerClearance>8:panel.rimBottom+8<layout.footer.top,`${name}: the full glass rim leaves space above navigation after reading`);
     assert.equal(panel.groupPointer,'none',`${name}: empty column space lets the recessed portals receive input`);
     assert.equal(panel.contentPointer,'auto',`${name}: product actions remain interactive`);
     if(height>=620&&width>=1000){

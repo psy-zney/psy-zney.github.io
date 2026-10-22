@@ -1,0 +1,33 @@
+.rb-magnet-content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: inherit;
+  pointer-events: none;
+  transform: translate3d(var(--rb-x, 0px), var(--rb-y, 0px), 0);
+  transition: transform 260ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.rb-spotlight { position: relative; isolation: isolate; }
+.rb-spotlight::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(circle 210px at var(--rb-x, 50%) var(--rb-y, 50%),
+    color-mix(in srgb, var(--book-color, #a6e8ed) 28%, transparent), transparent 80%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--book-color, #a6e8ed) 40%, transparent);
+  opacity: 0;
+  transition: opacity 220ms ease-out;
+}
+.rb-spotlight[data-pointer-active=true]::after,
+.library-book:focus-visible .rb-spotlight::after { opacity: 1; }
+.library-book:focus-visible .rb-spotlight::after { --rb-x: 50%; --rb-y: 50%; }
+
+@media (prefers-reduced-motion: reduce), (hover: none), (pointer: coarse) {
+  .rb-magnet-content { transform: none; transition: none; }
+  .rb-spotlight::after { transition: none; }
+  .rb-spotlight[data-pointer-active=true]::after { opacity: 0; }
+}

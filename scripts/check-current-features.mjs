@@ -7,12 +7,20 @@ import ts from 'typescript';
 
 // Behavior and integration checks for the current build. Visual QA lives in check-ui.mjs.
 export async function checkCurrentFeatures(server) {
-  const { universeFrame, universeInput, followUniverse, introTunnelFrame, showcaseSlideFrame, SHOWCASE_HANDOFF, nebulaWallRadius, nebulaCenter, rotateUniversePoint } = await server.ssrLoadModule('/src/data/universeTransition.ts');
+  const { universeFrame, universeInput, followUniverse, introTunnelFrame, showcaseSlideFrame, showcaseArrivalFrame, SHOWCASE_PASSAGE_DURATION, SHOWCASE_HANDOFF, nebulaWallRadius, nebulaCenter, rotateUniversePoint } = await server.ssrLoadModule('/src/data/universeTransition.ts');
   assert.deepEqual(universeFrame(0), { progress: 0, slide: 0, bend: 0 });
   assert.equal(universeFrame(1).slide, 0, 'Intro stays in the viewport while the tunnel crosses to Home');
   assert.equal(showcaseSlideFrame(0).showcase, false);
   assert.equal(showcaseSlideFrame(SHOWCASE_HANDOFF).showcase, true);
   assert.equal(showcaseSlideFrame(1).slide, 1);
+  assert(SHOWCASE_PASSAGE_DURATION>=1.4&&SHOWCASE_PASSAGE_DURATION<=1.8,'Preview windows introduce the showcase in a brief, bounded passage');
+  assert.equal(showcaseArrivalFrame(0).opacity,0);assert.equal(showcaseArrivalFrame(1).opacity,0);
+  assert.deepEqual(showcaseArrivalFrame(.5),{opacity:1,open:1},'The middle of the passage fully presents the preview windows');
+  for(let i=0;i<=100;i++){
+    const p=i/100,frame=showcaseArrivalFrame(p),reverse=showcaseArrivalFrame(1-(1-p));
+    assert(Object.values(frame).every(value=>Number.isFinite(value)&&value>=0&&value<=1));
+    assert(Math.abs(frame.opacity-reverse.opacity)<1e-12&&Math.abs(frame.open-reverse.open)<1e-12,'Preview windows reverse on the same absolute progress');
+  }
   assert(introTunnelFrame(1).travel > 150, 'The intro crosses its finite exit before Home appears');
   for (const frameAt of [introTunnelFrame, showcaseSlideFrame]) {
     let previous = -1;
@@ -385,7 +393,8 @@ export async function checkCurrentFeatures(server) {
   const { tunnelStation, tunnelVisibility, tunnelPortal, tunnelCrossing, tunnelWorldBlend, portalLightning, portalPreviewPresence } = await server.ssrLoadModule('/src/data/showcaseTunnel.ts');
   const { showcaseScreenPoint, SHOWCASE_SCREEN_STRIPS } = await server.ssrLoadModule('/src/data/showcaseScreen.ts');
   const { chapterReadingPosition, narrativeSample, narrativeRevealStyle, contactPresence, NARRATIVE_BEATS } = await server.ssrLoadModule('/src/data/virgoNarrative.ts');
-  assert.deepEqual(NARRATIVE_BEATS.slice(3, 8).map(beat => beat.side), ['left', 'left', 'right', 'left', 'right'], 'Every reading pair starts on the left');
+  assert.deepEqual(NARRATIVE_BEATS.slice(3,8).map(beat=>beat.side),['left','left','right','right','left'],'Reading panels occupy both sides without obscuring their focused star');
+  assert.equal(new Set(NARRATIVE_BEATS.slice(3,8).map(beat=>beat.placement)).size,4,'Desktop narration uses all four corners');
   assert.equal(new Set([3, 4, 5, 6, 7].map(narrativeRevealStyle)).size, 4, 'Narrative ink uses four scroll-driven reveal modes');
   for (const reduced of [false, true]) for (const p of [5.94, 5.98, 6]) assert.equal(contactPresence(p, reduced), 1, 'Contact stays visible through the endpoint');
   assert.equal(contactPresence(5.8), 0);
@@ -611,7 +620,7 @@ export async function checkCurrentFeatures(server) {
   assert.notDeepEqual(a, b, 'New journeys can vary the scene order');
   assert.deepEqual(a, createTransitScenarios(() => 0), 'Scene selection is independent of frame timing');
   assert((await readFile('AGENTS.md', 'utf8')).includes('docs/straight-flight-contract.vi.md'), 'Future edits must read the owner-approved flight contract');
-  assert((await readFile('docs/straight-flight-contract.vi.md', 'utf8')).includes('17-42-22.mp4'), 'Identify the exact reference video');
+  assert((await readFile('docs/straight-flight-contract.vi.md', 'utf8')).includes('XYZ'), 'Document the current straight-flight behavior without locking a rejected visual design');
   assert.notEqual(NARRATIVE_BEATS[4].placement, NARRATIVE_BEATS[5].placement, 'Successive project sentences change their layout');
 
   // Wiring checks catch disconnected new components; geometry/style may evolve.
@@ -650,7 +659,7 @@ export async function checkCurrentFeatures(server) {
       assert(source.includes('entering={false}') && source.includes('openingVisible || entering || passageVisible'), 'The showcase page slide freezes Virgo and never enables the old camera spiral');
       const intro = await readFile('src/components/UniverseIntro.tsx','utf8');
       const passage = await readFile('src/components/PagePassage.tsx','utf8');
-      assert(intro.includes('IntroUniverseBackdrop') && intro.includes('view.current.yaw = yaw') && intro.includes('originalIntroMedia'), 'Intro uses the owner-authored sky, full-turn controls and verified media configuration');
+      assert(intro.includes('IntroUniverseBackdrop') && intro.includes('view.current.yaw = rotation.x + hoverYaw') && intro.includes('rotation.drag(') && intro.includes('rotation.release(') && intro.includes('originalIntroMedia'), 'Intro connects the owner-authored sky, smoothed full-turn controls and verified media configuration');
       assert(intro.includes('universe-start') && !intro.includes('INTRO_VIDEO') && !intro.includes('new NebulaTunnel'), 'Only the explicit start button enters original media; the simulated tunnel and screen recording stay inactive');
       assert(!passage.includes('NebulaTunnel') && !passage.includes('PageLens') && passage.includes('showcaseSlideFrame'), 'Contact uses only the vertical DOM page transition');
     }
