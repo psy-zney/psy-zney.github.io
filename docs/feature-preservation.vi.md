@@ -68,6 +68,13 @@ mới, không giữ các giới hạn số câu, số dòng hoặc mẫu ảnh t
 
 ## Âm thanh, chất lượng và nguồn
 
+- Sau deploy mới, bootstrap đối chiếu deployment.json không dùng HTTP cache.
+  Mã GitHub SHA đổi theo push; dọn Cache Storage cùng origin và đăng ký worker
+  mới trước khi mount React. Public assets dùng khóa URL theo phiên bản,
+  HTML/metadata lấy từ mạng; không xóa preferences, cookie hoặc lịch sử.
+  HTML cũ chỉ tự tải lại một lần, giữ query/hash; lỗi mạng/storage không
+  được khóa entry. Bản không đổi giữ cache để không tải lại GLB vô ích.
+  Dev không đăng ký worker. Kiểm tra production bằng pnpm run check:cache.
 - Giữ gesture unlock/retry, mute chung, nhạc ambient có hai stem cùng
   playhead, SFX giới hạn/deduplicate, wheel oscillator tái dùng. Worker
   tổng hợp có fallback; hidden/mute không phát bù cue. Workspace có bus riêng.

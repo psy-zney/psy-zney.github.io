@@ -12,6 +12,7 @@ pnpm dev
 pnpm run check
 pnpm run check:ui
 pnpm run check:audit
+pnpm run check:cache # Run after a production build; Chromium required
 ```
 
 Mobile uses a native vertical reader; product navigation follows the full
@@ -35,3 +36,14 @@ Generated builds, test screenshots/logs and tool caches are ignored. Current
 QA evidence lives in `artifacts/final-audit/`; old rejected design screenshots
 and superseded scripts were removed. Browser emulation does not establish
 physical touch, sensor, perceived audio quality or device FPS.
+
+Each GitHub Pages build embeds the pushed commit SHA. On the next visit after
+deployment, the site clears origin Cache Storage and replaces its worker;
+public asset URLs receive that deployment version. HTML/version metadata use
+the network, with a one-reload guard that preserves the current query and hash.
+An inline gate can recover cached HTML even if its old JS bundle was removed.
+Preferences and cookies remain intact, and unchanged deployments retain their
+HTTP asset cache. Dev mode does not install the worker. The browser's global
+HTTP cache cannot be erased by page JavaScript; versioned URLs avoid stale
+responses ([MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Caching)).
+Deployment cache tests and production screenshots are in `artifacts/deployment-cache/`.

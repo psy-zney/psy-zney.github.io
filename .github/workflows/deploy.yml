@@ -41,10 +41,14 @@ jobs:
 
       - name: Build
         env:
+          VITE_DEPLOY_VERSION: ${{ github.sha }}
           VITE_MONGO_API_ENDPOINT: ${{ secrets.VITE_MONGO_API_ENDPOINT }}
           VITE_ADMIN_PASS_HASH: ${{ secrets.VITE_ADMIN_PASS_HASH }}
           VITE_ANALYTICS_URL: ${{ secrets.VITE_ANALYTICS_URL }}
         run: pnpm run build
+
+      - name: Verify deployment cache artifacts
+        run: node scripts/check-deployment-cache.mjs --static
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

@@ -55,8 +55,8 @@ const onlyBlackHole = process.env.UI_PHASE === 'black-hole';
 const reportPath = `${output}/${selectedScenarios ? `report-${selectedScenarios.join('-')}` : 'report'}${onlyBlackHole?'-black-hole':''}.json`;
 const startedAt = new Date().toISOString();
 const fingerprintSource = async () => {
-  const paths = ['package.json', 'pnpm-lock.yaml', 'scripts/check-ui.mjs', ...(await readdir('src', { recursive: true }))
-    .filter(path => /\.(tsx?|css|json)$/.test(path)).map(path => `src/${path.replaceAll('\\', '/')}`)].sort();
+  const paths = ['package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'scripts/templates/deployment-gate.js', '.github/workflows/deploy.yml', 'scripts/check-ui.mjs', ...(await readdir('src', { recursive: true }))
+    .filter(path => /\.(tsx?|jsx?|css|json)$/.test(path)).map(path => `src/${path.replaceAll('\\', '/')}`)].sort();
   const hash = createHash('sha256');
   for (const path of paths) hash.update(path).update('\0').update(await readFile(path)).update('\0');
   return hash.digest('hex');
@@ -84,6 +84,10 @@ try {
     }
     const context = await browser.newContext(options);
     const page = await context.newPage();
+    const waitForApp = async () => {
+      await page.locator('#root > *').first().waitFor({ state: 'attached' });
+      await page.locator('[data-page-loader]').waitFor({ state: 'detached' });
+    };
     // Install before GSAP loads; its ticker retains the initial Date.now.
     await page.clock.install();
     const errors = [];
@@ -170,13 +174,16 @@ try {
     let initialFit = null, contactFlight = [];
     if (!onlyBlackHole) {
     await page.goto(`${base}#/showcase/beatsync`, { waitUntil: 'domcontentloaded' });
-    await page.locator('[data-page-loader]').waitFor({ state: 'detached' });
+    // The bootstrap checks deployment metadata before importing React's app.
+    // Wait for its actual route before testing whether a world needs entering.
+    await page.locator('.worlds-showcase, dialog.screening-room').first().waitFor();
+    await waitForApp();
     if (await page.locator('.worlds-showcase').count()) await page.getByRole('button', { name: 'Enter world', exact: true }).click();
     const showcaseEnabled = await page.locator('.virgo-page').getAttribute('data-showcase-enabled') === 'true';
     if (name === 'desktop' || name === 'reduced') assert.equal(await page.locator('body').evaluate(el => getComputedStyle(el).cursor), 'default', 'Use the native system arrow from the current baseline');
     if (showcaseEnabled) {
     await gallery.waitFor({ state: 'visible' });
-    await page.locator('[data-page-loader]').waitFor({ state: 'detached' });
+    await waitForApp();
     await gallery.locator('.screening-slide.is-active .screening-tv[data-state="ready"]').waitFor();
     await gallery.locator('.screening-css3d .screening-surface[data-space-pose]').first().waitFor({ state: 'attached' });
     await page.waitForFunction(() => Number(document.querySelector('.screening-room')?.style.getPropertyValue('--screen-focus')) > .999);
@@ -366,7 +373,7 @@ try {
 
     // Main intro and portal remain functional after all gallery interactions.
     await page.goto(base, { waitUntil: 'domcontentloaded' });
-    await page.locator('[data-page-loader]').waitFor({ state: 'detached' });
+    await waitForApp();
     await page.locator('.virgo-canvas canvas').waitFor();
     await page.screenshot({ path: `${output}/${name}-intro.png` });
     const sound = page.locator('.virgo-sound-toggle');
@@ -414,7 +421,7 @@ try {
     // Check the actual rendered camera and sentences, rather than unused helpers.
     await page.goto(`${base}#/projects`, { waitUntil: 'domcontentloaded' });
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.locator('[data-page-loader]').waitFor({ state: 'detached' });
+    await waitForApp();
     const storyAt = async (position, sentence) => {
       const saveFailure = async error => {
         const state = await page.evaluate(() => {
@@ -551,7 +558,7 @@ try {
     if (name !== 'reduced') {
       await page.goto(`${base}#/skills`, { waitUntil: 'domcontentloaded' });
       await page.reload({ waitUntil: 'domcontentloaded' });
-      await page.locator('[data-page-loader]').waitFor({ state: 'detached' });
+      await waitForApp();
       await page.waitForFunction(() => Math.abs(Number(document.querySelector('.virgo-page')?.style.getPropertyValue('--flight-progress')) * 6 - 4.92) < .001);
       const wholeFlight = page.evaluate(() => new Promise(resolve => {
         const frames = [], start = performance.now();
@@ -582,7 +589,7 @@ try {
     // still belongs to entry. Reverse input must remain on the reading journey.
     await page.goto(`${base}#/skills`, { waitUntil: 'domcontentloaded' });
     await page.reload({waitUntil:'domcontentloaded'});
-    await page.locator('[data-page-loader]').waitFor({ state: 'detached' });
+    await waitForApp();
     await page.waitForFunction(() => Math.abs(Number(document.querySelector('.virgo-page')?.style.getPropertyValue('--flight-progress')) * 6 - 4.92) < .001);
     const approachFrom=await page.locator('.virgo-scroll').evaluate(el=>{const steps=[...document.querySelector('.virgo-scroll-content').children];el.scrollTop=steps[5].offsetTop+.31*(steps[6].offsetTop-steps[5].offsetTop);return 5+(el.scrollTop-steps[5].offsetTop)/(steps[6].offsetTop-steps[5].offsetTop);});
     await page.waitForFunction(expected=>Math.abs(Number(document.querySelector('.virgo-page')?.style.getPropertyValue('--flight-progress'))*6-expected)<.00005,approachFrom);
@@ -616,7 +623,7 @@ try {
     await writeFile(`${output}/${name}-approach-rolls.json`,JSON.stringify({deltaY:120,from:approachFrom,positions:approachRolls},null,2));
     await page.goto(`${base}#/contact`, { waitUntil: 'domcontentloaded' });
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.locator('[data-page-loader]').waitFor({ state: 'detached' });
+    await waitForApp();
     await page.waitForFunction(() => Number(document.querySelector('.virgo-page')?.style.getPropertyValue('--flight-progress')) * 6 > 5.8);
     const contactShot = await page.screenshot({ path: `${output}/${name}-contact-arrival.png` });
     const contactRaw = await sharp(contactShot).removeAlpha().raw().toBuffer({ resolveWithObject: true });

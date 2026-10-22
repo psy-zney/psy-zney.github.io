@@ -70,3 +70,26 @@ preview hiện hành và production build cuối được giữ để tiếp t�
   và tình trạng website bên ngoài phụ thuộc máy chủ của sản phẩm.
 - Admin dùng dữ liệu giả cục bộ, không truy vấn thông tin tài khoản riêng.
 - Build đạt nhưng vẫn cảnh báo bundle chính khoảng 1.55 MB, gzip 465 kB.
+
+## Cập nhật cache theo deployment — 22/10/2026
+
+- GitHub Actions truyền github.sha vào VITE_DEPLOY_VERSION. Mỗi build xuất
+  deployment.json và deployment-worker.js; CI xác minh chúng cùng phiên bản
+  với bootstrap trước khi upload Pages artifact.
+- Khi vào bản mới, clearWebsiteCache dọn Cache Storage cùng origin và
+  registration ở scope của website. Worker mới nhận quyền trước khi mount
+  ứng dụng; tài nguyên public dùng URL có phiên bản, HTML/metadata không
+  dùng HTTP cache. Bản không đổi dùng lại cache để tránh tải lại GLB lớn.
+- Gate inline độc lập phục hồi HTML cũ ngay cả khi bundle JS cũ đã bị xóa.
+  Tự tải lại tối đa một lần cho bản mới, giữ query/hash, tránh vòng lặp CDN.
+  Cookie, preferences và lịch sử vẫn giữ; không xóa cache toàn trình duyệt.
+- Lỗi metadata, storage bị chặn hoặc worker không được phép không khóa
+  entry. Dev không đăng ký worker. Cơ chế áp dụng sau khi deploy hoàn tất.
+- PASS: pnpm run check, check:cache (hai bản A/B, HTTP cache, ảnh, HTML CV,
+  Range media, route, storage lỗi, metadata lỗi/sai định dạng, mất bundle
+  cũ, chống lặp và mở CV từ production build thật).
+- PASS: check:ui đầy đủ phone/reduced sau bootstrap mới. Kiểm tra chờ DOM
+  ứng dụng thực thay vì suy ra app đã sẵn sàng vì chưa có loader trong DOM.
+  Đã xem ảnh CV production và gallery điện thoại. Log, JSON và ảnh ở
+  artifacts/deployment-cache/. Cảnh báo bundle lớn và giới hạn thiết bị
+  thật đã nêu ở trên vẫn áp dụng.
